@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Verificar carnet — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:700px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:6px 0 12px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ FLR Registry</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div class="card">
+    <h2>Verificación de carnet</h2>
+    <p class="small">Escribe el código de verificación que aparece en el carnet.</p>
+    <input id="code" placeholder="Ejemplo: A1B2C3D4E5" />
+    <button onclick="verify()">Verificar</button>
+  </div>
+  <div id="result"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function verify() {
+  const code = document.getElementById('code').value.trim();
+  if (!code) return alert('Escribe el código.');
+
+  const { data, error } = await db.rpc('verify_card', { code });
+  const result = document.getElementById('result');
+
+  if (error) {
+    result.innerHTML = '<div class="card"><p class="small">Error: ' + escapeHtml(error.message) + '</p></div>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    result.innerHTML = `
+      <div class="card">
+        <h2>❌ Carnet no válido</h2>
+        <p class="small">El código no coincide con ningún carnet.</p>
+      </div>`;
+    return;
+  }
+
+  const c = data[0];
+
+  result.innerHTML = `
+    <div class="card">
+      <h2>${c.revoked ? '❌ Carnet REVOCADO' : '✅ Carnet VÁLIDO'}</h2>
+      <p>Sumiso: <b>${escapeHtml(c.slave_name || 'Sin nombre')}</b></p>
+      <p>Registro: <b>${escapeHtml(c.registration_number)}</b></p>
+      <p>Dominante: <b>♛ ${escapeHtml(c.dominant_name)}</b></p>
+      <p>Carnet: <b>${escapeHtml(c.card_number)}</b></p>
+      <p>Emitido: <b>${escapeHtml(new Date(c.issued_at).toLocaleDateString())}</b></p>
+    </div>`;
+}
+</script>
+</body>
+</html>
