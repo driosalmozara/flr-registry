@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FLR Registry</title>
+  <style>
+    :root {
+      --gold: #d4af37;
+      --dark: #0f0f1a;
+      --panel: #161625;
+      --line: #2a2a3d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Segoe UI, Arial, sans-serif;
+      background: var(--dark);
+      color: #fff;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: var(--gold);
+    }
+
+    main {
+      max-width: 950px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: #0b0b12;
+      border: 1px solid var(--line);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 6px 0 14px;
+    }
+
+    button {
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+    }
+
+    button.danger {
+      background: #7f1d1d;
+      color: #fff;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .col {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .small {
+      color: #a1a1aa;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 12px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 10px 0;
+      background: #0b0b12;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 style="margin:0;">♛ FLR Registry</h1>
+  </header>
+
+  <main>
+    <section id="loading" class="card">Cargando...</section>
+
+    <section id="auth" class="hidden">
+      <div class="row">
+        <div class="col card">
+          <h2>Iniciar sesión</h2>
+          <input id="login-email" type="email" placeholder="Correo" />
+          <input id="login-password" type="password" placeholder="Contraseña" />
+          <button onclick="login()">Entrar</button>
+        </div>
+
+        <div class="col card">
+          <h2>Crear cuenta</h2>
+
+          <select id="reg-role">
+            <option value="submissive">⛓ Sumiso</option>
+            <option value="dominant">♛ Dominante</option>
+          </select>
+
+          <input id="reg-display" placeholder="Nombre público" />
+          <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+          <input id="reg-email" type="email" placeholder="Correo" />
+          <input id="reg-password" type="password" placeholder="Contraseña" />
+
+          <label class="small">
+            <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
+            Soy mayor de edad y acepto las reglas.
+          </label>
+
+          <br /><br />
+          <button onclick="register()">Registrarme</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="profile-setup" class="hidden card">
+      <h2>Completa tu perfil</h2>
+
+      <select id="setup-role">
+        <option value="submissive">⛓ Sumiso</option>
+        <option value="dominant">♛ Dominante</option>
+      </select>
+
+      <input id="setup-display" placeholder="Nombre público" />
+      <input id="setup-age" type="number" min="18" placeholder="Edad (18+)" />
+
+      <button onclick="createProfile()">Guardar perfil</button>
+    </section>
+
+    <section id="app" class="hidden">
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div>
+            <h2 id="welcome" style="margin:0;"></h2>
+            <div id="role-badge" class="badge"></div>
+          </div>
+          <button class="secondary" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </div>
+
+      <div id="dashboard"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+
+    let db = null;
+    let currentUser = null;
+    let currentProfile = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function show(sectionId) {
+      ['loading', 'auth', 'profile-setup', 'app'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+
+      document.getElementById(sectionId).classList.remove('hidden');
+    }
+
+    async function init() {
+      if (!db) return;
+
+      const { data: { session } } = await db.auth.getSession();
+      currentUser = session?.user || null;
+
+      if (!currentUser) {
+        show('auth');
+        return;
+      }
+
+      await loadProfileAndRender();
+    }
+
+    async function loadProfileAndRender() {
+      const { data, error } = await db
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        alert(error.message);
+        show('auth');
+        return;
+      }
+
+      currentProfile = data;
+
+      if (!currentProfile) {
+        show('profile-setup');
+        return;
+      }
+
+      document.getElementById('welcome').textContent = currentProfile.display_name;
+      document.getElementById('role-badge').textContent =
+        currentProfile.role === 'dominant' ? '♛ Dominante' : '⛓ Sumiso';
+
+      show('app');
+
+      if (currentProfile.role === 'dominant') {
+        await renderDominant();
+      } else {
+        await renderSubmissive();
+      }
+    }
+
+    async function login() {
+      if (!db) return alert('Configura Supabase primero.');
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      const { error } = await db.auth.signInWithPassword({ email, password });
+
+      if (error) return alert(error.message);
+
+      window.location.reload();
+    }
+
+    async function register() {
+      if (!db) return alert('Configura Supabase primero.');
+
+      const role = document.getElementById('reg-role').value;
+      const display_name = document.getElementById('reg-display').value.trim();
+      const age = Number(document.getElementById('reg-age').value);
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const consent = document.getElementById('reg-consent').checked;
+
+      if (!display_name || !email || !password) {
+        return alert('Completa los campos.');
+      }
+
+      if (!age || age < 18) {
+        return alert('Debes ser mayor de 18.');
+      }
+
+      if (!consent) {
+        return alert('Debes aceptar la declaración de mayoría de edad.');
+      }
+
+      const { data, error } = await db.auth.signUp({ email, password });
+
+      if (error) return alert(error.message);
+
+      if (!data.user) {
+        return alert('Revisa tu correo para confirmar la cuenta.');
+      }
+
+      if (!data.session) {
+        return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
+      }
+
+      const { error: profileError } = await db.from('profiles').insert({
+        id: data.user.id,
+        role,
+        display_name,
+        age
+      });
+
+      if (profileError) return alert(profileError.message);
+
+      window.location.reload();
+    }
+
+    async function createProfile() {
+      if (!db) return alert('Configura Supabase primero.');
+
+      const role = document.getElementById('setup-role').value;
+      const display_name = document.getElementById('setup-display').value.trim();
+      const age = Number(document.getElementById('setup-age').value);
+
+      if (!display_name || !age || age < 18) {
+        return alert('Completa nombre y edad 18+.');
+      }
+
+      const { error } = await db.from('profiles').insert({
+        id: currentUser.id,
+        role,
+        display_name,
+        age
+      });
+
+      if (error) return alert(error.message);
+
+      window.location.reload();
+    }
+
+    async function logout() {
+      if (!db) return;
+
+      await db.auth.signOut();
+      window.location.reload();
+    }
+
+    async function renderDominant() {
+      const dashboard = document.getElementById('dashboard');
+      dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
+
+      const { data: requests, error: reqError } = await db
+        .from('relationships')
+        .select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name, age, bio)')
+        .eq('dominant_id', currentUser.id)
+        .eq('status', 'pending');
+
+      if (reqError) {
+        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`;
+        return;
+      }
+
+      const { data: submissives, error: subError } = await db
+        .from('relationships')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_dominant_id_fkey(display_name)')
+        .eq('dominant_id', currentUser.id)
+        .eq('status', 'confirmed');
+
+      if (subError) {
+        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`;
+        return;
+      }
+
+      let records = [];
+      let cards = [];
+
+      if (submissives && submissives.length > 0) {
+        const relIds = submissives.map(item => item.id);
+
+        const { data: recordData } = await db
+          .from('submissive_records')
+          .select('*')
+          .in('relationship_id', relIds);
+
+        records = recordData || [];
+
+        const recordIds = records.map(item => item.id);
+
+        if (recordIds.length > 0) {
+          const { data: cardData } = await db
+            .from('cards')
+            .select('*')
+            .in('record_id', recordIds);
+
+          cards = cardData || [];
+        }
+      }
+
+      let html = '';
+
+      html += '<div class="card"><h2>Solicitudes pendientes</h2>';
+
+      if (!requests || requests.length === 0) {
+        html += '<p class="small">No tienes solicitudes pendientes.</p>';
+      } else {
+        requests.forEach(req => {
+          const profile = req.profiles || {};
+
+          html += `
+            <div class="item">
+              <h3 style="margin:0;">${escapeHtml(profile.display_name || 'Sumiso')}</h3>
+              <p class="small">Edad: ${escapeHtml(String(profile.age || ''))}</p>
+              <p class="small">${escapeHtml(profile.bio || '')}</p>
+              <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
+              <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>
+            </div>
+          `;
+        });
+      }
+
+      html += '</div>';
+
+      html += '<div class="card"><h2>Mis sumisos</h2>';
+
+      if (!submissives || submissives.length === 0) {
+        html += '<p class="small">Todavía no tienes sumisos confirmados.</p>';
+      } else {
+        submissives.forEach(sub => {
+          const record = records.find(r => r.relationship_id === sub.id);
+          const card = record ? cards.find(c => c.record_id === record.id) : null;
+
+          html += `<div class="item">`;
+          html += `<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>`;
+
+          if (!record) {
+            html += `<p class="small">No se encontró el registro. Intenta recargar.</p>`;
+          } else {
+            html += `<p class="small">Nº registro: ${escapeHtml(record.registration_number)}</p>`;
+
+            html += `<label>Nombre de sumiso</label>`;
+            html += `<input id="slave_name_${record.relationship_id}" value="${escapeHtml(record.slave_name || '')}" />`;
+
+            html += `<label>Nivel</label>`;
+            html += `<select id="level_${record.relationship_id}">
+              ${['inicial', 'entrenamiento', 'avanzado', 'total'].map(level => {
+                return `<option value="${level}" ${record.obedience_level === level ? 'selected' : ''}>${level}</option>`;
+              }).join('')}
+            </select>`;
+
+            html += `<label>Notas</label>`;
+            html += `<textarea id="notes_${record.relationship_id}" rows="3">${escapeHtml(record.notes || '')}</textarea>`;
+
+            html += `<label class="small">
+              <input type="checkbox" id="public_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.is_public ? 'checked' : ''}>
+              Mostrar en registro público
+            </label>`;
+
+            html += `<div class="row" style="margin-top:10px;">`;
+            html += `<button onclick="saveRecord('${record.relationship_id}')">Guardar</button>`;
+
+            if (!card) {
+              html += `<button class="secondary" onclick="issueCard('${record.id}')">Emitir carnet</button>`;
+            } else {
+              html += `<div class="small">Carnet: ${escapeHtml(card.card_number)}<br>Verificación: ${escapeHtml(card.verification_code || '')}</div>`;
+              html += `<button class="secondary" onclick="issueCard('${record.id}')">Emitir otro carnet</button>`;
+            }
+
+            html += `</div>`;
+          }
+
+          html += `</div>`;
+        });
+      }
+
+      html += '</div>';
+
+      dashboard.innerHTML = html;
+    }
+
+    async function respondRequest(id, status) {
+      const { error } = await db
+        .from('relationships')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) return alert(error.message);
+
+      window.location.reload();
+    }
+
+    async function saveRecord(relationshipId) {
+      const slave_name = document.getElementById(`slave_name_${relationshipId}`).value.trim();
+      const obedience_level = document.getElementById(`level_${relationshipId}`).value;
+      const notes = document.getElementById(`notes_${relationshipId}`).value;
+      const is_public = document.getElementById(`public_${relationshipId}`).checked;
+
+      const { error } = await db
+        .from('submissive_records')
+        .update({ slave_name, obedience_level, notes, is_public })
+        .eq('relationship_id', relationshipId);
+
+      if (error) return alert(error.message);
+
+      alert('Registro guardado.');
+    }
+
+    async function issueCard(recordId) {
+      const { data, error } = await db
+        .from('cards')
+        .insert({ record_id: recordId })
+        .select()
+        .single();
+
+      if (error) return alert(error.message);
+
+      alert(`Carnet emitido.\nNúmero: ${data.card_number}\nCódigo: ${data.verification_code || ''}`);
+
+      window.location.reload();
+    }
+
+    async function renderSubmissive() {
+      const dashboard = document.getElementById('dashboard');
+      dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
+
+      const { data: rel, error: relError } = await db
+        .from('relationships')
+        .select('id, status, dominant_id, profiles!relationships_dominant_id_fkey(display_name)')
+        .eq('submissive_id', currentUser.id)
+        .in('status', ['pending', 'confirmed'])
+        .order('requested_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (relError) {
+        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(relError.message)}</div>`;
+        return;
+      }
+
+      let html = '';
+
+      if (!rel) {
+        const { data: dominants, error: domError } = await db
+          .from('profiles')
+          .select('id, display_name, bio')
+          .eq('role', 'dominant')
+          .order('display_name');
+
+        if (domError) {
+          dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(domError.message)}</div>`;
+          return;
+        }
+
+        html += '<div class="card"><h2>Solicitar Dominante</h2>';
+
+        if (!dominants || dominants.length === 0) {
+          html += '<p class="small">Todavía no hay Dominantes registradas.</p>';
+        } else {
+          html += `<select id="dominant-select">
+            <option value="">Elige una Dominante...</option>
+            ${dominants.map(d => `<option value="${d.id}">${escapeHtml(d.display_name)}</option>`).join('')}
+          </select>`;
+
+          html += `<button onclick="requestDominant()">Enviar solicitud</button>`;
+        }
+
+        html += '</div>';
+      }
+
+      if (rel && rel.status === 'pending') {
+        html += `<div class="card">
+          <h2>Solicitud enviada</h2>
+          <p>Esperando confirmación de <b>${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
+          <button class="danger" onclick="cancelRequest('${rel.id}')">Cancelar solicitud</button>
+        </div>`;
+      }
+
+      if (rel && rel.status === 'confirmed') {
+        const { data: record, error: recError } = await db
+          .from('submissive_records')
+          .select('*')
+          .eq('relationship_id', rel.id)
+          .maybeSingle();
+
+        if (recError) {
+          dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(recError.message)}</div>`;
+          return;
+        }
+
+        const { data: card } = await db
+          .from('cards')
+          .select('*')
+          .eq('record_id', record?.id)
+          .order('issued_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        html += `<div class="card">
+          <h2>Estado confirmado</h2>
+          <p>Perteneces a <b>♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
+
+          ${record ? `
+            <p>Nº registro: <b>${escapeHtml(record.registration_number)}</b></p>
+            <p>Nombre de sumiso: <b>${escapeHtml(record.slave_name || 'Aún no asignado')}</b></p>
+            <p>Nivel: <b>${escapeHtml(record.obedience_level || '')}</b></p>
+
+            ${card ? `
+              <p>Carnet: <b>${escapeHtml(card.card_number)}</b><br>
+              Código: <b>${escapeHtml(card.verification_code || '')}</b></p>
+            ` : '<p class="small">La Dominante aún no emite carnet.</p>'}
+          ` : '<p class="small">No hay registro todavía.</p>'}
+        </div>`;
+      }
+
+      dashboard.innerHTML = html;
+    }
+
+    async function requestDominant() {
+      const dominantId = document.getElementById('dominant-select').value;
+
+      if (!dominantId) return alert('Elige una Dominante.');
+
+      const { error } = await db.from('relationships').insert({
+        dominant_id: dominantId,
+        submissive_id: currentUser.id,
+        status: 'pending'
+      });
+
+      if (error) return alert(error.message);
+
+      window.location.reload();
+    }
+
+    async function cancelRequest(id) {
+      const { error } = await db
+        .from('relationships')
+        .delete()
+        .eq('id', id);
+
+      if (error) return alert(error.message);
+
+      window.location.reload();
+    }
+
+    if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
+      document.getElementById('loading').innerHTML = `
+        <h2>Falta configurar Supabase</h2>
+        <p>Edita el archivo index.html y reemplaza:</p>
+        <p><b>TU_SUPABASE_URL</b><br>y<br><b>TU_SUPABASE_ANON_KEY</b></p>
+      `;
+    } else {
+      db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      init();
+    }
+  </script>
+</body>
+</html>
