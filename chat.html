@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chat — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+#msgs{max-height:420px;overflow-y:auto}
+.name{color:var(--gold);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Chat de miembros</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+let myProfile = null;
+let isSuper = false;
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = session.user;
+
+  const { data: profile } = await db.from('profiles').select('*').eq('id', me.id).maybeSingle();
+  myProfile = profile;
+
+  if (!myProfile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: superFlag } = await db.rpc('am_i_superadmin');
+  isSuper = !!superFlag;
+
+  await renderPage();
+  await loadMessages();
+
+  db.channel('flr-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadMessages())
+    .subscribe();
+}
+
+async function renderPage() {
+  const content = document.getElementById('content');
+
+  const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me.id).maybeSingle();
+  const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  const currentName = assignedNick?.nickname || selfNick?.nickname || myProfile.display_name;
+
+  let html = `
+    <div class="card">
+      <h3>Tu identidad en el chat</h3>
+      <p class="small">Ahora apareces como: <span class="name">${escapeHtml(currentName)}</span></p>
+      ${assignedNick ? '<p class="small">⚠️ Una Dominante o el superusuario te asignó este apodo; tiene prioridad.</p>' : ''}
+      <input id="self_nick" placeholder="Tu apodo propio (máx. 40)" value="${escapeHtml(selfNick?.nickname || '')}" />
+      <button onclick="setSelfNick()">Guardar mi apodo</button>
+    </div>
+  `;
+
+  if (myProfile.role === 'dominant' || isSuper) {
+    let targets = [];
+
+    if (isSuper) {
+      const { data: users } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(200);
+      targets = users || [];
+    } else {
+      const { data: subs } = await db.from('relationships').select('submissive_id, profiles!relationships_submissive_id_fkey(id, display_name)').eq('dominant_id', me.id).eq('status', 'confirmed');
+      targets = (subs || []).map(s => s.profiles).filter(Boolean);
+    }
+
+    if (targets.length > 0) {
+      html += `
+        <div class="card">
+          <h3>${isSuper ? 'Apodos como superusuario' : 'Apodos para tus sumisos'}</h3>
+          ${targets.map(t => `
+            <div class="item">
+              <b>${t.role === 'dominant' ? '♛' : '⛓'} ${escapeHtml(t.display_name)}</b>
+              <input id="assign_${t.id}" placeholder="Nuevo apodo para esta persona" />
+              <button onclick="assignNick('${t.id}')">Asignar apodo</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  }
+
+  html += `
+    <div class="card">
+      <h3>Chat</h3>
+      <div id="msgs"></div>
+      <input id="msg" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter') sendMsg()" />
+      <button onclick="sendMsg()">Enviar</button>
+    </div>
+  `;
+
+  content.innerHTML = html;
+}
+
+async function loadMessages() {
+  const box = document.getElementById('msgs');
+  if (!box) return;
+
+  const { data } = await db
+    .from('chat_messages_public')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  const list = (data || []).reverse();
+
+  box.innerHTML = list.map(m => `
+    <div class="item">
+      <span class="name">${escapeHtml(m.display_name)}</span>
+      <span class="small"> — ${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
+      ${(m.user_id === me?.id || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
+      <br>${escapeHtml(m.body)}
+    </div>
+  `).join('') || '<p class="small">Todavía no hay mensajes.</p>';
+
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendMsg() {
+  const input = document.getElementById('msg');
+  const body = input.value.trim();
+
+  if (!body) return;
+
+  const { error } = await db.from('chat_messages').insert({ user_id: me.id, body });
+
+  if (error) return alert(error.message);
+
+  input.value = '';
+  await loadMessages();
+}
+
+async function deleteMsg(id) {
+  const { error } = await db.from('chat_messages').delete().eq('id', id);
+  if (error) return alert(error.message);
+  await loadMessages();
+}
+
+async function setSelfNick() {
+  const nickname = document.getElementById('self_nick').value.trim();
+
+  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
+
+  const { error } = await db
+    .from('chat_self_nicknames')
+    .upsert({ user_id: me.id, nickname }, { onConflict: 'user_id' });
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function assignNick(targetId) {
+  const nickname = document.getElementById('assign_' + targetId).value.trim();
+
+  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
+
+  const { error } = await db.from('chat_assigned_nicknames').insert({
+    target_user_id: targetId,
+    nickname,
+    assigned_by: me.id
+  });
+
+  if (error) return alert(error.message);
+
+  alert('Apodo asignado.');
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
