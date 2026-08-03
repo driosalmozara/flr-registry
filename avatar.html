@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mi avatar — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:700px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+img.avatar{width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0b0b12}
+input[type=file]{color:#a1a1aa;margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Mi avatar</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let userId = null;
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  userId = session.user.id;
+
+  const { data: profile } = await db
+    .from('profiles')
+    .select('display_name, avatar_url')
+    .eq('id', userId)
+    .maybeSingle();
+
+  content.innerHTML = `
+    <h2>${escapeHtml(profile?.display_name || 'Mi avatar')}</h2>
+    <img class="avatar" src="${escapeHtml(profile?.avatar_url || '')}" />
+    <br/>
+    <input type="file" id="file" accept="image/*" />
+    <br/>
+    <button onclick="uploadAvatar()">Subir avatar</button>
+    <p class="small">La imagen se guarda en tu carpeta de avatares y queda en tu perfil.</p>
+  `;
+}
+
+async function uploadAvatar() {
+  const file = document.getElementById('file').files[0];
+
+  if (!file) return alert('Selecciona una imagen.');
+
+  const path = userId + '/avatar';
+
+  const { error } = await db.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true });
+
+  if (error) return alert(error.message);
+
+  const { data } = db.storage.from('avatars').getPublicUrl(path);
+
+  const { error: updateError } = await db
+    .from('profiles')
+    .update({ avatar_url: data.publicUrl })
+    .eq('id', userId);
+
+  if (updateError) return alert(updateError.message);
+
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
