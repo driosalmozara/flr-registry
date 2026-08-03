@@ -15,6 +15,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.free{color:#4ade80;font-size:13px}
 </style>
 </head>
 <body>
@@ -25,7 +26,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 <main>
   <div class="card">
     <h2>Registro público de sumisos certificados</h2>
-    <p class="small">Solo se muestran registros que su Dominante marcó como públicos.</p>
+    <p class="small">Sumisos certificados por su Dominante y sumisos libres que eligieron aparecer.</p>
   </div>
   <div id="list" class="card">Cargando...</div>
 </main>
@@ -49,19 +50,32 @@ function escapeHtml(v){
   }
 
   if (!data || data.length === 0) {
-    list.innerHTML = '<p class="small">Todavía no hay sumisos públicos certificados.</p>';
+    list.innerHTML = '<p class="small">Todavía no hay sumisos en el registro público.</p>';
     return;
   }
 
-  list.innerHTML = data.map(r => `
-    <div class="item">
-      <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
-      <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
-      <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
-      <p class="small">Desde: ${escapeHtml(r.collar_date || '')}</p>
-      <p class="small">Nivel: ${escapeHtml(r.obedience_level || '')}</p>
-    </div>
-  `).join('');
+  list.innerHTML = data.map(r => {
+    const libre = r.dominant_name === 'Sumiso sin Dueña';
+
+    if (libre) {
+      return `
+        <div class="item">
+          <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
+          <p class="free">● Sumiso sin Dueña — disponible</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="item">
+        <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
+        <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
+        <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
+        <p class="small">Desde: ${escapeHtml(r.collar_date || '')}</p>
+        <p class="small">Nivel: ${escapeHtml(r.obedience_level || '')}</p>
+      </div>
+    `;
+  }).join('');
 })();
 </script>
 </body>
