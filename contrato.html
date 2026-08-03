@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Contrato de sumisión — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:8px 0}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.danger{background:#7f1d1d;color:#fff}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Contrato de sumisión</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const DEFAULT_TEXT = `CONTRATO DE SUMISIÓN
+
+1. Declaro que soy mayor de 18 años y que participo de forma voluntaria.
+2. Entiendo que esta relación es consensuada y que puedo revocar mi consentimiento en cualquier momento.
+3. Me comprometo a respetar las reglas acordadas con mi Dominante.
+4. La Dominante se compromete a cuidar el bienestar físico y emocional de su sumiso.
+5. Este documento es una constancia simbólica dentro de la plataforma.`;
+
+let me = null;
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: profile } = await db
+    .from('profiles')
+    .select('id, role')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = profile;
+
+  if (me.role === 'dominant') await renderDominant();
+  else await renderSubmissive();
+}
+
+function contractHTML(c, isDom) {
+  let html = `
+    <p>Estado: <span class="badge">${escapeHtml(c.status)}</span></p>
+    <textarea id="ctext_${c.id}" rows="12" ${isDom ? '' : 'disabled'}>${escapeHtml(c.content)}</textarea>
+  `;
+
+  if (isDom) {
+    html += `<button onclick="saveContent('${c.id}')">Guardar texto</button>`;
+    if (!c.dominant_agreed) html += `<button onclick="signDominant('${c.id}')">Firmar como Dominante</button>`;
+    if (c.status !== 'revoked') html += `<button class="danger" onclick="revokeContract('${c.id}')">Revocar</button>`;
+  } else {
+    if (!c.submissive_agreed) html += `<button onclick="signSubmissive('${c.id}')">Acepto y firmo</button>`;
+  }
+
+  html += `<p class="small">Firma Dominante: ${c.dominant_signed_at ? escapeHtml(new Date(c.dominant_signed_at).toLocaleString()) : 'pendiente'}</p>`;
+  html += `<p class="small">Firma sumiso: ${c.submissive_signed_at ? escapeHtml(new Date(c.submissive_signed_at).toLocaleString()) : 'pendiente'}</p>`;
+
+  return html;
+}
+
+async function renderDominant() {
+  const content = document.getElementById('content');
+
+  const { data: subs } = await db
+    .from('relationships')
+    .select('id, profiles!relationships_submissive_id_fkey(display_name)')
+    .eq('dominant_id', me.id)
+    .eq('status', 'confirmed');
+
+  if (!subs || subs.length === 0) {
+    content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">Cuando confirmes un sumiso podrás crear su contrato.</p>';
+    return;
+  }
+
+  const ids = subs.map(s => s.id);
+
+  const { data: contracts } = await db
+    .from('contracts')
+    .select('*')
+    .in('relationship_id', ids);
+
+  let html = '';
+
+  subs.forEach(sub => {
+    const c = (contracts || []).find(x => x.relationship_id === sub.id);
+
+    html += `<div class="card"><h3>⛓ ${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>`;
+
+    if (!c) {
+      html += `<p class="small">Aún no hay contrato.</p><button onclick="createContract('${sub.id}')">Crear contrato</button>`;
+    } else {
+      html += contractHTML(c, true);
+    }
+
+    html += '</div>';
+  });
+
+  content.innerHTML = html;
+}
+
+async function renderSubmissive() {
+  const content = document.getElementById('content');
+
+  const { data: rel } = await db
+    .from('relationships')
+    .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+    .eq('submissive_id', me.id)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+
+  if (!rel) {
+    content.innerHTML = '<h2>Sin Dominante confirmada</h2><p class="small">Cuando pertenezcas a una Dominante verás aquí tu contrato.</p>';
+    return;
+  }
+
+  const { data: c } = await db
+    .from('contracts')
+    .select('*')
+    .eq('relationship_id', rel.id)
+    .maybeSingle();
+
+  if (!c) {
+    content.innerHTML = `<div class="card"><h3>♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3><p class="small">Tu Dominante aún no ha creado el contrato.</p></div>`;
+    return;
+  }
+
+  content.innerHTML = `<div class="card"><h3>Contrato con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>` + contractHTML(c, false) + '</div>';
+}
+
+async function createContract(relId) {
+  const { error } = await db.from('contracts').insert({
+    relationship_id: relId,
+    content: DEFAULT_TEXT,
+    status: 'pending'
+  });
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function saveContent(id) {
+  const content = document.getElementById('ctext_' + id).value;
+
+  const { error } = await db.from('contracts').update({ content }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  alert('Texto guardado.');
+}
+
+async function signDominant(id) {
+  const { error } = await db.from('contracts').update({ dominant_agreed: true }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function signSubmissive(id) {
+  const { error } = await db.from('contracts').update({ submissive_agreed: true }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function revokeContract(id) {
+  if (!confirm('¿Revocar este contrato?')) return;
+
+  const { error } = await db.from('contracts').update({ status: 'revoked' }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
