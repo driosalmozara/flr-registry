@@ -16,6 +16,9 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .small{color:#a1a1aa;font-size:13px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .free{color:#4ade80;font-size:13px}
+.rowitem{display:flex;gap:12px;align-items:center}
+.ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
+.ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
 </style>
 </head>
 <body>
@@ -25,9 +28,10 @@ main{max-width:900px;margin:0 auto;padding:20px}
 </header>
 <main>
   <div class="card">
-    <h2>Registro público de sumisos certificados</h2>
-    <p class="small">Sumisos certificados por su Dominante y sumisos libres que eligieron aparecer.</p>
+    <h2>Registro público</h2>
+    <p class="small">Dominantes que eligieron aparecer, sumisos certificados y sumisos sin dueña.</p>
   </div>
+  <div id="doms" class="card">Cargando...</div>
   <div id="list" class="card">Cargando...</div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -40,42 +44,77 @@ function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function avatarHTML(url, fallback) {
+  if (url) return `<img class="ava" src="${escapeHtml(url)}" />`;
+  return `<div class="ava empty">${fallback}</div>`;
+}
+
 (async () => {
-  const { data, error } = await db.rpc('public_registry');
-  const list = document.getElementById('list');
+  const [doms, subs] = await Promise.all([
+    db.rpc('public_dominants'),
+    db.rpc('public_registry')
+  ]);
 
-  if (error) {
-    list.innerHTML = '<p class="small">Error: ' + escapeHtml(error.message) + '</p>';
-    return;
+  const domsBox = document.getElementById('doms');
+  const listBox = document.getElementById('list');
+
+  // Dominantes
+  let html = '<h2>♛ Dominantes</h2>';
+
+  if (!doms.data || doms.data.length === 0) {
+    html += '<p class="small">Todavía no hay Dominantes públicas.</p>';
+  } else {
+    html += doms.data.map(d => `
+      <div class="item rowitem">
+        ${avatarHTML(d.avatar_url, '♛')}
+        <div>
+          <h3 style="margin:0;">${escapeHtml(d.display_name)}</h3>
+          <p class="small">${escapeHtml(d.bio || '')}</p>
+        </div>
+      </div>
+    `).join('');
   }
 
-  if (!data || data.length === 0) {
-    list.innerHTML = '<p class="small">Todavía no hay sumisos en el registro público.</p>';
-    return;
-  }
+  domsBox.innerHTML = html;
 
-  list.innerHTML = data.map(r => {
-    const libre = r.dominant_name === 'Sumiso sin Dueña';
+  // Sumisos
+  let html2 = '<h2>⛓ Sumisos</h2>';
 
-    if (libre) {
+  if (subs.error) {
+    html2 += '<p class="small">Error: ' + escapeHtml(subs.error.message) + '</p>';
+  } else if (!subs.data || subs.data.length === 0) {
+    html2 += '<p class="small">Todavía no hay sumisos en el registro público.</p>';
+  } else {
+    html2 += subs.data.map(r => {
+      const libre = r.dominant_name === 'Sumiso sin Dueña';
+
+      if (libre) {
+        return `
+          <div class="item rowitem">
+            ${avatarHTML(r.avatar_url, '⛓')}
+            <div>
+              <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
+              <p class="free">● Sumiso sin Dueña — disponible</p>
+            </div>
+          </div>
+        `;
+      }
+
       return `
-        <div class="item">
-          <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
-          <p class="free">● Sumiso sin Dueña — disponible</p>
+        <div class="item rowitem">
+          ${avatarHTML(r.avatar_url, '⛓')}
+          <div>
+            <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
+            <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
+            <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
+            <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
+          </div>
         </div>
       `;
-    }
+    }).join('');
+  }
 
-    return `
-      <div class="item">
-        <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
-        <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
-        <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
-        <p class="small">Desde: ${escapeHtml(r.collar_date || '')}</p>
-        <p class="small">Nivel: ${escapeHtml(r.obedience_level || '')}</p>
-      </div>
-    `;
-  }).join('');
+  listBox.innerHTML = html2;
 })();
 </script>
 </body>
