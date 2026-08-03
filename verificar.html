@@ -75,6 +75,12 @@ async function verify() {
       <p>Emitido: <b>${escapeHtml(new Date(c.issued_at).toLocaleDateString())}</b></p>
     </div>`;
 }
+  const params = new URLSearchParams(window.location.search);
+const preCode = params.get('code');
+if (preCode) {
+  document.getElementById('code').value = preCode;
+  verify();
+}
 </script>
 </body>
 </html>
