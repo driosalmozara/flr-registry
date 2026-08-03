@@ -21,7 +21,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Disponibilidad pública</h1>
+  <h1 style="margin:0;">♛ Visibilidad pública</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -52,7 +52,7 @@ async function init() {
 
   const { data: profile } = await db
     .from('profiles')
-    .select('role, available_public, display_name')
+    .select('role, available_public, show_avatar_public, display_name')
     .eq('id', me.id)
     .maybeSingle();
 
@@ -61,54 +61,58 @@ async function init() {
     return;
   }
 
-  if (profile.role === 'dominant') {
-    content.innerHTML = '<h2>Solo para sumisos</h2><p class="small">Las Dominantes controlan la visibilidad de sus sumisos desde su panel.</p>';
-    return;
+  if (profile.role === 'submissive') {
+    const { data: owned } = await db
+      .from('relationships')
+      .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+      .eq('submissive_id', me.id)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+
+    if (owned) {
+      content.innerHTML = `
+        <h2>Perteneces a ♛ ${escapeHtml(owned.profiles?.display_name || 'tu Dominante')}</h2>
+        <p class="small">
+          Al ser tomado por una Dominante perdiste la libertad de gestionar tu visibilidad.
+          Ahora <b>solo tu Dominante</b> decide si apareces en el registro público
+          y si se muestra tu avatar.
+        </p>
+      `;
+      return;
+    }
   }
 
-  const { data: owned } = await db
-    .from('relationships')
-    .select('id, profiles!relationships_dominant_id_fkey(display_name)')
-    .eq('submissive_id', me.id)
-    .eq('status', 'confirmed')
-    .maybeSingle();
-
-  if (owned) {
-    content.innerHTML = `
-      <h2>Perteneces a ♛ ${escapeHtml(owned.profiles?.display_name || 'tu Dominante')}</h2>
-      <p class="small">
-        Al ser tomado por una Dominante perdiste la libertad de gestionar tu visibilidad.
-        Ahora <b>solo tu Dominante</b> puede activar o desactivar tu aparición en el registro público,
-        desde su panel, con la opción "Mostrar en registro público".
-      </p>
-    `;
-    return;
-  }
+  const appearLabel = profile.role === 'dominant'
+    ? 'Aparecer en el registro público como Dominante'
+    : 'Aparecer en el registro público como "Sumiso sin Dueña"';
 
   content.innerHTML = `
-    <h2>Sumiso sin Dueña</h2>
-    <p class="small">
-      Mientras no pertenezcas a una Dominante, puedes elegir aparecer en el registro público
-      como <b>"Sumiso sin Dueña"</b>, para que las Dominantes te conozcan.
-    </p>
-    <p class="small">
-      En el momento en que una Dominante te confirme, dejarás de aparecer como libre
-      y ella tomará el control de tu visibilidad.
-    </p>
+    <h2>${profile.role === 'dominant' ? '♛ Visibilidad de Dominante' : 'Sumiso sin Dueña'}</h2>
+    <p class="small">Mientras no pertenezcas a una Dominante, tú controlas tu visibilidad.
+    ${profile.role === 'dominant' ? 'Como Dominante, tú decides cuándo aparecer.' : 'En cuanto una Dominante te confirme, ella tomará el control.'}</p>
+
     <label>
       <input type="checkbox" id="avail" ${profile.available_public ? 'checked' : ''} />
-      Aparecer en el registro público como "Sumiso sin Dueña"
+      ${appearLabel}
     </label>
-    <button onclick="saveAvail()">Guardar</button>
+
+    <label>
+      <input type="checkbox" id="showava" ${profile.show_avatar_public ? 'checked' : ''} />
+      Mostrar mi avatar en el registro público
+    </label>
+
+    <button onclick="save()">Guardar</button>
+    <p class="small">Si no has subido avatar, hazlo en la página "Mi avatar".</p>
   `;
 }
 
-async function saveAvail() {
-  const value = document.getElementById('avail').checked;
+async function save() {
+  const available_public = document.getElementById('avail').checked;
+  const show_avatar_public = document.getElementById('showava').checked;
 
   const { error } = await db
     .from('profiles')
-    .update({ available_public: value })
+    .update({ available_public, show_avatar_public })
     .eq('id', me.id);
 
   if (error) return alert(error.message);
