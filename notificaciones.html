@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Notificaciones — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:800px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.unread{border-color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Notificaciones</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function labelFor(type) {
+  if (type === 'new_submissive_request') return '📩 Nueva solicitud de un sumiso';
+  if (type === 'relationship_confirmed') return '✅ Tu Dominante te ha confirmado';
+  if (type === 'relationship_released') return '🕊 Has sido liberado';
+  return '🔔 ' + escapeHtml(type);
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: items } = await db
+    .from('notifications')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (!items || items.length === 0) {
+    content.innerHTML = '<h2>Sin notificaciones</h2><p class="small">Aquí verás solicitudes, confirmaciones y liberaciones.</p>';
+    return;
+  }
+
+  content.innerHTML = `
+    <h2>Notificaciones</h2>
+    <button onclick="markRead()">Marcar todas como leídas</button>
+    ${items.map(n => `
+      <div class="item ${n.read ? '' : 'unread'}">
+        <b>${labelFor(n.type)}</b>
+        <br><span class="small">${escapeHtml(new Date(n.created_at).toLocaleString())}</span>
+        ${n.read ? '' : ' <span class="small" style="color:var(--gold);">● nueva</span>'}
+      </div>
+    `).join('')}
+  `;
+}
+
+async function markRead() {
+  const { data: { session } } = await db.auth.getSession();
+
+  const { error } = await db
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', session.user.id)
+    .eq('read', false);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
