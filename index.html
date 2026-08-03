@@ -475,6 +475,11 @@
               <input type="checkbox" id="public_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.is_public ? 'checked' : ''}>
               Mostrar en registro público
             </label>`;
+            
+            html += `<label class="small">
+              <input type="checkbox" id="avatar_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>
+              Mostrar su avatar en el registro público
+            </label>`;
 
             html += `<div class="row" style="margin-top:10px;">`;
             html += `<button onclick="saveRecord('${record.relationship_id}')">Guardar</button>`;
@@ -514,10 +519,11 @@
       const obedience_level = document.getElementById(`level_${relationshipId}`).value;
       const notes = document.getElementById(`notes_${relationshipId}`).value;
       const is_public = document.getElementById(`public_${relationshipId}`).checked;
+      const show_avatar = document.getElementById(`avatar_${relationshipId}`).checked;
 
       const { error } = await db
         .from('submissive_records')
-        .update({ slave_name, obedience_level, notes, is_public })
+        .update({ slave_name, obedience_level, notes, is_public, show_avatar })
         .eq('relationship_id', relationshipId);
 
       if (error) return alert(error.message);
