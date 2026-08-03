@@ -14,9 +14,11 @@ main{max-width:950px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px;margin:4px 0 8px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.danger{background:#7f1d1d;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+label.small{display:block}
 </style>
 </head>
 <body>
@@ -33,22 +35,22 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function escapeHtml(v){
+let me = null;
+
+function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 async function init() {
   const content = document.getElementById('content');
-
   const { data: { session } } = await db.auth.getSession();
 
   if (!session) {
-    content.innerHTML = `
-      <h2>Inicia sesión primero</h2>
-      <p class="small">Debes iniciar sesión en el sitio principal antes de entrar al panel.</p>
-      <a class="navlink" href="index.html">Ir al inicio</a>`;
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
     return;
   }
+
+  me = session.user.id;
 
   const { data: isAdmin } = await db.rpc('am_i_superadmin');
 
@@ -57,80 +59,240 @@ async function init() {
     return;
   }
 
-  const { data: users } = await db
-    .from('profiles')
-    .select('id, role, display_name, age, created_at')
-    .order('created_at', { ascending: false });
+  await render();
+}
 
-  const { data: rels } = await db
-    .from('relationships')
-    .select('id, status, created_at, profiles!relationships_dominant_id_fkey(display_name), profiles!relationships_submissive_id_fkey(display_name)')
-    .order('created_at', { ascending: false });
+async function render() {
+  const content = document.getElementById('content');
 
-  const { data: cards } = await db
-    .from('cards')
-    .select('id, card_number, verification_code, revoked, issued_at, submissive_records(registration_number, slave_name)')
-    .order('issued_at', { ascending: false });
+  const [u, a, r, rec, c] = await Promise.all([
+    db.from('profiles').select('id, role, display_name, age, bio, created_at').order('created_at', { ascending: false }),
+    db.from('app_admins').select('user_id'),
+    db.from('relationships').select('id, status, dominant_id, submissive_id').order('created_at', { ascending: false }),
+    db.from('submissive_records').select('*'),
+    db.from('cards').select('*')
+  ]);
 
-  let html = '<h2>Usuarios</h2>';
+  const users = u.data || [];
+  const admins = (a.data || []).map(x => x.user_id);
+  const rels = r.data || [];
+  const records = rec.data || [];
+  const cards = c.data || [];
 
-  (users || []).forEach(u => {
-    html += `
-      <div class="item">
-        <b>${u.role === 'dominant' ? '♛' : '⛓'} ${escapeHtml(u.display_name)}</b>
-        <span class="small"> — ${escapeHtml(u.role)} — ${escapeHtml(String(u.age || ''))} años</span>
-        <br><span class="small">Alta: ${escapeHtml(new Date(u.created_at).toLocaleDateString())}</span>
-      </div>`;
+  const nameOf = id => (users.find(x => x.id === id) || {}).display_name || '?';
+
+  let html = '';
+
+  // ===== SUPERUSUARIOS =====
+  html += '<div class="card"><h2>Superusuarios</h2>';
+
+  users.filter(x => admins.includes(x.id)).forEach(x => {
+    html += `<div class="item"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— superusuario</span>`;
+    if (x.id !== me) html += ` <button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
+    html += '</div>';
   });
 
-  html += '<h2>Relaciones</h2>';
+  const candidates = users.filter(x => x.role === 'dominant' && !admins.includes(x.id));
 
-  if (!rels || rels.length === 0) {
-    html += '<p class="small">Sin relaciones.</p>';
+  if (candidates.length > 0) {
+    html += `
+      <select id="newadmin">
+        ${candidates.map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
+      </select>
+      <button onclick="makeAdmin()">Dar privilegios de superusuario</button>
+    `;
   }
 
-  (rels || []).forEach(r => {
+  html += '</div>';
+
+  // ===== MIEMBROS =====
+  html += '<div class="card"><h2>Miembros</h2>';
+
+  users.forEach(x => {
+    const isAdmin = admins.includes(x.id);
+
     html += `
       <div class="item">
-        <b>${escapeHtml(r.profiles?.display_name || '?')}</b>
-        <span class="small"> (Dominante) </span>
-        → <b>${escapeHtml(r.profiles1?.display_name || '?')}</b>
-        <span class="small"> (Sumiso) — Estado: ${escapeHtml(r.status)}</span>
-        ${r.status === 'confirmed' ? `<br><br><button class="danger" onclick="releaseRel('${r.id}')">Liberar sumiso</button>` : ''}
-      </div>`;
+        <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
+        <span class="small">— ${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— SUPER' : ''}</span>
+        <br><span class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</span>
+
+        <label class="small">Nombre público</label>
+        <input id="name_${x.id}" value="${esc(x.display_name)}" />
+        <label class="small">Bio</label>
+        <input id="bio_${x.id}" value="${esc(x.bio || '')}" />
+        <button onclick="saveProfile('${x.id}')">Guardar perfil</button>
+        ${!isAdmin ? `<button class="danger" onclick="deleteUser('${x.id}')">Eliminar miembro</button>` : ''}
+      </div>
+    `;
   });
 
-  html += '<h2>Carnets</h2>';
+  html += '</div>';
 
-  if (!cards || cards.length === 0) {
-    html += '<p class="small">Sin carnets.</p>';
-  }
+  // ===== RELACIONES Y REGISTROS =====
+  html += '<div class="card"><h2>Relaciones y registros</h2>';
 
-  (cards || []).forEach(c => {
+  if (rels.length === 0) html += '<p class="small">Sin relaciones.</p>';
+
+  rels.forEach(rel => {
+    const record = records.find(q => q.relationship_id === rel.id);
+    const card = record ? cards.find(q => q.record_id === record.id) : null;
+
     html += `
       <div class="item">
-        <b>${escapeHtml(c.card_number)}</b>
-        <br><span class="small">Código: ${escapeHtml(c.verification_code || '')}</span>
-        <br><span class="small">Sumiso: ${escapeHtml(c.submissive_records?.slave_name || 'Sin nombre')} — ${escapeHtml(c.submissive_records?.registration_number || '')}</span>
-        <br><span class="small">${c.revoked ? '❌ REVOCADO' : '✅ Activo'}</span>
-        ${!c.revoked ? `<br><br><button class="danger" onclick="revokeCard('${c.id}')">Revocar carnet</button>` : ''}
-      </div>`;
+        <b>${esc(nameOf(rel.dominant_id))}</b> <span class="small">(Dominante)</span>
+        → <b>${esc(nameOf(rel.submissive_id))}</b> <span class="small">(Sumiso)</span>
+        — <span class="small">${esc(rel.status)}</span>
+        <div style="margin:8px 0;">
+    `;
+
+    if (rel.status === 'pending') {
+      html += `<button onclick="setRel('${rel.id}','confirmed')">Confirmar</button>
+               <button class="danger" onclick="setRel('${rel.id}','rejected')">Rechazar</button>`;
+    }
+
+    if (rel.status === 'confirmed') {
+      html += `<button class="danger" onclick="setRel('${rel.id}','released')">Liberar</button>`;
+    }
+
+    html += '</div>';
+
+    if (record) {
+      html += `
+        <label class="small">Nombre de sumiso</label>
+        <input id="sname_${record.relationship_id}" value="${esc(record.slave_name || '')}" />
+        <label class="small">Nivel</label>
+        <select id="slevel_${record.relationship_id}">
+          ${['inicial','entrenamiento','avanzado','total'].map(l => `<option value="${l}" ${record.obedience_level === l ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+        <label class="small">Notas</label>
+        <input id="snotes_${record.relationship_id}" value="${esc(record.notes || '')}" />
+        <label class="small"><input type="checkbox" id="spublic_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.is_public ? 'checked' : ''}>Registro público</label>
+        <label class="small"><input type="checkbox" id="savatar_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>Avatar público</label>
+        <div style="margin-top:8px;">
+          <button onclick="saveRecord('${record.relationship_id}')">Guardar registro</button>
+          <button onclick="issueCard('${record.id}')">Emitir carnet</button>
+          ${card ? `<span class="small">Carnet: ${esc(card.card_number)} · ${esc(card.verification_code || '')}</span>` : ''}
+        </div>
+      `;
+    }
+
+    html += '</div>';
   });
+
+  html += '</div>';
+
+  // ===== CARNETS =====
+  html += '<div class="card"><h2>Carnets</h2>';
+
+  if (cards.length === 0) html += '<p class="small">Sin carnets.</p>';
+
+  cards.forEach(c => {
+    html += `
+      <div class="item">
+        <b>${esc(c.card_number)}</b>
+        <span class="small">— código ${esc(c.verification_code || '')}</span>
+        ${c.revoked ? ' ❌ REVOCADO' : ' ✅'}
+        ${!c.revoked ? `<button class="danger" onclick="revokeCard('${c.id}')">Revocar</button>` : ''}
+      </div>
+    `;
+  });
+
+  html += '</div>';
 
   content.innerHTML = html;
 }
 
-async function releaseRel(id) {
-  if (!confirm('¿Liberar a este sumiso?')) return;
-  const { error } = await db.from('relationships').update({ status: 'released' }).eq('id', id);
+// ===== ACCIONES =====
+
+async function makeAdmin() {
+  const id = document.getElementById('newadmin').value;
+
+  const { error } = await db.from('app_admins').insert({ user_id: id });
+
   if (error) return alert(error.message);
+
+  alert('Ahora es superusuario.');
+  window.location.reload();
+}
+
+async function removeAdmin(id) {
+  if (!confirm('¿Quitar privilegios de superusuario?')) return;
+
+  const { error } = await db.from('app_admins').delete().eq('user_id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function deleteUser(id) {
+  if (!confirm('¿Eliminar este miembro DEFINITIVAMENTE? Se borrará su cuenta, perfil, relaciones y registros.')) return;
+
+  const { data, error } = await db.functions.invoke('admin-delete-user', {
+    body: { user_id: id }
+  });
+
+  if (error) return alert(error.message);
+
+  if (data && data.ok) alert('Miembro eliminado.');
+  else alert('Error: ' + JSON.stringify(data));
+
+  window.location.reload();
+}
+
+async function setRel(id, status) {
+  const { error } = await db.from('relationships').update({ status }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function saveProfile(id) {
+  const display_name = document.getElementById('name_' + id).value.trim();
+  const bio = document.getElementById('bio_' + id).value.trim();
+
+  const { error } = await db.from('profiles').update({ display_name, bio }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  alert('Perfil actualizado.');
+}
+
+async function saveRecord(relId) {
+  const slave_name = document.getElementById('sname_' + relId).value.trim();
+  const obedience_level = document.getElementById('slevel_' + relId).value;
+  const notes = document.getElementById('snotes_' + relId).value;
+  const is_public = document.getElementById('spublic_' + relId).checked;
+  const show_avatar = document.getElementById('savatar_' + relId).checked;
+
+  const { error } = await db
+    .from('submissive_records')
+    .update({ slave_name, obedience_level, notes, is_public, show_avatar })
+    .eq('relationship_id', relId);
+
+  if (error) return alert(error.message);
+
+  alert('Registro guardado.');
+}
+
+async function issueCard(recordId) {
+  const { data, error } = await db.from('cards').insert({ record_id: recordId }).select().single();
+
+  if (error) return alert(error.message);
+
+  alert('Carnet emitido.\nNúmero: ' + data.card_number + '\nCódigo: ' + (data.verification_code || ''));
   window.location.reload();
 }
 
 async function revokeCard(id) {
   if (!confirm('¿Revocar este carnet?')) return;
+
   const { error } = await db.from('cards').update({ revoked: true }).eq('id', id);
+
   if (error) return alert(error.message);
+
   window.location.reload();
 }
 
