@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Registro público — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ FLR Registry</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div class="card">
+    <h2>Registro público de sumisos certificados</h2>
+    <p class="small">Solo se muestran registros que su Dominante marcó como públicos.</p>
+  </div>
+  <div id="list" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+(async () => {
+  const { data, error } = await db.rpc('public_registry');
+  const list = document.getElementById('list');
+
+  if (error) {
+    list.innerHTML = '<p class="small">Error: ' + escapeHtml(error.message) + '</p>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = '<p class="small">Todavía no hay sumisos públicos certificados.</p>';
+    return;
+  }
+
+  list.innerHTML = data.map(r => `
+    <div class="item">
+      <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
+      <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
+      <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
+      <p class="small">Desde: ${escapeHtml(r.collar_date || '')}</p>
+      <p class="small">Nivel: ${escapeHtml(r.obedience_level || '')}</p>
+    </div>
+  `).join('');
+})();
+</script>
+</body>
+</html>
