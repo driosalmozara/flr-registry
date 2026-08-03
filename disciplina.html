@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Castigos y recompensas — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Castigos y recompensas</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function entryIcon(type){
+  return type === 'reward' ? '🎁 Recompensa' : '⛓ Castigo';
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: profile } = await db
+    .from('profiles')
+    .select('id, role')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = profile;
+
+  if (me.role === 'dominant') await renderDominant();
+  else await renderSubmissive();
+}
+
+async function renderDominant() {
+  const content = document.getElementById('content');
+
+  const { data: subs, error } = await db
+    .from('relationships')
+    .select('id, profiles!relationships_submissive_id_fkey(display_name)')
+    .eq('dominant_id', me.id)
+    .eq('status', 'confirmed');
+
+  if (error) { content.innerHTML = '<p class="small">Error: ' + escapeHtml(error.message) + '</p>'; return; }
+
+  if (!subs || subs.length === 0) {
+    content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">Cuando confirmes un sumiso podrás registrar castigos y recompensas.</p>';
+    return;
+  }
+
+  const ids = subs.map(s => s.id);
+
+  const { data: entries } = await db
+    .from('discipline_entries')
+    .select('*')
+    .in('relationship_id', ids)
+    .order('created_at', { ascending: false });
+
+  let html = '';
+
+  subs.forEach(sub => {
+    const list = (entries || []).filter(e => e.relationship_id === sub.id);
+
+    html += `
+      <div class="card">
+        <h3>⛓ ${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>
+
+        <select id="type_${sub.id}">
+          <option value="reward">🎁 Recompensa</option>
+          <option value="punishment">⛓ Castigo</option>
+        </select>
+        <input id="title_${sub.id}" placeholder="Título (ej. Buen comportamiento, desobediencia...)" />
+        <textarea id="desc_${sub.id}" rows="2" placeholder="Descripción"></textarea>
+        <select id="sev_${sub.id}">
+          <option value="1">Nivel 1 — suave</option>
+          <option value="2">Nivel 2</option>
+          <option value="3" selected>Nivel 3 — medio</option>
+          <option value="4">Nivel 4</option>
+          <option value="5">Nivel 5 — severo</option>
+        </select>
+        <button onclick="addEntry('${sub.id}')">Agregar</button>
+
+        <div>
+          ${list.map(e => `
+            <div class="item">
+              <b>${entryIcon(e.entry_type)}</b> — ${escapeHtml(e.title)}
+              <br><span class="small">${escapeHtml(e.description || '')}</span>
+              <br><span class="small">Nivel ${escapeHtml(String(e.severity))} — ${escapeHtml(new Date(e.created_at).toLocaleString())}</span>
+              <br><button class="danger" onclick="deleteEntry('${e.id}')">Eliminar</button>
+            </div>
+          `).join('') || '<p class="small">Sin registros todavía.</p>'}
+        </div>
+      </div>
+    `;
+  });
+
+  content.innerHTML = html;
+}
+
+async function renderSubmissive() {
+  const content = document.getElementById('content');
+
+  const { data: rel } = await db
+    .from('relationships')
+    .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+    .eq('submissive_id', me.id)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+
+  if (!rel) {
+    content.innerHTML = '<h2>Sin Dominante confirmada</h2><p class="small">Cuando pertenezcas a una Dominante verás aquí tu historial.</p>';
+    return;
+  }
+
+  const { data: entries } = await db
+    .from('discipline_entries')
+    .select('*')
+    .eq('relationship_id', rel.id)
+    .order('created_at', { ascending: false });
+
+  let html = `<div class="card"><h3>Tu historial con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>`;
+
+  html += (entries || []).map(e => `
+    <div class="item">
+      <b>${entryIcon(e.entry_type)}</b> — ${escapeHtml(e.title)}
+      <br><span class="small">${escapeHtml(e.description || '')}</span>
+      <br><span class="small">Nivel ${escapeHtml(String(e.severity))} — ${escapeHtml(new Date(e.created_at).toLocaleString())}</span>
+    </div>
+  `).join('') || '<p class="small">Sin registros todavía.</p>';
+
+  html += '</div>';
+
+  content.innerHTML = html;
+}
+
+async function addEntry(relId) {
+  const entry_type = document.getElementById('type_' + relId).value;
+  const title = document.getElementById('title_' + relId).value.trim();
+  const description = document.getElementById('desc_' + relId).value.trim();
+  const severity = Number(document.getElementById('sev_' + relId).value);
+
+  if (!title) return alert('Escribe un título.');
+
+  const { error } = await db.from('discipline_entries').insert({
+    relationship_id: relId,
+    entry_type,
+    title,
+    description,
+    severity
+  });
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function deleteEntry(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+
+  const { error } = await db.from('discipline_entries').delete().eq('id', id);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
