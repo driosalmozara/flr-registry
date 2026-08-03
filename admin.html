@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Panel superusuario — FLR Registry</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:950px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Panel Superusuario</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function init() {
+  const content = document.getElementById('content');
+
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = `
+      <h2>Inicia sesión primero</h2>
+      <p class="small">Debes iniciar sesión en el sitio principal antes de entrar al panel.</p>
+      <a class="navlink" href="index.html">Ir al inicio</a>`;
+    return;
+  }
+
+  const { data: isAdmin } = await db.rpc('am_i_superadmin');
+
+  if (!isAdmin) {
+    content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no es superusuario.</p>';
+    return;
+  }
+
+  const { data: users } = await db
+    .from('profiles')
+    .select('id, role, display_name, age, created_at')
+    .order('created_at', { ascending: false });
+
+  const { data: rels } = await db
+    .from('relationships')
+    .select('id, status, created_at, profiles!relationships_dominant_id_fkey(display_name), profiles!relationships_submissive_id_fkey(display_name)')
+    .order('created_at', { ascending: false });
+
+  const { data: cards } = await db
+    .from('cards')
+    .select('id, card_number, verification_code, revoked, issued_at, submissive_records(registration_number, slave_name)')
+    .order('issued_at', { ascending: false });
+
+  let html = '<h2>Usuarios</h2>';
+
+  (users || []).forEach(u => {
+    html += `
+      <div class="item">
+        <b>${u.role === 'dominant' ? '♛' : '⛓'} ${escapeHtml(u.display_name)}</b>
+        <span class="small"> — ${escapeHtml(u.role)} — ${escapeHtml(String(u.age || ''))} años</span>
+        <br><span class="small">Alta: ${escapeHtml(new Date(u.created_at).toLocaleDateString())}</span>
+      </div>`;
+  });
+
+  html += '<h2>Relaciones</h2>';
+
+  if (!rels || rels.length === 0) {
+    html += '<p class="small">Sin relaciones.</p>';
+  }
+
+  (rels || []).forEach(r => {
+    html += `
+      <div class="item">
+        <b>${escapeHtml(r.profiles?.display_name || '?')}</b>
+        <span class="small"> (Dominante) </span>
+        → <b>${escapeHtml(r.profiles1?.display_name || '?')}</b>
+        <span class="small"> (Sumiso) — Estado: ${escapeHtml(r.status)}</span>
+        ${r.status === 'confirmed' ? `<br><br><button class="danger" onclick="releaseRel('${r.id}')">Liberar sumiso</button>` : ''}
+      </div>`;
+  });
+
+  html += '<h2>Carnets</h2>';
+
+  if (!cards || cards.length === 0) {
+    html += '<p class="small">Sin carnets.</p>';
+  }
+
+  (cards || []).forEach(c => {
+    html += `
+      <div class="item">
+        <b>${escapeHtml(c.card_number)}</b>
+        <br><span class="small">Código: ${escapeHtml(c.verification_code || '')}</span>
+        <br><span class="small">Sumiso: ${escapeHtml(c.submissive_records?.slave_name || 'Sin nombre')} — ${escapeHtml(c.submissive_records?.registration_number || '')}</span>
+        <br><span class="small">${c.revoked ? '❌ REVOCADO' : '✅ Activo'}</span>
+        ${!c.revoked ? `<br><br><button class="danger" onclick="revokeCard('${c.id}')">Revocar carnet</button>` : ''}
+      </div>`;
+  });
+
+  content.innerHTML = html;
+}
+
+async function releaseRel(id) {
+  if (!confirm('¿Liberar a este sumiso?')) return;
+  const { error } = await db.from('relationships').update({ status: 'released' }).eq('id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function revokeCard(id) {
+  if (!confirm('¿Revocar este carnet?')) return;
+  const { error } = await db.from('cards').update({ revoked: true }).eq('id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
