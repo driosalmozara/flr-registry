@@ -28,6 +28,7 @@ button.danger{background:#7f1d1d;color:#fff}
 <main>
   <div id="content" class="card">Cargando...</div>
 </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
@@ -91,6 +92,7 @@ function contractHTML(c, isDom) {
   html += `<p class="small">Firma Dominante: ${c.dominant_signed_at ? escapeHtml(new Date(c.dominant_signed_at).toLocaleString()) : 'pendiente'}</p>`;
   html += `<p class="small">Firma sumiso: ${c.submissive_signed_at ? escapeHtml(new Date(c.submissive_signed_at).toLocaleString()) : 'pendiente'}</p>`;
 
+    html += `<button onclick="downloadContractPDF('${c.id}')">⬇ Descargar PDF</button>`;
   return html;
 }
 
@@ -211,6 +213,44 @@ async function revokeContract(id) {
   window.location.reload();
 }
 
+  async function downloadContractPDF(id) {
+  const { data: c } = await db
+    .from('contracts')
+    .select('*, relationships(dominant_id, submissive_id)')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!c) return;
+
+  const { data: dom } = await db.from('profiles').select('display_name').eq('id', c.relationships.dominant_id).maybeSingle();
+  const { data: sub } = await db.from('profiles').select('display_name').eq('id', c.relationships.submissive_id).maybeSingle();
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(16);
+  pdf.text('CONTRATO DE SUMISIÓN', 40, 60);
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  pdf.text('Supremacia Femenina', 40, 78);
+
+  pdf.setFontSize(11);
+  pdf.text('Dominante: ' + (dom?.display_name || ''), 40, 110);
+  pdf.text('Sumiso: ' + (sub?.display_name || ''), 40, 128);
+  pdf.text('Estado: ' + c.status, 40, 146);
+
+  const lines = pdf.splitTextToSize(c.content || '', 515);
+  pdf.text(lines, 40, 175);
+
+  const y = 175 + lines.length * 14 + 30;
+  pdf.text('Firma Dominante: ' + (c.dominant_signed_at ? new Date(c.dominant_signed_at).toLocaleString() : 'pendiente'), 40, y);
+  pdf.text('Firma Sumiso: ' + (c.submissive_signed_at ? new Date(c.submissive_signed_at).toLocaleString() : 'pendiente'), 40, y + 18);
+  pdf.text('Documento simbolico y consensuado entre adultos.', 40, y + 46);
+
+  pdf.save('contrato-supremacia-femenina.pdf');
+}
 init();
 </script>
 </body>
