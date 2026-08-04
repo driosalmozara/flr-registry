@@ -140,6 +140,10 @@
     <a style="color:#d4af37;text-decoration:none;" href="admin.html">Admin</a>
   </nav>
 </header>
+  <div id="impbar" class="hidden" style="background:#7f1d1d;color:#fff;padding:10px 22px;display:flex;gap:12px;align-items:center;justify-content:center;font-size:14px;flex-wrap:wrap;">
+  👁 Estás navegando como miembro (modo Administrador).
+  <button onclick="exitImpersonation()" style="background:#fff;color:#7f1d1d;border:none;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;">Volver a mi cuenta</button>
+</div>
 
   <main>
     <section id="loading" class="card">Cargando...</section>
@@ -337,6 +341,25 @@
       if (error) return alert(error.message);
 
       alert('Contraseña actualizada. Ya puedes iniciar sesión.');
+      window.location.href = 'index.html';
+    }
+        function checkImpersonation() {
+      if (localStorage.getItem('flr_impersonating') === '1') {
+        document.getElementById('impbar').classList.remove('hidden');
+      }
+    }
+
+    async function exitImpersonation() {
+      const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+      const authKey = 'sb-' + ref + '-auth-token';
+      const backup = localStorage.getItem('flr_admin_backup');
+
+      localStorage.removeItem('flr_impersonating');
+      localStorage.removeItem('flr_admin_backup');
+
+      if (backup) localStorage.setItem(authKey, backup);
+      else localStorage.removeItem(authKey);
+
       window.location.href = 'index.html';
     }
        async function login() {
@@ -767,6 +790,7 @@
           show('reset');
         }
       });
+            checkImpersonation();
 
       try {
         const saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred') || ''))));
