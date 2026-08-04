@@ -198,6 +198,7 @@
             <div id="role-badge" class="badge"></div>
           </div>
           <button class="secondary" onclick="logout()">Cerrar sesión</button>
+                    <button class="danger" onclick="deleteMyAccount()">Eliminar mi cuenta</button>
         </div>
       </div>
 
@@ -360,6 +361,21 @@
       window.location.reload();
     }
 
+        async function deleteMyAccount() {
+      if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
+      if (!confirm('Esta acción NO se puede deshacer. ¿Confirmas por segunda vez?')) return;
+
+      const { data, error } = await db.functions.invoke('delete-my-account');
+
+      if (error) return alert(error.message);
+
+      if (data && data.ok) {
+        alert('Tu cuenta ha sido eliminada. Gracias por participar.');
+        window.location.href = 'index.html';
+      } else {
+        alert('Error: ' + JSON.stringify(data));
+      }
+    }
     async function logout() {
       if (!db) return;
 
