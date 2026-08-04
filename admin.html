@@ -68,7 +68,7 @@ async function render() {
   const [u, a, r, rec, c] = await Promise.all([
     db.from('profiles').select('id, role, display_name, age, bio, created_at').order('created_at', { ascending: false }),
     db.from('app_admins').select('user_id'),
-    db.from('relationships').select('id, status, dominant_id, submissive_id').order('created_at', { ascending: false }),
+    db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
     db.from('cards').select('*')
   ]);
