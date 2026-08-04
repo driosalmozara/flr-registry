@@ -15,6 +15,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#0b0b12}
 .item.mine{border-color:var(--gold)}
 .small{color:#a1a1aa;font-size:13px}
+.warn{color:#fbbf24;font-size:13px;border:1px solid #fbbf24;border-radius:10px;padding:8px 10px;margin:8px 0}
 select,input,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.danger{background:#7f1d1d;color:#fff}
@@ -41,7 +42,9 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null;
 let myProfile = null;
 let users = [];
-let convs = [];
+let allConvs = [];
+let myConvs = [];
+let mySubs = [];
 let mySettings = null;
 let currentThread = null;
 
@@ -50,6 +53,7 @@ function esc(v){
 }
 
 function nameOf(id){ return (users.find(x => x.id === id) || {}).display_name || '?'; }
+function involvesMe(c){ return c.member_a === me || c.member_b === me; }
 function otherOf(c){ return c.member_a === me ? c.member_b : c.member_a; }
 
 async function init() {
@@ -75,15 +79,23 @@ async function init() {
 }
 
 async function load() {
-  const [u, c, s] = await Promise.all([
+  const [u, c, s, subs] = await Promise.all([
     db.from('profiles').select('id, display_name, role').order('display_name').limit(500),
-    db.from('conversations').select('*').or(`member_a.eq.${me},member_b.eq.${me}`).order('created_at', { ascending: false }),
-    db.from('messaging_settings').select('*').eq('user_id', me).maybeSingle()
+    db.from('conversations').select('*').order('created_at', { ascending: false }),
+    db.from('messaging_settings').select('*').eq('user_id', me).maybeSingle(),
+    myProfile.role === 'dominant'
+      ? db.from('relationships')
+          .select('id, messaging_mode, submissive_id, profiles!relationships_submissive_id_fkey(display_name)')
+          .eq('dominant_id', me)
+          .eq('status', 'confirmed')
+      : Promise.resolve({ data: [] })
   ]);
 
   users = u.data || [];
-  convs = c.data || [];
+  allConvs = c.data || [];
   mySettings = s.data;
+  mySubs = subs.data || [];
+  myConvs = allConvs.filter(involvesMe);
 
   await render();
 
@@ -94,7 +106,7 @@ async function render() {
   const content = document.getElementById('content');
   let html = '';
 
-  // Ajuste de mensajería (Dominantes y superusuarios)
+  // Mensajería abierta/cerrada (Dominantes)
   if (myProfile.role === 'dominant') {
     const open = mySettings ? mySettings.messaging_open : true;
 
@@ -106,7 +118,17 @@ async function render() {
           Mensajería abierta (permitir que otros miembros te escriban)
         </label>
         <button onclick="saveMessaging()">Guardar</button>
-        <p class="small">Si la cierras, nadie podrá iniciarte conversaciones nuevas. Las ya aceptadas siguen activas.</p>
+      </div>
+
+      <div class="card">
+        <h3>Supervisión de tus sumisos</h3>
+        <p class="small">Privada: no ves sus conversaciones. Supervisada: ves todas sus conversaciones.</p>
+        ${mySubs.map(s => `
+          <label>
+            <input type="checkbox" onchange="saveMode('${s.id}', this.checked)" ${s.messaging_mode === 'supervised' ? 'checked' : ''} />
+            👁 Supervisar la mensajería de ⛓ ${esc(s.profiles?.display_name || 'Sumiso')}
+          </label>
+        `).join('') || '<p class="small">No tienes sumisos confirmados.</p>'}
       </div>
     `;
   }
@@ -119,12 +141,12 @@ async function render() {
         ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
       </select>
       <button onclick="startConversation()">Abrir conversación</button>
-      <p class="small">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud que ella aceptará o rechazará.</p>
+      <p class="small">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud.</p>
     </div>
   `;
 
-  // Solicitudes pendientes (yo soy receptor)
-  const requests = convs.filter(c => c.status === 'pending' && c.initiated_by !== me);
+  // Solicitudes pendientes (yo receptor)
+  const requests = myConvs.filter(c => c.status === 'pending' && c.initiated_by !== me);
 
   if (requests.length > 0) {
     html += '<div class="card"><h3>Solicitudes de mensaje</h3>';
@@ -150,10 +172,10 @@ async function render() {
     html += '</div>';
   }
 
-  // Conversaciones
+  // Mis conversaciones
   html += '<div class="card"><h3>Conversaciones</h3>';
 
-  const threads = convs.filter(c => c.status !== 'pending' || c.initiated_by === me);
+  const threads = myConvs.filter(c => c.status !== 'pending' || c.initiated_by === me);
 
   if (threads.length === 0) html += '<p class="small">Sin conversaciones todavía.</p>';
 
@@ -169,17 +191,49 @@ async function render() {
     `;
   });
 
-  html += '</div><div id="threadbox"></div>';
+  html += '</div>';
+
+  // Conversaciones supervisadas (solo Dominantes)
+  if (myProfile.role === 'dominant') {
+    const subIds = mySubs.map(s => s.submissive_id);
+
+    const supervised = allConvs.filter(c =>
+      !involvesMe(c) &&
+      (subIds.includes(c.member_a) || subIds.includes(c.member_b))
+    );
+
+    if (supervised.length > 0) {
+      html += '<div class="card"><h3>👁 Conversaciones supervisadas</h3>';
+
+      supervised.forEach(c => {
+        const subId = subIds.includes(c.member_a) ? c.member_a : c.member_b;
+        const otherId = subId === c.member_a ? c.member_b : c.member_a;
+
+        html += `
+          <div class="item">
+            <button class="wide" onclick="openThread('${c.id}')">
+              👁  ${esc(nameOf(subId))} ↔ ${esc(nameOf(otherId))}
+            </button>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+    }
+  }
+
+  html += '<div id="threadbox"></div>';
 
   content.innerHTML = html;
 }
 
 async function openThread(id) {
   currentThread = id;
-  const c = convs.find(x => x.id === id);
+  const c = allConvs.find(x => x.id === id);
   if (!c) return;
 
   const box = document.getElementById('threadbox');
+  const iAmMember = involvesMe(c);
 
   const { data: msgs } = await db
     .from('private_messages')
@@ -187,18 +241,33 @@ async function openThread(id) {
     .eq('conversation_id', id)
     .order('created_at', { ascending: true });
 
-  await db
-    .from('private_messages')
-    .update({ read: true })
-    .eq('conversation_id', id)
-    .neq('sender_id', me)
-    .eq('read', false);
+  if (iAmMember) {
+    await db
+      .from('private_messages')
+      .update({ read: true })
+      .eq('conversation_id', id)
+      .neq('sender_id', me)
+      .eq('read', false);
+  }
 
-  const canSend = c.status === 'accepted' || (c.status === 'pending' && c.initiated_by === me);
+  // Aviso de supervisión
+  const { data: supInfo } = await db
+    .from('relationships')
+    .select('messaging_mode, submissive_id, profiles!relationships_dominant_id_fkey(display_name)')
+    .in('submissive_id', [c.member_a, c.member_b])
+    .eq('status', 'confirmed')
+    .eq('messaging_mode', 'supervised');
+
+  const supNote = (supInfo || []).map(s =>
+    `<div class="warn">👁 Esta conversación está supervisada por ♛ ${esc(s.profiles?.display_name || 'una Dominante')}.</div>`
+  ).join('');
+
+  const canSend = iAmMember && (c.status === 'accepted' || (c.status === 'pending' && c.initiated_by === me));
 
   box.innerHTML = `
     <div class="card">
-      <h3>💬 ${esc(nameOf(otherOf(c)))}</h3>
+      <h3>${iAmMember ? '💬' : '👁'} ${esc(nameOf(c.member_a))} ↔ ${esc(nameOf(c.member_b))}</h3>
+      ${supNote}
       <div>
         ${(msgs || []).map(m => `
           <div class="item ${m.sender_id === me ? 'mine' : ''}">
@@ -211,7 +280,7 @@ async function openThread(id) {
       ${canSend ? `
         <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
         <button onclick="sendPrivate('${id}')">Enviar</button>
-      ` : `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>`}
+      ` : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>` : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
     </div>
   `;
 }
@@ -220,7 +289,7 @@ async function startConversation() {
   const target = document.getElementById('target').value;
   if (!target) return;
 
-  const existing = convs.find(c =>
+  const existing = myConvs.find(c =>
     (c.member_a === target && c.member_b === me) ||
     (c.member_b === target && c.member_a === me)
   );
@@ -286,6 +355,17 @@ async function saveMessaging() {
   if (error) return alert(error.message);
 
   alert('Guardado.');
+  await load();
+}
+
+async function saveMode(relId, supervised) {
+  const { error } = await db
+    .from('relationships')
+    .update({ messaging_mode: supervised ? 'supervised' : 'private' })
+    .eq('id', relId);
+
+  if (error) return alert(error.message);
+
   await load();
 }
 
