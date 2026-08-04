@@ -22,7 +22,7 @@ button.danger{background:#7f1d1d;color:#fff}
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Contrato de sumisión</h1>
+    <h1 style="margin:0;">♛ Contrato de esclavitud</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -35,13 +35,107 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const DEFAULT_TEXT = `CONTRATO DE SUMISIÓN
+function makeDefaultText(domName, subName) {
+  return `CONTRATO DE ESCLAVITUD
+FECHA: ${new Date().toLocaleDateString()}
+PARTES CONTRACTUALES
+LA DOMINANTE (en adelante "La Dueña o Ama"):
+Nombre: ${domName}
 
-1. Declaro que soy mayor de 18 años y que participo de forma voluntaria.
-2. Entiendo que esta relación es consensuada y que puedo revocar mi consentimiento en cualquier momento.
-3. Me comprometo a respetar las reglas acordadas con mi Dominante.
-4. La Dominante se compromete a cuidar el bienestar físico y emocional de su sumiso.
-5. Este documento es una constancia simbólica dentro de la plataforma.`;
+EL SUMISO (en adelante "El Esclavo"):
+Nombre: ${subName}
+Ambas partes, mayores de edad, en pleno uso de sus facultades mentales y actuando de manera libre, voluntaria e informada, suscriben el presente documento bajo los siguientes términos:
+
+CLÁUSULA I: DECLARACIÓN DE CONSENTIMIENTO
+1.1 Ambas partes declaran haber llegado a este acuerdo sin coacción, presión, manipulación ni amenazas de ningún tipo.
+1.2 El Esclavo declara que cede voluntariamente su voluntad a La Dueña durante la vigencia del presente contrato.
+1.3 Ambas partes reconocen que esta dinámica se desarrolla dentro del marco de una relación consensuada entre adultos, basada en el respeto mutuo, la confianza y los principios de SSC (Sano, Seguro y Consensuado) y/o RACK (Riesgo Asumido Consensuado y Consciente).
+
+CLÁUSULA II: CESIÓN DE DERECHOS, POSESIONES Y VOLUNTAD
+2.1 Cesión de Voluntad: El Esclavo cede su capacidad de decisión autónoma a La Dueña, quien podrá dictar reglas, órdenes, prohibiciones y directrices sobre todos los aspectos de su vida.
+2.2 Cesión de Posesiones: El Esclavo pone a disposición de La Dueña todas sus posesiones materiales presentes y futuras, incluyendo pero no limitándose a:
+Bienes inmuebles y muebles
+Vehículos
+Cuentas bancarias e inversiones
+Ingresos y salarios
+Dispositivos electrónicos y comunicaciones
+Vestimenta y objetos personales
+2.3 Cesión de Derechos: El Esclavo renuncia voluntariamente al ejercicio autónomo de los siguientes derechos durante la vigencia del contrato:
+Derecho a tomar decisiones sin aprobación previa
+Derecho a disponer libremente de sus posesiones
+Derecho a gestionar sus finanzas personales
+Derecho a controlar su tiempo y agenda
+Derecho a mantener privacidad de comunicaciones
+Derecho a decidir sobre su apariencia personal
+Cualquier otro derecho que La Dueña considere necesario regular
+
+CLÁUSULA III: OBLIGACIONES DEL ESCLAVO
+3.1 Obedecer todas las órdenes, reglas y directrices emitidas por La Dueña sin cuestionamiento ni demora injustificada.
+3.2 Mantener una actitud de sumisión, respeto y devoción en todo momento.
+3.3 Informar a La Dueña sobre todos los aspectos de su vida: actividades, relaciones, ingresos, gastos y cualquier evento relevante.
+3.4 Solicitar permiso previamente para cualquier acción no expresamente autorizada.
+3.5 Mantener su apariencia física, vestimenta y aseo personal según las directrices de La Dueña.
+3.6 Cumplir con todas las tareas, protocolos y castigos asignados.
+3.7 Aceptar la supervisión total de sus comunicaciones (mensajes, correos, llamadas, redes sociales).
+3.8 Entregar a La Dueña el control de sus finanzas, entregando todos sus ingresos y solicitando asignaciones para gastos.
+3.9 Renunciar a cualquier relación romántica o sexual ajena a la dinámica establecida.
+3.10 Proteger la reputación e integridad de La Dueña en todo momento.
+
+CLÁUSULA IV: DERECHOS Y PRERROGATIVAS DE LA DUEÑA
+4.1 Ejercer control absoluto sobre El Esclavo en todos los aspectos de su vida.
+4.2 Emitir, modificar o revocar reglas según su criterio.
+4.3 Disponer libremente de todas las posesiones del Esclavo.
+4.4 Supervisar todas las comunicaciones y actividades del Esclavo.
+4.5 Asignar tareas, castigos, recompensas y protocolos.
+4.6 Controlar la agenda, tiempo y movimientos del Esclavo.
+4.7 Determinar la apariencia, vestimenta y presentación personal del Esclavo.
+4.8 Autorizar o denegar permisos para cualquier actividad.
+4.9 Mantener registros de comportamiento, cumplimiento y progreso del Esclavo.
+4.10 Cualquier otra prerrogativa que La Dueña considere necesaria para el ejercicio de su dominio.
+
+CLÁUSULA V: LÍMITES Y SALVAGUARDAS
+5.1 Palabra de Seguridad: Se establece la palabra "_________" como palabra de seguridad que, al ser pronunciada por El Esclavo, detiene inmediatamente cualquier actividad.
+5.2 Límites Absolutos: Las siguientes actividades quedan expresamente excluidas:
+Cualquier práctica que ponga en riesgo la vida
+Actividades ilegales
+Daño físico permanente
+Marcado corporal permanente sin consentimiento específico
+Cualquier otra actividad que ambas partes acuerden por escrito
+5.3 Salud: El Esclavo deberá mantener controles médicos regulares y La Dueña respetará tratamientos médicos necesarios.
+5.4 Seguridad: Ninguna disposición del presente contrato será interpretada para autorizar prácticas que pongan en riesgo la integridad física o psicológica de manera permanente.
+5.5 Derechos Fundamentales: Este contrato no puede anular derechos fundamentales protegidos por ley, incluyendo pero no limitándose a:
+Derecho a la integridad física
+Derecho a atención médica de emergencia
+Derechos laborales básicos
+Libertad de pensamiento (aunque no su expresión)
+
+CLÁUSULA VI: VIGENCIA Y RENOVACIÓN
+6.1 El presente contrato entra en vigor en la fecha de su firma y tendrá una duración de _________ (especificar: indefinida, un año, seis meses, etc.).
+6.2 El contrato podrá ser renovado por acuerdo mutuo de las partes.
+6.3 Durante el período de vigencia, el contrato puede ser revisado y actualizado según las necesidades de la dinámica.
+
+CLÁUSULA VII: RESCISIÓN DEL CONTRATO
+7.1 Rescisión Voluntaria: El Esclavo puede solicitar la rescisión del contrato en cualquier momento, debiendo comunicar su decisión formalmente a La Dueña.
+7.2 Período de Transición: Tras la solicitud de rescisión, se establece un período de transición de _________ días para organizar la separación de bienes y aspectos prácticos.
+7.3 Rescisión por Incumplimiento: La Dueña puede rescindir el contrato si El Esclavo incumple gravemente sus obligaciones.
+7.4 Rescisión Unilateral: La Dueña puede rescindir el contrato en cualquier momento, sin obligación de justificación.
+7.5 Devolución de Bienes: Al rescindir el contrato, La Dueña devolverá al Esclavo el control de sus posesiones y derechos cedidos, salvo lo que se acuerde de manera diferente.
+
+CLÁUSULA VIII: CONFIDENCIALIDAD
+8.1 Ambas partes se comprometen a mantener absoluta confidencialidad sobre los términos y prácticas establecidas en este contrato.
+8.2 La divulgación de información sobre la dinámica sin consentimiento mutuo constituye una falta grave.
+8.3 Las fotografías, videos y documentos relacionados con la dinámica quedarán bajo custodia de La Dueña y serán devueltos o destruidos al rescindir el contrato.
+
+CLÁUSULA IX: DISPOSICIONES GENERALES
+9.1 Este documento representa un acuerdo privado entre adultos consintientes con fines de dinámica relacional.
+9.2 Ninguna disposición de este contrato contraviene las leyes vigentes ni autoriza actividades ilegales.
+9.3 Las partes reconocen que mantienen su autonomía legal y pueden acudir a las autoridades en caso de emergencia.
+9.4 Cualquier modificación al presente contrato deberá realizarse por escrito y firmada por ambas partes.
+9.5 En caso de disputa sobre la interpretación del contrato, ambas partes buscarán resolverla mediante diálogo directo o mediación.
+
+CLÁUSULA X: DECLARACIÓN FINAL
+Ambas partes declaran haber leído, comprendido y aceptado libremente todas las cláusulas del presente contrato. Reconocen que esta dinámica se basa en el consentimiento informado, el respeto mutuo y la confianza recíproca.`;
+}
 
 let me = null;
 
@@ -166,9 +260,20 @@ async function renderSubmissive() {
 }
 
 async function createContract(relId) {
+  const { data: rel } = await db
+    .from('relationships')
+    .select('dominant_id, submissive_id')
+    .eq('id', relId)
+    .maybeSingle();
+
+  if (!rel) return alert('Relación no encontrada.');
+
+  const { data: dom } = await db.from('profiles').select('display_name').eq('id', rel.dominant_id).maybeSingle();
+  const { data: sub } = await db.from('profiles').select('display_name').eq('id', rel.submissive_id).maybeSingle();
+
   const { error } = await db.from('contracts').insert({
     relationship_id: relId,
-    content: DEFAULT_TEXT,
+    content: makeDefaultText(dom?.display_name || '', sub?.display_name || ''),
     status: 'pending'
   });
 
@@ -230,7 +335,7 @@ async function revokeContract(id) {
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(16);
-  pdf.text('CONTRATO DE SUMISIÓN', 40, 60);
+  pdf.text('CONTRATO DE ESCLAVITUD', 40, 60);
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
