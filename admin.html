@@ -309,7 +309,7 @@ async function revokeCard(id) {
 
   let res;
   try {
-    res = await fetch(SUPABASE_URL + '/functions/v1/admin-impersonate', {
+        res = await fetch('/api/impersonate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
