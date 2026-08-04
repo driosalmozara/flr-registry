@@ -150,6 +150,10 @@
           <h2>Iniciar sesión</h2>
           <input id="login-email" type="email" placeholder="Correo" />
           <input id="login-password" type="password" placeholder="Contraseña" />
+          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+            <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
+            Ver contraseña
+          </label>
           <button onclick="login()">Entrar</button>
         </div>
 
@@ -165,6 +169,10 @@
           <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
           <input id="reg-email" type="email" placeholder="Correo" />
           <input id="reg-password" type="password" placeholder="Contraseña" />
+          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+            <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
+            Ver contraseña
+          </label>
 
           <label class="small">
             <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
@@ -280,6 +288,9 @@
       }
     }
 
+        function togglePass(id, show) {
+      document.getElementById(id).type = show ? 'text' : 'password';
+    }
     async function login() {
       if (!db) return alert('Configura Supabase primero.');
 
