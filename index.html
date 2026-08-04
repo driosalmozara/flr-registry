@@ -270,6 +270,7 @@
 
       const { data: { session } } = await db.auth.getSession();
       currentUser = session?.user || null;
+                checkImpersonation(!!currentUser);
 
       if (!currentUser) {
         show('auth');
@@ -344,9 +345,13 @@
       alert('Contraseña actualizada. Ya puedes iniciar sesión.');
       window.location.href = 'index.html';
     }
-        function checkImpersonation() {
-      if (localStorage.getItem('flr_impersonating') === '1') {
-        document.getElementById('impbar').classList.remove('hidden');
+        function checkImpersonation(loggedIn) {
+      const bar = document.getElementById('impbar');
+
+      if (loggedIn && localStorage.getItem('flr_impersonating') === '1') {
+        bar.classList.remove('hidden');
+      } else {
+        bar.classList.add('hidden');
       }
     }
 
@@ -381,6 +386,8 @@
           localStorage.removeItem('flr_cred');
         }
       } catch (e) {}
+               localStorage.removeItem('flr_impersonating');
+      localStorage.removeItem('flr_admin_backup');
 
       window.location.reload();
     }
@@ -469,8 +476,11 @@
         alert('Error: ' + JSON.stringify(data));
       }
     }
-    async function logout() {
+       async function logout() {
       if (!db) return;
+
+      localStorage.removeItem('flr_impersonating');
+      localStorage.removeItem('flr_admin_backup');
 
       await db.auth.signOut();
       window.location.reload();
@@ -791,7 +801,7 @@
           show('reset');
         }
       });
-            checkImpersonation();
+      
 
       try {
         const saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred') || ''))));
