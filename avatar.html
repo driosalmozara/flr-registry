@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Mi avatar — Supremacía Femenina</title>
+<title>Avatares — Supremacía Femenina</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -13,15 +13,16 @@ h1,h2,h3{color:var(--gold)}
 main{max-width:700px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .small{color:#a1a1aa;font-size:13px}
+select,input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-img.avatar{width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0b0b12}
-input[type=file]{color:#a1a1aa;margin:10px 0}
+img.avatar{width:130px;height:130px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0b0b12}
+input[type=file]{color:#a1a1aa}
 </style>
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Mi avatar</h1>
+  <h1 style="margin:0;">♛ Avatares</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -33,9 +34,10 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let userId = null;
+let me = null;
+let myProfile = null;
 
-function escapeHtml(v){
+function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
@@ -48,31 +50,82 @@ async function init() {
     return;
   }
 
-  userId = session.user.id;
+  me = session.user.id;
 
-  const { data: profile } = await db
-    .from('profiles')
-    .select('display_name, avatar_url')
-    .eq('id', userId)
-    .maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me).maybeSingle();
+  myProfile = profile;
+
+  if (!myProfile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: superFlag } = await db.rpc('am_i_superadmin');
+  const isSuper = !!superFlag;
+
+  let targets = [{ id: me, label: 'Mi propio avatar' }];
+
+  if (isSuper) {
+    const { data: users } = await db
+      .from('profiles')
+      .select('id, display_name, role')
+      .order('display_name')
+      .limit(300);
+
+    (users || []).forEach(u => {
+      if (u.id !== me) targets.push({ id: u.id, label: (u.role === 'dominant' ? '♛ ' : '⛓ ') + u.display_name });
+    });
+  } else if (myProfile.role === 'dominant') {
+    const { data: subs } = await db
+      .from('relationships')
+      .select('profiles!relationships_submissive_id_fkey(id, display_name)')
+      .eq('dominant_id', me)
+      .eq('status', 'confirmed');
+
+    (subs || []).forEach(s => {
+      if (s.profiles) targets.push({ id: s.profiles.id, label: '⛓ ' + s.profiles.display_name });
+    });
+  }
 
   content.innerHTML = `
-    <h2>${escapeHtml(profile?.display_name || 'Mi avatar')}</h2>
-    <img class="avatar" src="${escapeHtml(profile?.avatar_url || '')}" />
+    <h2>${isSuper ? 'Gestión total de avatares' : myProfile.role === 'dominant' ? 'Tu avatar y el de tus sumisos' : 'Tu avatar'}</h2>
+    <select id="target" onchange="preview()">
+      ${targets.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join('')}
+    </select>
+    <img class="avatar" id="prev" src="" />
     <br/>
     <input type="file" id="file" accept="image/*" />
     <br/>
-    <button onclick="uploadAvatar()">Subir avatar</button>
-    <p class="small">La imagen se guarda en tu carpeta de avatares y queda en tu perfil.</p>
+    <button onclick="uploadAvatar()">Subir / cambiar avatar</button>
+    <p class="small">
+      ${isSuper ? 'Como superusuario puedes cambiar el avatar de cualquier miembro.' :
+        myProfile.role === 'dominant' ? 'Como Dominante puedes cambiar el avatar de tus sumisos confirmados.' :
+        'Solo tú puedes cambiar tu avatar.'}
+    </p>
   `;
+
+  await preview();
+}
+
+async function preview() {
+  const target = document.getElementById('target').value;
+
+  const { data: p } = await db
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', target)
+    .maybeSingle();
+
+  document.getElementById('prev').src = p?.avatar_url || '';
 }
 
 async function uploadAvatar() {
+  const target = document.getElementById('target').value;
   const file = document.getElementById('file').files[0];
 
   if (!file) return alert('Selecciona una imagen.');
 
-  const path = userId + '/avatar';
+  const path = target + '/avatar';
 
   const { error } = await db.storage
     .from('avatars')
@@ -85,11 +138,12 @@ async function uploadAvatar() {
   const { error: updateError } = await db
     .from('profiles')
     .update({ avatar_url: data.publicUrl })
-    .eq('id', userId);
+    .eq('id', target);
 
   if (updateError) return alert(updateError.message);
 
-  window.location.reload();
+  alert('Avatar actualizado.');
+  await preview();
 }
 
 init();
