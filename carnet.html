@@ -53,6 +53,8 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 <main>
   <div id="content" class="card">Cargando...</div>
 </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
@@ -185,11 +187,20 @@ async function loadCard(relId) {
 
     <div style="text-align:center;">
       <button onclick="window.print()"> Imprimir carnet</button>
+            <button onclick="downloadCardPDF()">⬇ Descargar PDF</button>
       <p class="small">Consejo: al imprimir, elige orientación horizontal y escala 100%. El tamaño es el de una credencial (85.6 × 54 mm).</p>
     </div>
   `;
 }
 
+  async function downloadCardPDF() {
+  const el = document.getElementById('card');
+  const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#0f0f1a' });
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 86, 54);
+  pdf.save('carnet-supremacia-femenina.pdf');
+}
 init();
 </script>
 </body>
