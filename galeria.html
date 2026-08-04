@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Galería privada — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+select,input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumb{width:100%;height:130px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+label{display:flex;gap:10px;align-items:center;margin:10px 0}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Galería privada</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+let myProfile = null;
+let currentRel = null;
+
+function esc(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = session.user;
+
+  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me.id).maybeSingle();
+  myProfile = profile;
+
+  if (!myProfile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  if (myProfile.role === 'dominant') {
+    const { data: subs } = await db
+      .from('relationships')
+      .select('id, profiles!relationships_submissive_id_fkey(display_name)')
+      .eq('dominant_id', me.id)
+      .eq('status', 'confirmed');
+
+    if (!subs || subs.length === 0) {
+      content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">La galería privada existe por relación confirmada.</p>';
+      return;
+    }
+
+    content.innerHTML = `
+      <h2>Elige la relación</h2>
+      <select id="pick" onchange="pickRel(this.value)">
+        ${subs.map(s => `<option value="${s.id}">⛓ ${esc(s.profiles?.display_name || 'Sumiso')}</option>`).join('')}
+      </select>
+      <div id="zone"></div>
+    `;
+
+    await pickRel(subs[0].id);
+  } else {
+    const { data: rel } = await db
+      .from('relationships')
+      .select('id')
+      .eq('submissive_id', me.id)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+
+    if (!rel) {
+      content.innerHTML = '<h2>Sin Dominante confirmada</h2><p class="small">La galería privada existe por relación confirmada.</p>';
+      return;
+    }
+
+    content.innerHTML = '<div id="zone"></div>';
+    await pickRel(rel.id);
+  }
+}
+
+async function pickRel(relId) {
+  currentRel = relId;
+
+  const { data: rel } = await db
+    .from('relationships')
+    .select('gallery_consent, submissive_id')
+    .eq('id', relId)
+    .maybeSingle();
+
+  const zone = document.getElementById('zone');
+  const iAmSub = myProfile.id === rel?.submissive_id;
+
+  let html = '<div class="card"><h3>Consentimiento del sumiso</h3>';
+
+  if (iAmSub) {
+    html += `
+      <label>
+        <input type="checkbox" id="consent" ${rel?.gallery_consent ? 'checked' : ''} />
+        Autorizo que esta relación tenga galería privada
+      </label>
+      <button onclick="saveConsent()">Guardar consentimiento</button>
+      <p class="small">Puedes retirar tu autorización cuando quieras. Si la retiras, las imágenes quedan ocultas para ambos.</p>
+    `;
+  } else {
+    html += `<p class="small">${rel?.gallery_conent === false ? '' : ''}Estado: <b>${rel?.gallery_consent ? '✅ Autorizada por el sumiso' : '❌ Sin consentimiento del sumiso'}</b></p>
+    <p class="small">Solo el sumiso puede autorizar o retirar el consentimiento de la galería.</p>`;
+  }
+
+  html += '</div>';
+
+  if (rel?.gallery_consent) {
+    html += `
+      <div class="card">
+        <h3>Imágenes de la relación</h3>
+        <input type="file" id="file" accept="image/*" />
+        <button onclick="uploadFile()">Subir imagen</button>
+        <div id="grid" class="grid" style="margin-top:12px;"></div>
+      </div>
+    `;
+  }
+
+  zone.innerHTML = html;
+
+  if (rel?.gallery_consent) await loadImages();
+}
+
+async function saveConsent() {
+  const value = document.getElementById('consent').checked;
+
+  const { error } = await db
+    .from('relationships')
+    .update({ gallery_consent: value })
+    .eq('id', currentRel);
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+async function uploadFile() {
+  const file = document.getElementById('file').files[0];
+  if (!file) return alert('Selecciona una imagen.');
+
+  const path = currentRel + '/' + Date.now() + '-' + file.name;
+
+  const { error } = await db.storage.from('galeria').upload(path, file);
+
+  if (error) return alert(error.message);
+
+  await loadImages();
+}
+
+async function loadImages() {
+  const grid = document.getElementById('grid');
+  if (!grid) return;
+
+  const { data, error } = await db.storage.from('galeria').list(currentRel);
+
+  if (error) { grid.innerHTML = '<p class="small">Error: ' + esc(error.message) + '</p>'; return; }
+
+  if (!data || data.length === 0) {
+    grid.innerHTML = '<p class="small">Aún no hay imágenes en esta galería.</p>';
+    return;
+  }
+
+  let html = '';
+
+  for (const item of data) {
+    const path = currentRel + '/' + item.name;
+    const { data: signed } = await db.storage.from('galeria').createSignedUrl(path, 3600);
+
+    if (signed) {
+      html += `
+        <div>
+          <img class="thumb" src="${signed.signedUrl}" />
+          <button class="danger" style="margin-top:6px;" onclick="deleteFile('${item.name}')">Eliminar</button>
+        </div>
+      `;
+    }
+  }
+
+  grid.innerHTML = html || '<p class="small">Aún no hay imágenes.</p>';
+}
+
+async function deleteFile(name) {
+  if (!confirm('¿Eliminar esta imagen?')) return;
+
+  const { error } = await db.storage.from('galeria').remove([currentRel + '/' + name]);
+
+  if (error) return alert(error.message);
+
+  await loadImages();
+}
+
+init();
+</script>
+</body>
+</html>
