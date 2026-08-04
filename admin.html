@@ -99,7 +99,7 @@ async function render() {
       <select id="newadmin">
         ${candidates.map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
       </select>
-      <button onclick="makeAdmin()">Dar privilegios de Administrador/button>
+            <button onclick="makeAdmin()">Dar privilegios de Administrador</button>
     `;
   }
 
@@ -305,12 +305,32 @@ async function revokeCard(id) {
   localStorage.setItem('flr_admin_backup', localStorage.getItem(authKey) || '');
   localStorage.setItem('flr_impersonating', '1');
 
-  const { data, error } = await db.functions.invoke('admin-impersonate', {
-    body: { user_id: id, redirect: window.location.origin + '/index.html' }
-  });
+  const { data: { session } } = await db.auth.getSession();
 
-  if (error) return alert(error.message);
-  if (!data || !data.link) return alert('Error: ' + JSON.stringify(data));
+  let res;
+  try {
+    res = await fetch(SUPABASE_URL + '/functions/v1/admin-impersonate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + session.access_token
+      },
+      body: JSON.stringify({ user_id: id, redirect: window.location.origin + '/index.html' })
+    });
+  } catch (e) {
+    localStorage.removeItem('flr_impersonating');
+    localStorage.removeItem('flr_admin_backup');
+    return alert('No se pudo conectar con la función: ' + e.message);
+  }
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.link) {
+    localStorage.removeItem('flr_impersonating');
+    localStorage.removeItem('flr_admin_backup');
+    return alert('Error ' + res.status + ': ' + JSON.stringify(data));
+  }
 
   window.location.href = data.link;
 }
