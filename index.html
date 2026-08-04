@@ -159,6 +159,9 @@
             Recordar contraseña en este dispositivo
           </label>
           <button onclick="login()">Entrar</button>
+                    <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
+            Olvidé mi contraseña
+          </p>
         </div>
 
         <div class="col card">
@@ -189,6 +192,15 @@
       </div>
     </section>
 
+        <section id="reset" class="hidden">
+      <div class="card" style="max-width:480px;margin:0 auto;">
+        <h2>Restablecer contraseña</h2>
+        <p class="small">Escribe y confirma tu nueva contraseña.</p>
+        <input id="reset-password" type="password" placeholder="Nueva contraseña (mín. 6)" />
+        <input id="reset-password2" type="password" placeholder="Repítela" />
+        <button onclick="resetPassword()">Guardar nueva contraseña</button>
+      </div>
+    </section>
     <section id="profile-setup" class="hidden card">
       <h2>Completa tu perfil</h2>
 
@@ -238,15 +250,18 @@
     }
 
     function show(sectionId) {
-      ['loading', 'auth', 'profile-setup', 'app'].forEach(id => {
+            ['loading', 'auth', 'profile-setup', 'app', 'reset'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
 
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    async function init() {
-      if (!db) return;
+        async function init() {
+      if (window.location.hash.includes('type=recovery')) {
+        show('reset');
+        return;
+      }
 
       const { data: { session } } = await db.auth.getSession();
       currentUser = session?.user || null;
@@ -294,6 +309,35 @@
 
         function togglePass(id, show) {
       document.getElementById(id).type = show ? 'text' : 'password';
+    }
+        async function forgotPassword() {
+      const email = document.getElementById('login-email').value.trim()
+        || prompt('Escribe tu correo registrado:');
+
+      if (!email) return;
+
+      const { error } = await db.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/index.html'
+      });
+
+      if (error) return alert(error.message);
+
+      alert('Te enviamos un correo con el enlace para restablecer tu contraseña. Revisa también la carpeta de spam.');
+    }
+
+    async function resetPassword() {
+      const p1 = document.getElementById('reset-password').value;
+      const p2 = document.getElementById('reset-password2').value;
+
+      if (p1.length < 6) return alert('La contraseña debe tener al menos 6 caracteres.');
+      if (p1 !== p2) return alert('Las contraseñas no coinciden.');
+
+      const { error } = await db.auth.updateUser({ password: p1 });
+
+      if (error) return alert(error.message);
+
+      alert('Contraseña actualizada. Ya puedes iniciar sesión.');
+      window.location.href = 'index.html';
     }
        async function login() {
       if (!db) return alert('Configura Supabase primero.');
@@ -718,6 +762,11 @@
       `;
     } else {
             db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            db.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          show('reset');
+        }
+      });
 
       try {
         const saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred') || ''))));
