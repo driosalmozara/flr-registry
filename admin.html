@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Panel superusuario — Supremacía Femenina</title>
+<title>Panel de Administración — Supremacía Femenina</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -23,7 +23,7 @@ label.small{display:block}
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Panel Superusuario</h1>
+  <h1 style="margin:0;">♛ Panel de Administración</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -55,7 +55,7 @@ async function init() {
   const { data: isAdmin } = await db.rpc('am_i_superadmin');
 
   if (!isAdmin) {
-    content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no es superusuario.</p>';
+    content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no es Administrador.</p>';
     return;
   }
 
@@ -84,10 +84,10 @@ async function render() {
   let html = '';
 
   // ===== SUPERUSUARIOS =====
-  html += '<div class="card"><h2>Superusuarios</h2>';
+  html += '<div class="card"><h2>Administradores</h2>';
 
   users.filter(x => admins.includes(x.id)).forEach(x => {
-    html += `<div class="item"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— superusuario</span>`;
+    html += `<div class="item"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Administrador</span>`;
     if (x.id !== me) html += ` <button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
     html += '</div>';
   });
@@ -99,7 +99,7 @@ async function render() {
       <select id="newadmin">
         ${candidates.map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
       </select>
-      <button onclick="makeAdmin()">Dar privilegios de superusuario</button>
+      <button onclick="makeAdmin()">Dar privilegios de Administrador/button>
     `;
   }
 
@@ -114,7 +114,7 @@ async function render() {
     html += `
       <div class="item">
         <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
-        <span class="small">— ${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— SUPER' : ''}</span>
+        <span class="small">— ${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— ADMIN' : ''}</span>
         <br><span class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</span>
 
         <label class="small">Nombre público</label>
@@ -122,7 +122,7 @@ async function render() {
         <label class="small">Bio</label>
         <input id="bio_${x.id}" value="${esc(x.bio || '')}" />
         <button onclick="saveProfile('${x.id}')">Guardar perfil</button>
-        ${!isAdmin ? `<button class="danger" onclick="deleteUser('${x.id}')">Eliminar miembro</button>` : ''}
+                ${!isAdmin ? `<button class="danger" onclick="deleteUser('${x.id}')">Eliminar miembro</button> <button onclick="impersonate('${x.id}')">👁 Entrar como este miembro</button>` : ''}
       </div>
     `;
   });
@@ -296,6 +296,24 @@ async function revokeCard(id) {
   window.location.reload();
 }
 
+  async function impersonate(id) {
+  if (!confirm('Entrarás a la cuenta de este miembro con control total, como si fuera él. ¿Continuar?')) return;
+
+  const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+  const authKey = 'sb-' + ref + '-auth-token';
+
+  localStorage.setItem('flr_admin_backup', localStorage.getItem(authKey) || '');
+  localStorage.setItem('flr_impersonating', '1');
+
+  const { data, error } = await db.functions.invoke('admin-impersonate', {
+    body: { user_id: id, redirect: window.location.origin + '/index.html' }
+  });
+
+  if (error) return alert(error.message);
+  if (!data || !data.link) return alert('Error: ' + JSON.stringify(data));
+
+  window.location.href = data.link;
+}
 init();
 </script>
 </body>
