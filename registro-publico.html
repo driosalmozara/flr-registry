@@ -68,8 +68,9 @@ function avatarHTML(url, fallback) {
       <div class="item rowitem">
         ${avatarHTML(d.avatar_url, '♛')}
         <div>
-          <h3 style="margin:0;">${escapeHtml(d.display_name)}</h3>
+          <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
+          <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
         </div>
       </div>
     `).join('');
