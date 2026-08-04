@@ -10,7 +10,7 @@
 body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
 header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 h1,h2,h3{color:var(--gold)}
-main{max-width:900px;margin:0 auto;padding:20px}
+main{max-width:1000px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
@@ -18,13 +18,27 @@ input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#f
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
 button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-#msgs{max-height:420px;overflow-y:auto}
-.name{color:var(--gold);font-weight:700}
+
+#irc{display:flex;gap:12px;height:65vh}
+#side{width:230px;flex:none;overflow-y:auto;margin:0}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#msgs{flex:1;overflow-y:auto;background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:Consolas,Menlo,monospace;font-size:13px}
+.line{margin:3px 0;word-wrap:break-word}
+.time{color:#71717a}
+#inputrow{display:flex;gap:8px;margin-top:8px}
+#msg{flex:1;margin:0}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:8px}
+.prow:hover{background:#161625}
+@media (max-width:600px){
+  #irc{flex-direction:column;height:auto}
+  #side{width:100%;max-height:160px}
+  #msgs{height:300px}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Chat de miembros</h1>
+  <h1 style="margin:0;">♛ #supremacia</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -39,9 +53,28 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null;
 let myProfile = null;
 let isSuper = false;
+let mutes = [];
+let people = [];
+let selfNicks = [];
+let assignedNicks = [];
 
-function escapeHtml(v){
+function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return 'hsl(' + h + ',70%,65%)';
+}
+
+function nameFor(id, fallback) {
+  const a = assignedNicks.find(x => x.target_user_id === id);
+  if (a) return a.nickname;
+  const s = selfNicks.find(x => x.user_id === id);
+  if (s) return s.nickname;
+  const p = people.find(x => x.id === id);
+  return p ? p.display_name : (fallback || '?');
 }
 
 async function init() {
@@ -53,9 +86,9 @@ async function init() {
     return;
   }
 
-  me = session.user;
+  me = session.user.id;
 
-  const { data: profile } = await db.from('profiles').select('*').eq('id', me.id).maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
   myProfile = profile;
 
   if (!myProfile) {
@@ -67,7 +100,6 @@ async function init() {
   isSuper = !!superFlag;
 
   await renderPage();
-  await loadMessages();
 
   db.channel('flr-chat')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadMessages())
@@ -77,29 +109,42 @@ async function init() {
 async function renderPage() {
   const content = document.getElementById('content');
 
-  const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me.id).maybeSingle();
-  const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const [p, sn, an, mt] = await Promise.all([
+    db.from('profiles').select('id, display_name, role').order('display_name').limit(300),
+    db.from('chat_self_nicknames').select('*'),
+    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
+    db.from('chat_mutes').select('user_id')
+  ]);
 
-  const currentName = assignedNick?.nickname || selfNick?.nickname || myProfile.display_name;
+  people = p.data || [];
+  selfNicks = sn.data || [];
+  assignedNicks = an.data || [];
+  mutes = (mt.data || []).map(x => x.user_id);
+
+  const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
+  const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   let html = `
     <div class="card">
       <h3>Tu identidad en el chat</h3>
-      <p class="small">Ahora apareces como: <span class="name">${escapeHtml(currentName)}</span></p>
-      ${assignedNick ? '<p class="small">⚠️ Una Dominante o el superusuario te asignó este apodo; tiene prioridad.</p>' : ''}
-      <input id="self_nick" placeholder="Tu apodo propio (máx. 40)" value="${escapeHtml(selfNick?.nickname || '')}" />
+      <p class="small">Apareces como: <b style="color:${colorFor(nameFor(me))}">${esc(nameFor(me))}</b>
+      ${assignedNick ? '· (apodo asignado por tu Dominante o un Administrador)' : ''}</p>
+      <input id="self_nick" placeholder="Tu apodo propio" value="${esc(selfNick?.nickname || '')}" />
       <button onclick="setSelfNick()">Guardar mi apodo</button>
     </div>
   `;
 
-  if (myProfile.role === 'dominant' || isSuper) {
+  if (isSuper || myProfile.role === 'dominant') {
     let targets = [];
 
     if (isSuper) {
-      const { data: users } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(200);
-      targets = users || [];
+      targets = people.filter(x => x.id !== me);
     } else {
-      const { data: subs } = await db.from('relationships').select('submissive_id, profiles!relationships_submissive_id_fkey(id, display_name)').eq('dominant_id', me.id).eq('status', 'confirmed');
+      const { data: subs } = await db
+        .from('relationships')
+        .select('profiles!relationships_submissive_id_fkey(id, display_name)')
+        .eq('dominant_id', me)
+        .eq('status', 'confirmed');
       targets = (subs || []).map(s => s.profiles).filter(Boolean);
     }
 
@@ -109,9 +154,9 @@ async function renderPage() {
           <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
           ${targets.map(t => `
             <div class="item">
-              <b>${t.role === 'dominant' ? '♛' : '⛓'} ${escapeHtml(t.display_name)}</b>
-              <input id="assign_${t.id}" placeholder="Nuevo apodo para esta persona" />
-              <button onclick="assignNick('${t.id}')">Asignar apodo</button>
+              <b>${t.role === 'dominant' ? '♛' : '⛓'} ${esc(t.display_name)}</b>
+              <input id="assign_${t.id}" placeholder="Nuevo apodo" />
+              <button onclick="assignNick('${t.id}')">Asignar</button>
             </div>
           `).join('')}
         </div>
@@ -120,15 +165,57 @@ async function renderPage() {
   }
 
   html += `
-    <div class="card">
-      <h3>Chat</h3>
-      <div id="msgs"></div>
-      <input id="msg" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter') sendMsg()" />
-      <button onclick="sendMsg()">Enviar</button>
+    <div id="irc">
+      <div id="side" class="card">
+        <h3>Participantes (${people.length})</h3>
+        <div id="plist"></div>
+      </div>
+      <div id="main">
+        <div id="msgs"></div>
+        <div id="inputrow"></div>
+      </div>
     </div>
   `;
 
   content.innerHTML = html;
+
+  renderParticipants();
+  renderInputRow();
+  await loadMessages();
+}
+
+function renderParticipants() {
+  const box = document.getElementById('plist');
+
+  box.innerHTML = people.map(p => {
+    const n = nameFor(p.id);
+    const muted = mutes.includes(p.id);
+
+    return `
+      <div class="prow">
+        <span style="color:${colorFor(n)}">
+          ${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${muted ? ' 🔇' : ''}
+        </span>
+        ${isSuper && p.id !== me ? `
+          <button class="mini" onclick="muteToggle('${p.id}')">${muted ? '🔊' : '🔇'}</button>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderInputRow() {
+  const row = document.getElementById('inputrow');
+
+  if (mutes.includes(me)) {
+    row.innerHTML = '<p class="small">🔇 Estás silenciado por un Administrador. No puedes enviar mensajes.</p>';
+    return;
+  }
+
+  row.innerHTML = `
+    <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
+    <button onclick="sendMsg()">Enviar</button>
+  `;
 }
 
 async function loadMessages() {
@@ -139,18 +226,23 @@ async function loadMessages() {
     .from('chat_messages_public')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(200);
 
   const list = (data || []).reverse();
 
-  box.innerHTML = list.map(m => `
-    <div class="item">
-      <span class="name">${escapeHtml(m.display_name)}</span>
-      <span class="small"> — ${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
-      ${(m.user_id === me?.id || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
-      <br>${escapeHtml(m.body)}
-    </div>
-  `).join('') || '<p class="small">Todavía no hay mensajes.</p>';
+  box.innerHTML = list.map(m => {
+    const t = new Date(m.created_at);
+    const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+
+    return `
+      <div class="line">
+        <span class="time">[${hh}]</span>
+        <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
+        ${esc(m.body)}
+        ${(m.user_id === me || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
+      </div>
+    `;
+  }).join('') || '<p class="small">Todavía no hay mensajes.</p>';
 
   box.scrollTop = box.scrollHeight;
 }
@@ -161,7 +253,7 @@ async function sendMsg() {
 
   if (!body) return;
 
-  const { error } = await db.from('chat_messages').insert({ user_id: me.id, body });
+  const { error } = await db.from('chat_messages').insert({ user_id: me, body });
 
   if (error) return alert(error.message);
 
@@ -175,6 +267,18 @@ async function deleteMsg(id) {
   await loadMessages();
 }
 
+async function muteToggle(id) {
+  if (mutes.includes(id)) {
+    const { error } = await db.from('chat_mutes').delete().eq('user_id', id);
+    if (error) return alert(error.message);
+  } else {
+    const { error } = await db.from('chat_mutes').insert({ user_id: id, muted_by: me });
+    if (error) return alert(error.message);
+  }
+
+  await renderPage();
+}
+
 async function setSelfNick() {
   const nickname = document.getElementById('self_nick').value.trim();
 
@@ -182,7 +286,7 @@ async function setSelfNick() {
 
   const { error } = await db
     .from('chat_self_nicknames')
-    .upsert({ user_id: me.id, nickname }, { onConflict: 'user_id' });
+    .upsert({ user_id: me, nickname }, { onConflict: 'user_id' });
 
   if (error) return alert(error.message);
 
@@ -197,7 +301,7 @@ async function assignNick(targetId) {
   const { error } = await db.from('chat_assigned_nicknames').insert({
     target_user_id: targetId,
     nickname,
-    assigned_by: me.id
+    assigned_by: me
   });
 
   if (error) return alert(error.message);
