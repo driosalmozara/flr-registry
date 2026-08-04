@@ -106,7 +106,7 @@ async function renderPage() {
     if (targets.length > 0) {
       html += `
         <div class="card">
-          <h3>${isSuper ? 'Apodos como superusuario' : 'Apodos para tus sumisos'}</h3>
+          <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
           ${targets.map(t => `
             <div class="item">
               <b>${t.role === 'dominant' ? '♛' : '⛓'} ${escapeHtml(t.display_name)}</b>
