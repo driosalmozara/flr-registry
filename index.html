@@ -154,6 +154,10 @@
             <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
             Ver contraseña
           </label>
+                    <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+            <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
+            Recordar contraseña en este dispositivo
+          </label>
           <button onclick="login()">Entrar</button>
         </div>
 
@@ -291,15 +295,24 @@
         function togglePass(id, show) {
       document.getElementById(id).type = show ? 'text' : 'password';
     }
-    async function login() {
+       async function login() {
       if (!db) return alert('Configura Supabase primero.');
 
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
+      const remember = document.getElementById('remember').checked;
 
       const { error } = await db.auth.signInWithPassword({ email, password });
 
       if (error) return alert(error.message);
+
+      try {
+        if (remember) {
+          localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
+        } else {
+          localStorage.removeItem('flr_cred');
+        }
+      } catch (e) {}
 
       window.location.reload();
     }
@@ -704,7 +717,17 @@
         <p><b>TU_SUPABASE_URL</b><br>y<br><b>TU_SUPABASE_ANON_KEY</b></p>
       `;
     } else {
-      db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      try {
+        const saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred') || ''))));
+        if (saved && saved.email) {
+          document.getElementById('login-email').value = saved.email;
+          document.getElementById('login-password').value = saved.password || '';
+          document.getElementById('remember').checked = true;
+        }
+      } catch (e) {}
+
       init();
     }
   </script>
