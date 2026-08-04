@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mensajes privados — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#0b0b12}
+.item.mine{border-color:var(--gold)}
+.small{color:#a1a1aa;font-size:13px}
+select,input,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.danger{background:#7f1d1d;color:#fff}
+button.wide{width:100%;text-align:left;background:transparent;color:#fff;border:1px solid var(--line)}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+label{display:flex;gap:10px;align-items:center;margin:10px 0}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Mensajes privados</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+let myProfile = null;
+let users = [];
+let convs = [];
+let mySettings = null;
+let currentThread = null;
+
+function esc(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function nameOf(id){ return (users.find(x => x.id === id) || {}).display_name || '?'; }
+function otherOf(c){ return c.member_a === me ? c.member_b : c.member_a; }
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = session.user.id;
+
+  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me).maybeSingle();
+  myProfile = profile;
+
+  if (!myProfile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  await load();
+}
+
+async function load() {
+  const [u, c, s] = await Promise.all([
+    db.from('profiles').select('id, display_name, role').order('display_name').limit(500),
+    db.from('conversations').select('*').or(`member_a.eq.${me},member_b.eq.${me}`).order('created_at', { ascending: false }),
+    db.from('messaging_settings').select('*').eq('user_id', me).maybeSingle()
+  ]);
+
+  users = u.data || [];
+  convs = c.data || [];
+  mySettings = s.data;
+
+  await render();
+
+  if (currentThread) await openThread(currentThread);
+}
+
+async function render() {
+  const content = document.getElementById('content');
+  let html = '';
+
+  // Ajuste de mensajería (Dominantes y superusuarios)
+  if (myProfile.role === 'dominant') {
+    const open = mySettings ? mySettings.messaging_open : true;
+
+    html += `
+      <div class="card">
+        <h3>Tu mensajería privada</h3>
+        <label>
+          <input type="checkbox" id="mopen" ${open ? 'checked' : ''} />
+          Mensajería abierta (permitir que otros miembros te escriban)
+        </label>
+        <button onclick="saveMessaging()">Guardar</button>
+        <p class="small">Si la cierras, nadie podrá iniciarte conversaciones nuevas. Las ya aceptadas siguen activas.</p>
+      </div>
+    `;
+  }
+
+  // Nueva conversación
+  html += `
+    <div class="card">
+      <h3>Nueva conversación</h3>
+      <select id="target">
+        ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+      </select>
+      <button onclick="startConversation()">Abrir conversación</button>
+      <p class="small">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud que ella aceptará o rechazará.</p>
+    </div>
+  `;
+
+  // Solicitudes pendientes (yo soy receptor)
+  const requests = convs.filter(c => c.status === 'pending' && c.initiated_by !== me);
+
+  if (requests.length > 0) {
+    html += '<div class="card"><h3>Solicitudes de mensaje</h3>';
+
+    for (const c of requests) {
+      const { data: first } = await db
+        .from('private_messages')
+        .select('body')
+        .eq('conversation_id', c.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      html += `
+        <div class="item">
+          <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
+          ${first && first[0] ? `<p class="small">"${esc(first[0].body)}"</p>` : ''}
+          <button onclick="decide('${c.id}','accepted')">Aceptar</button>
+          <button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+  }
+
+  // Conversaciones
+  html += '<div class="card"><h3>Conversaciones</h3>';
+
+  const threads = convs.filter(c => c.status !== 'pending' || c.initiated_by === me);
+
+  if (threads.length === 0) html += '<p class="small">Sin conversaciones todavía.</p>';
+
+  threads.forEach(c => {
+    const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
+
+    html += `
+      <div class="item">
+        <button class="wide" onclick="openThread('${c.id}')">
+          ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
+        </button>
+      </div>
+    `;
+  });
+
+  html += '</div><div id="threadbox"></div>';
+
+  content.innerHTML = html;
+}
+
+async function openThread(id) {
+  currentThread = id;
+  const c = convs.find(x => x.id === id);
+  if (!c) return;
+
+  const box = document.getElementById('threadbox');
+
+  const { data: msgs } = await db
+    .from('private_messages')
+    .select('*')
+    .eq('conversation_id', id)
+    .order('created_at', { ascending: true });
+
+  await db
+    .from('private_messages')
+    .update({ read: true })
+    .eq('conversation_id', id)
+    .neq('sender_id', me)
+    .eq('read', false);
+
+  const canSend = c.status === 'accepted' || (c.status === 'pending' && c.initiated_by === me);
+
+  box.innerHTML = `
+    <div class="card">
+      <h3>💬 ${esc(nameOf(otherOf(c)))}</h3>
+      <div>
+        ${(msgs || []).map(m => `
+          <div class="item ${m.sender_id === me ? 'mine' : ''}">
+            <b>${m.sender_id === me ? 'Tú' : esc(nameOf(m.sender_id))}</b>
+            <br>${esc(m.body)}
+            <br><span class="small">${new Date(m.created_at).toLocaleString()}</span>
+          </div>
+        `).join('') || '<p class="small">Sin mensajes todavía.</p>'}
+      </div>
+      ${canSend ? `
+        <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
+        <button onclick="sendPrivate('${id}')">Enviar</button>
+      ` : `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>`}
+    </div>
+  `;
+}
+
+async function startConversation() {
+  const target = document.getElementById('target').value;
+  if (!target) return;
+
+  const existing = convs.find(c =>
+    (c.member_a === target && c.member_b === me) ||
+    (c.member_b === target && c.member_a === me)
+  );
+
+  if (existing) {
+    if (existing.status === 'rejected') return alert('Esta conversación fue rechazada.');
+    await openThread(existing.id);
+    return;
+  }
+
+  const { data: set } = await db
+    .from('messaging_settings')
+    .select('messaging_open')
+    .eq('user_id', target)
+    .maybeSingle();
+
+  if (set && set.messaging_open === false) {
+    return alert('Este miembro tiene la mensajería cerrada.');
+  }
+
+  const { data, error } = await db
+    .from('conversations')
+    .insert({ member_a: me, member_b: target, initiated_by: me })
+    .select()
+    .single();
+
+  if (error) return alert(error.message);
+
+  await load();
+  await openThread(data.id);
+}
+
+async function decide(id, status) {
+  const { error } = await db.from('conversations').update({ status }).eq('id', id);
+
+  if (error) return alert(error.message);
+
+  await load();
+}
+
+async function sendPrivate(id) {
+  const body = document.getElementById('mbody').value.trim();
+  if (!body) return;
+
+  const { error } = await db.from('private_messages').insert({
+    conversation_id: id,
+    sender_id: me,
+    body
+  });
+
+  if (error) return alert(error.message);
+
+  await openThread(id);
+}
+
+async function saveMessaging() {
+  const value = document.getElementById('mopen').checked;
+
+  const { error } = await db
+    .from('messaging_settings')
+    .upsert({ user_id: me, messaging_open: value }, { onConflict: 'user_id' });
+
+  if (error) return alert(error.message);
+
+  alert('Guardado.');
+  await load();
+}
+
+init();
+</script>
+</body>
+</html>
