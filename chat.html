@@ -34,6 +34,7 @@ button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;paddin
   #side{width:100%;max-height:160px}
   #msgs{height:300px}
 }
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;box-shadow:0 0 6px #22c55e}
 </style>
 </head>
 <body>
@@ -55,6 +56,8 @@ let myProfile = null;
 let isSuper = false;
 let mutes = [];
 let people = [];
+  let presenceChannel = null;
+let onlineIds = new Set();
 let selfNicks = [];
 let assignedNicks = [];
 
@@ -104,6 +107,20 @@ async function init() {
   db.channel('flr-chat')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadMessages())
     .subscribe();
+    presenceChannel = db.channel('flr-presencia', { config: { presence: { key: me } } });
+
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = presenceChannel.presenceState();
+      onlineIds = new Set();
+      Object.values(state).forEach(arr => arr.forEach(p => onlineIds.add(p.user_id)));
+      renderParticipants();
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({ user_id: me });
+      }
+    });
 }
 
 async function renderPage() {
@@ -167,7 +184,7 @@ async function renderPage() {
   html += `
     <div id="irc">
       <div id="side" class="card">
-        <h3>Participantes (${people.length})</h3>
+        <h3 id="ptitle">Participantes (${people.length})</h3>
         <div id="plist"></div>
       </div>
       <div id="main">
@@ -186,15 +203,21 @@ async function renderPage() {
 
 function renderParticipants() {
   const box = document.getElementById('plist');
+  const title = document.getElementById('ptitle');
+
+  if (title) {
+    title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
+  }
 
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
     const muted = mutes.includes(p.id);
+    const online = onlineIds.has(p.id);
 
     return `
       <div class="prow">
         <span style="color:${colorFor(n)}">
-          ${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${muted ? ' 🔇' : ''}
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${muted ? ' 🔇' : ''}
         </span>
         ${isSuper && p.id !== me ? `
           <button class="mini" onclick="muteToggle('${p.id}')">${muted ? '🔊' : '🔇'}</button>
