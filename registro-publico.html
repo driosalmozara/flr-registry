@@ -16,9 +16,11 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .small{color:#a1a1aa;font-size:13px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .free{color:#4ade80;font-size:13px}
-.rowitem{display:flex;gap:12px;align-items:center}
+.rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
 .ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-top:8px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -42,6 +44,9 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let currentUser = null;
+let myProfile = null;
+
 function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
@@ -51,7 +56,51 @@ function avatarHTML(url, fallback) {
   return `<div class="ava empty">${fallback}</div>`;
 }
 
+async function requestSubmissive(subId) {
+  if (!currentUser) return alert('Inicia sesión primero.');
+  if (myProfile.role !== 'dominant') return alert('Solo las Dominantes pueden solicitar sumisos.');
+
+  // Verificar si ya existe una solicitud pendiente
+  const { data: existing } = await db
+    .from('relationships')
+    .select('id, status')
+    .eq('dominant_id', currentUser.id)
+    .eq('submissive_id', subId)
+    .in('status', ['pending', 'confirmed'])
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === 'pending') return alert('Ya enviaste una solicitud a este sumiso.');
+    if (existing.status === 'confirmed') return alert('Este sumiso ya es tuyo.');
+  }
+
+  const { error } = await db.from('relationships').insert({
+    dominant_id: currentUser.id,
+    submissive_id: subId,
+    status: 'pending',
+    initiated_by: 'dominant'
+  });
+
+  if (error) return alert(error.message);
+
+  alert('Solicitud enviada. El sumiso decidirá si aceptarla.');
+  window.location.reload();
+}
+
 (async () => {
+  // Obtener sesión y perfil actual
+  const { data: { session } } = await db.auth.getSession();
+  currentUser = session?.user || null;
+
+  if (currentUser) {
+    const { data: profile } = await db
+      .from('profiles')
+      .select('id, role')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    myProfile = profile;
+  }
+
   const [doms, subs] = await Promise.all([
     db.rpc('public_dominants'),
     db.rpc('public_registry')
@@ -69,7 +118,7 @@ function avatarHTML(url, fallback) {
     html += doms.data.map(d => `
       <div class="item rowitem">
         ${avatarHTML(d.avatar_url, '♛')}
-        <div>
+        <div style="flex:1;min-width:200px;">
           <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
@@ -92,12 +141,14 @@ function avatarHTML(url, fallback) {
       const libre = r.dominant_name === 'Sumiso sin Dueña';
 
       if (libre) {
+        const showRequestBtn = myProfile && myProfile.role === 'dominant' && r.submissive_id !== currentUser?.id;
         return `
           <div class="item rowitem">
             ${avatarHTML(r.avatar_url, '⛓')}
-            <div>
+            <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
+              ${showRequestBtn ? `<button onclick="requestSubmissive('${r.submissive_id}')">♛ Solicitar ser su Dominante</button>` : ''}
             </div>
           </div>
         `;
@@ -106,7 +157,7 @@ function avatarHTML(url, fallback) {
       return `
         <div class="item rowitem">
           ${avatarHTML(r.avatar_url, '⛓')}
-          <div>
+          <div style="flex:1;min-width:200px;">
             <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
