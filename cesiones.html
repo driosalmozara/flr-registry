@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Cesiones — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:1000px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
+.tag{display:inline-block;padding:2px 10px;border:1px solid var(--line);border-radius:999px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a1a1aa}
+label{margin-right:14px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css">
+</head>
+<body>
+<header><h1 style="margin:0;">♛ Cesiones</h1><div><a class="navlink" href="index.html">Inicio</a></div></header>
+<main><div id="content" class="card">Cargando...</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let me = null, myProfile = null, people = [], transfers = [], mySubs = [];
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function name(id){ const p = people.find(x=>x.id===id); return p ? p.display_name : '?'; }
+async function authHeaders(){ const { data:{session} } = await db.auth.getSession(); return session ? { Authorization: 'Bearer ' + session.access_token } : null; }
+
+async function init(){
+  const content = document.getElementById('content');
+  const { data:{session} } = await db.auth.getSession();
+  if(!session){ content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+  const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
+  myProfile = profile;
+  if(!myProfile){ content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  const h = await authHeaders();
+  if(h) await fetch('/api/expire-transfers', { method:'POST', headers:h });
+  await render();
+}
+
+async function render(){
+  const content = document.getElementById('content');
+  const [p, t] = await Promise.all([
+    db.from('profiles').select('id, display_name, role').order('display_name').limit(300),
+    db.from('transfers').select('*').order('created_at', { ascending:false })
+  ]);
+  people = p.data || [];
+  transfers = t.data || [];
+  mySubs = [];
+  if(myProfile.role === 'dominant'){
+    const { data: subs } = await db.from('relationships')
+      .select('profiles!relationships_submissive_id_fkey(id, display_name)')
+      .eq('dominant_id', me).eq('status','confirmed');
+    mySubs = (subs||[]).map(s=>s.profiles).filter(Boolean);
+  }
+  let html = '';
+  if(myProfile.role === 'dominant'){
+    html += `
+      <div class="card">
+        <h3>Ceder a un sumiso</h3>
+        <p class="small">La cesión modifica automáticamente contrato y carnet. La nota con condiciones especiales es optativa.</p>
+        ${mySubs.length ? `
+        <div class="row">
+          <div><label class="small">Sumiso</label><select id="tr_sub">${mySubs.map(s=>`<option value="${s.id}">⛓ ${esc(s.display_name)}</option>`).join('')}</select></div>
+          <div><label class="small">Dominante receptora</label><select id="tr_dom">${people.filter(x=>x.role==='dominant'&&x.id!==me).map(d=>`<option value="${d.id}">♛ ${esc(d.display_name)}</option>`).join('')}</select></div>
+        </div>
+        <div class="row">
+          <div>
+            <label class="small"><input type="radio" name="tr_dur" value="indefinida" checked onchange="durToggle()"> Indefinida</label>
+            <label class="small"><input type="radio" name="tr_dur" value="temporal" onchange="durToggle()"> Temporal</label>
+          </div>
+          <div id="tr_date_wrap" style="display:none"><label class="small">Fecha máxima (retorno automático)</label><input type="date" id="tr_date"></div>
+        </div>
+        <label class="small">Nota con condiciones especiales (optativa)</label>
+        <textarea id="tr_note" rows="3" placeholder="Ej.: presentarse cada noche a las 22:00…"></textarea>
+        <button onclick="createTransfer()">Ceder</button>
+        ` : '<p class="small">No tienes sumisos confirmados que ceder.</p>'}
+      </div>`;
+  }
+  const recibidas = transfers.filter(t=>t.to_dominant_id===me && t.status==='pendiente');
+  html += `
+    <div class="card">
+      <h3>Cesiones recibidas · por firmar</h3>
+      ${recibidas.length ? recibidas.map(t=>`
+        <div class="item">
+          <b>⛓ ${esc(name(t.submissive_id))}</b> <span class="tag">${t.duration}</span>
+          <p class="small">Cedida por ♛ ${esc(name(t.from_dominant_id))}${t.expires_at ? ' · retorno automático: ' + new Date(t.expires_at).toLocaleDateString() : ''}</p>
+          ${t.note ? `<p class="small">📜 Condiciones: ${esc(t.note)}</p>` : ''}
+          <button onclick="signTransfer('${t.id}')">Firmar anexo de cesión</button>
+        </div>`).join('') : '<p class="small">No tienes cesiones pendientes de firma.</p>'}
+    </div>`;
+  const mias = transfers.filter(t=>t.from_dominant_id===me || t.submissive_id===me);
+  html += `
+    <div class="card">
+      <h3>Historial de cesiones</h3>
+      ${mias.length ? mias.map(t=>`
+        <div class="item">
+          <b>⛓ ${esc(name(t.submissive_id))}</b> <span class="tag">${t.status}</span> <span class="tag">${t.duration}</span>
+          <p class="small">De ♛ ${esc(name(t.from_dominant_id))} a ♛ ${esc(name(t.to_dominant_id))}${t.expires_at ? ' · fecha máxima: ' + new Date(t.expires_at).toLocaleDateString() : ''}</p>
+          ${t.note ? `<p class="small">📜 ${esc(t.note)}</p>` : ''}
+        </div>`).join('') : '<p class="small">Aún no hay cesiones.</p>'}
+    </div>`;
+  content.innerHTML = html;
+}
+
+function durToggle(){
+  const v = document.querySelector('input[name="tr_dur"]:checked').value;
+  document.getElementById('tr_date_wrap').style.display = v==='temporal' ? 'block' : 'none';
+}
+
+async function createTransfer(){
+  const h = await authHeaders(); if(!h) return alert('Inicia sesión.');
+  const submissive_id = document.getElementById('tr_sub').value;
+  const to_dominant_id = document.getElementById('tr_dom').value;
+  const duration = document.querySelector('input[name="tr_dur"]:checked').value;
+  const expires_at = duration==='temporal' ? document.getElementById('tr_date').value : null;
+  const note = document.getElementById('tr_note').value.trim();
+  if(duration==='temporal' && !expires_at) return alert('Indica la fecha máxima.');
+  const r = await fetch('/api/create-transfer', { method:'POST', headers:{...h,'Content-Type':'application/json'}, body: JSON.stringify({ submissive_id, to_dominant_id, duration, expires_at, note }) });
+  const j = await r.json();
+  if(!r.ok) return alert(j.error || 'Error al crear la cesión.');
+  alert('Cesión creada. Se activará cuando la Dominante receptora firme el anexo.');
+  window.location.reload();
+}
+
+async function signTransfer(id){
+  if(!confirm('¿Firmar el anexo de cesión y aceptar al sumiso?')) return;
+  const h = await authHeaders(); if(!h) return alert('Inicia sesión.');
+  const r = await fetch('/api/sign-transfer', { method:'POST', headers:{...h,'Content-Type':'application/json'}, body: JSON.stringify({ transfer_id:id }) });
+  const j = await r.json();
+  if(!r.ok) return alert(j.error || 'Error al firmar.');
+  alert('Cesión activa. Contrato y carnet actualizados.');
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
