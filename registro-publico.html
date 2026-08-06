@@ -56,11 +56,20 @@ function avatarHTML(url, fallback) {
   return `<div class="ava empty">${fallback}</div>`;
 }
 
+function messageButton(userId) {
+  if (!currentUser || userId === currentUser.id) return '';
+  return `<button onclick="window.location.href='mensajes.html?start=${userId}'">💬 Mensaje</button>`;
+}
+
+function requestSubButton(subId) {
+  if (!myProfile || myProfile.role !== 'dominant' || subId === currentUser?.id) return '';
+  return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
+}
+
 async function requestSubmissive(subId) {
   if (!currentUser) return alert('Inicia sesión primero.');
   if (myProfile.role !== 'dominant') return alert('Solo las Dominantes pueden solicitar sumisos.');
 
-  // Verificar si ya existe una solicitud pendiente
   const { data: existing } = await db
     .from('relationships')
     .select('id, status')
@@ -88,7 +97,6 @@ async function requestSubmissive(subId) {
 }
 
 (async () => {
-  // Obtener sesión y perfil actual
   const { data: { session } } = await db.auth.getSession();
   currentUser = session?.user || null;
 
@@ -122,6 +130,7 @@ async function requestSubmissive(subId) {
           <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
+          ${messageButton(d.user_id)}
         </div>
       </div>
     `).join('');
@@ -141,14 +150,14 @@ async function requestSubmissive(subId) {
       const libre = r.dominant_name === 'Sumiso sin Dueña';
 
       if (libre) {
-        const showRequestBtn = myProfile && myProfile.role === 'dominant' && r.submissive_id !== currentUser?.id;
         return `
           <div class="item rowitem">
             ${avatarHTML(r.avatar_url, '⛓')}
             <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
-              ${showRequestBtn ? `<button onclick="requestSubmissive('${r.submissive_id}')">♛ Solicitar ser su Dominante</button>` : ''}
+              ${requestSubButton(r.submissive_id)}
+              ${messageButton(r.submissive_id)}
             </div>
           </div>
         `;
@@ -162,6 +171,7 @@ async function requestSubmissive(subId) {
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
+            ${messageButton(r.submissive_id)}
           </div>
         </div>
       `;
