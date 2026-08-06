@@ -136,13 +136,17 @@ async function renderPage() {
   const content = document.getElementById('content');
 
   const [p, sn, an, mt] = await Promise.all([
-    db.from('profiles').select('id, display_name, role').order('display_name').limit(300),
+    db.from('profiles').select('id, display_name, role, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
     db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
     db.from('chat_mutes').select('user_id')
   ]);
 
   people = p.data || [];
+  people = (p.data || []).map(person => ({
+  ...person,
+  is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
+}));
   selfNicks = sn.data || [];
   assignedNicks = an.data || [];
   mutes = (mt.data || []).map(x => x.user_id);
@@ -236,10 +240,13 @@ function renderParticipants() {
     const muted = mutes.includes(p.id);
     const online = onlineIds.has(p.id);
 
+    // Verificar si está amordazado
+    const isMuzzled = p.is_muzzled || false;
+
     return `
       <div class="prow">
-        <span style="color:${colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${muted ? ' 🔇' : ''}
+        <span style="color:${isMuzzled ? '#dc2626' : colorFor(n)}">
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO POR SU DUEÑA)</span>' : ''}${muted ? ' 🔇' : ''}
         </span>
         ${isSuper && p.id !== me ? `
           <button class="mini" onclick="muteToggle('${p.id}')">${muted ? '🔊' : '🔇'}</button>
@@ -248,12 +255,24 @@ function renderParticipants() {
     `;
   }).join('');
 }
-
-function renderInputRow() {
+async function renderInputRow() {
   const row = document.getElementById('inputrow');
 
   if (mutes.includes(me)) {
     row.innerHTML = '<p class="small">🔇 Estás silenciado por un Administrador. No puedes enviar mensajes.</p>';
+    return;
+  }
+
+  // Verificar si estoy amordazado
+  const { data: myRel } = await db
+    .from('relationships')
+    .select('is_muzzled')
+    .eq('submissive_id', me)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+
+  if (myRel && myRel.is_muzzled) {
+    row.innerHTML = '<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. No puedes participar en el chat.</p>';
     return;
   }
 
