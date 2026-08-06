@@ -207,14 +207,23 @@
           </select>
 
           <input id="reg-display" placeholder="Nombre público" />
-          <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-          <input id="reg-email" type="email" placeholder="Correo" />
+<input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+<select id="reg-country">
+  <option value="">País de residencia...</option>
+</select>
+<input id="reg-email" type="email" placeholder="Correo" />
           <input id="reg-password" type="password" placeholder="Contraseña" />
           <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
             <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
             Ver contraseña
           </label>
-
+          
+<label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
+<input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
+<label class="small">
+  <input id="reg-social-public" type="checkbox" style="width:auto;margin-right:6px;" />
+  Mostrar mi país y redes en el registro público
+</label>
           <label class="small">
             <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
                         Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
@@ -273,6 +282,12 @@
     let db = null;
     let currentUser = null;
     let currentProfile = null;
+const COUNTRIES = [
+  'Argentina','Bolivia','Brasil','Canadá','Chile','Colombia','Costa Rica','Cuba',
+  'Ecuador','El Salvador','España','Estados Unidos','Guatemala','Honduras','México',
+  'Nicaragua','Panamá','Paraguay','Perú','Puerto Rico','República Dominicana',
+  'Uruguay','Venezuela','Otro'
+];
 
     function escapeHtml(value) {
       return String(value || '')
@@ -346,6 +361,9 @@
       }
 
       show('app');
+
+      // Renderizar sección de perfil editable
+      await renderMyProfile();
 
       if (currentProfile.role === 'dominant') {
         await renderDominant();
@@ -433,51 +451,49 @@
       window.location.reload();
     }
 
-    async function register() {
-      if (!db) return alert('Configura Supabase primero.');
+   async function register() {
+  if (!db) return alert('Configura Supabase primero.');
 
-      const role = document.getElementById('reg-role').value;
-      const display_name = document.getElementById('reg-display').value.trim();
-      const age = Number(document.getElementById('reg-age').value);
-      const email = document.getElementById('reg-email').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const consent = document.getElementById('reg-consent').checked;
+  const role = document.getElementById('reg-role').value;
+  const display_name = document.getElementById('reg-display').value.trim();
+  const age = Number(document.getElementById('reg-age').value);
+  const country = document.getElementById('reg-country').value;
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const consent = document.getElementById('reg-consent').checked;
+  const social_links = document.getElementById('reg-social').value.trim();
+  const social_links_public = document.getElementById('reg-social-public').checked;
 
-      if (!display_name || !email || !password) {
-        return alert('Completa los campos.');
-      }
+  if (!display_name || !email || !password) {
+    return alert('Completa los campos obligatorios.');
+  }
 
-      if (!age || age < 18) {
-        return alert('Debes ser mayor de 18.');
-      }
+  if (!country) return alert('Selecciona tu país.');
+  if (!age || age < 18) return alert('Debes ser mayor de 18.');
+  if (!consent) return alert('Debes aceptar la declaración de mayoría de edad.');
 
-      if (!consent) {
-        return alert('Debes aceptar la declaración de mayoría de edad.');
-      }
+  const { data, error } = await db.auth.signUp({ email, password });
 
-      const { data, error } = await db.auth.signUp({ email, password });
+  if (error) return alert(error.message);
 
-      if (error) return alert(error.message);
+  if (!data.user) return alert('Revisa tu correo para confirmar la cuenta.');
 
-      if (!data.user) {
-        return alert('Revisa tu correo para confirmar la cuenta.');
-      }
+  if (!data.session) return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
 
-      if (!data.session) {
-        return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
-      }
+  const { error: profileError } = await db.from('profiles').insert({
+    id: data.user.id,
+    role,
+    display_name,
+    age,
+    country,
+    social_links: social_links || null,
+    social_links_public
+  });
 
-      const { error: profileError } = await db.from('profiles').insert({
-        id: data.user.id,
-        role,
-        display_name,
-        age
-      });
+  if (profileError) return alert(profileError.message);
 
-      if (profileError) return alert(profileError.message);
-
-      window.location.reload();
-    }
+  window.location.reload();
+}
 
     async function createProfile() {
       if (!db) return alert('Configura Supabase primero.');
@@ -863,6 +879,69 @@
       window.location.reload();
     }
 
+    async function renderMyProfile() {
+  const dashboard = document.getElementById('dashboard');
+
+  // Verificar si el sumiso tiene Dominante confirmada
+  let isLocked = false;
+  if (currentProfile.role === 'submissive') {
+    const { data: rel } = await db
+      .from('relationships')
+      .select('id')
+      .eq('submissive_id', currentUser.id)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+    if (rel) isLocked = true;
+  }
+
+  const countryOptions = COUNTRIES.map(c =>
+    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
+  const profileCard = `
+    <div class="card">
+      <h2>Mi perfil</h2>
+      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
+      
+      <label class="small">País de residencia</label>
+      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
+        <option value="">Seleccionar...</option>
+        ${countryOptions}
+      </select>
+
+      <label class="small">Redes sociales / contacto (Instagram, WhatsApp, Telegram...)</label>
+      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
+
+      <label class="small">
+        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
+        Mostrar mi país y redes en el registro público
+      </label>
+
+      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
+    </div>
+  `;
+
+  // Insertar al inicio del dashboard
+  dashboard.insertAdjacentHTML('afterbegin', profileCard);
+}
+
+async function saveMyProfile() {
+  const country = document.getElementById('profile-country').value;
+  const social_links = document.getElementById('profile-social').value.trim();
+  const social_links_public = document.getElementById('profile-social-public').checked;
+
+  if (!country) return alert('Selecciona un país.');
+
+  const { error } = await db
+    .from('profiles')
+    .update({ country, social_links: social_links || null, social_links_public })
+    .eq('id', currentUser.id);
+
+  if (error) return alert(error.message);
+
+  alert('Perfil actualizado.');
+  window.location.reload();
+}
     if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
       document.getElementById('loading').innerHTML = `
         <h2>Falta configurar Supabase</h2>
@@ -887,6 +966,16 @@
         }
       } catch (e) {}
 
+      // Inicializar dropdown de países
+const regCountry = document.getElementById('reg-country');
+if (regCountry) {
+  COUNTRIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    regCountry.appendChild(opt);
+  });
+}
       init();
     }
   </script>
