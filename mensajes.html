@@ -312,6 +312,32 @@ async function startConversation() {
 }
 
 async function startConversationWith(target) {
+  // Verificar si estoy amordazado
+  const { data: myRel } = await db
+    .from('relationships')
+    .select('is_muzzled')
+    .eq('submissive_id', me)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+
+  if (myRel && myRel.is_muzzled) {
+    // Verificar si el destinatario es otra Dominante
+    const targetProfile = users.find(u => u.id === target);
+    if (targetProfile && targetProfile.role === 'dominant') {
+      // Verificar si NO es mi propia Dominante
+      const { data: myDominant } = await db
+        .from('relationships')
+        .select('dominant_id')
+        .eq('submissive_id', me)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+      
+      if (!myDominant || myDominant.dominant_id !== target) {
+        return alert('🔇 Estás amordazado por tu Dominante. No puedes iniciar conversaciones con otras Dominantes.');
+      }
+    }
+  }
+
   const existing = myConvs.find(c =>
     (c.member_a === target && c.member_b === me) ||
     (c.member_b === target && c.member_a === me)
@@ -356,6 +382,37 @@ async function decide(id, status) {
 async function sendPrivate(id) {
   const body = document.getElementById('mbody').value.trim();
   if (!body) return;
+
+  // Verificar si estoy amordazado
+  const { data: myRel } = await db
+    .from('relationships')
+    .select('is_muzzled')
+    .eq('submissive_id', me)
+    .eq('status', 'confirmed')
+    .maybeSingle();
+
+  if (myRel && myRel.is_muzzled) {
+    // Obtener información de la conversación para verificar si es con otra Dominante
+    const conv = allConvs.find(c => c.id === id);
+    if (conv) {
+      const otherId = otherOf(conv);
+      const otherProfile = users.find(u => u.id === otherId);
+      
+      if (otherProfile && otherProfile.role === 'dominant') {
+        // Verificar si NO es mi propia Dominante
+        const { data: myDominant } = await db
+          .from('relationships')
+          .select('dominant_id')
+          .eq('submissive_id', me)
+          .eq('status', 'confirmed')
+          .maybeSingle();
+        
+        if (!myDominant || myDominant.dominant_id !== otherId) {
+          return alert('🔇 Estás amordazado por tu Dominante. No puedes enviar mensajes privados a otras Dominantes.');
+        }
+      }
+    }
+  }
 
   const { error } = await db.from('private_messages').insert({
     conversation_id: id,
