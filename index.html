@@ -5,147 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Supremacía Femenina</title>
   <style>
-    :root {
-      --gold: #d4af37;
-      --dark: #0f0f1a;
-      --panel: #161625;
-      --line: #2a2a3d;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Segoe UI, Arial, sans-serif;
-      background: var(--dark);
-      color: #fff;
-    }
-
-    header {
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    h1,
-    h2,
-    h3 {
-      color: var(--gold);
-    }
-
-    main {
-      max-width: 950px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-
-    input,
-    select,
-    textarea {
-      width: 100%;
-      background: #0b0b12;
-      border: 1px solid var(--line);
-      color: #fff;
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin: 6px 0 14px;
-    }
-
-    button {
-      background: var(--gold);
-      color: #000;
-      font-weight: 700;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      background: transparent;
-      color: var(--gold);
-      border: 1px solid var(--gold);
-    }
-
-    button.danger {
-      background: #7f1d1d;
-      color: #fff;
-    }
-
-    .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .col {
-      flex: 1;
-      min-width: 260px;
-    }
-
-    .small {
-      color: #a1a1aa;
-      font-size: 13px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-size: 12px;
-    }
-
-    .item {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      margin: 10px 0;
-      background: #0b0b12;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .ava {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--gold);
-      flex: none;
-      background: #0b0b12;
-    }
-
-    .ava.empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #161625;
-      color: var(--gold);
-      font-size: 22px;
-    }
-
-    .rowitem {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 8px;
-    }
+    :root { --gold: #d4af37; --dark: #0f0f1a; --panel: #161625; --line: #2a2a3d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: var(--dark); color: #fff; }
+    header { padding: 16px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    h1, h2, h3 { color: var(--gold); }
+    main { max-width: 950px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+    input, select, textarea { width: 100%; background: #0b0b12; border: 1px solid var(--line); color: #fff; border-radius: 10px; padding: 10px 12px; margin: 6px 0 14px; }
+    button { background: var(--gold); color: #000; font-weight: 700; border: none; border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+    button.secondary { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+    button.danger { background: #7f1d1d; color: #fff; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 260px; }
+    .small { color: #a1a1aa; font-size: 13px; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--gold); color: var(--gold); font-size: 12px; }
+    .item { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 10px 0; background: #0b0b12; }
+    .hidden { display: none; }
+    .ava { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex: none; background: #0b0b12; }
+    .ava.empty { display: flex; align-items: center; justify-content: center; background: #161625; color: var(--gold); font-size: 22px; }
+    .rowitem { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -155,19 +34,19 @@
   <h1 style="margin:0;">♛ Supremacía Femenina</h1>
   <nav style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
     <a style="color:#d4af37;text-decoration:none;" href="registro-publico.html">Registro público</a>
-        <a style="color:#d4af37;text-decoration:none;" href="disponible.html">Disponibilidad</a>
+    <a style="color:#d4af37;text-decoration:none;" href="disponible.html">Disponibilidad</a>
     <a style="color:#d4af37;text-decoration:none;" href="verificar.html">Verificar carnet</a>
     <a style="color:#d4af37;text-decoration:none;" href="chat.html">Chat</a>
-        <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
+    <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
     <a style="color:#d4af37;text-decoration:none;" href="notificaciones.html">Notificaciones</a>
     <a style="color:#d4af37;text-decoration:none;" href="avatar.html">Mi avatar</a>
     <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
     <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
     <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
-        <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería</a>
-    <a href="cesiones.html">Cesiones</a>
+    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería</a>
+    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
     <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
-        <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
+    <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
   </nav>
 </header>
  <div id="impbar" class="hidden" style="background:#7f1d1d;color:#fff;padding:10px 22px;gap:12px;align-items:center;justify-content:center;font-size:14px;flex-wrap:wrap;">
@@ -188,54 +67,50 @@
             <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
             Ver contraseña
           </label>
-                    <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
             <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
             Recordar contraseña en este dispositivo
           </label>
           <button onclick="login()">Entrar</button>
-                    <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
+          <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
             Olvidé mi contraseña
           </p>
         </div>
 
         <div class="col card">
           <h2>Crear cuenta</h2>
-
           <select id="reg-role">
             <option value="submissive">⛓ Sumiso</option>
             <option value="dominant">♛ Dominante</option>
           </select>
-
           <input id="reg-display" placeholder="Nombre público" />
-<input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-<select id="reg-country">
-  <option value="">País de residencia...</option>
-</select>
-<input id="reg-email" type="email" placeholder="Correo" />
+          <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+          <select id="reg-country">
+            <option value="">País de residencia...</option>
+          </select>
+          <input id="reg-email" type="email" placeholder="Correo" />
           <input id="reg-password" type="password" placeholder="Contraseña" />
           <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
             <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
             Ver contraseña
           </label>
-          
-<label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
-<input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
-<label class="small">
-  <input id="reg-social-public" type="checkbox" style="width:auto;margin-right:6px;" />
-  Mostrar mi país y redes en el registro público
-</label>
+          <label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
+          <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
+          <label class="small">
+            <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
+            Mostrar mi país y redes en el registro público
+          </label>
           <label class="small">
             <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
-                        Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
+            Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
           </label>
-
           <br /><br />
           <button onclick="register()">Registrarme</button>
         </div>
       </div>
     </section>
 
-        <section id="reset" class="hidden">
+    <section id="reset" class="hidden">
       <div class="card" style="max-width:480px;margin:0 auto;">
         <h2>Restablecer contraseña</h2>
         <p class="small">Escribe y confirma tu nueva contraseña.</p>
@@ -244,17 +119,18 @@
         <button onclick="resetPassword()">Guardar nueva contraseña</button>
       </div>
     </section>
+
     <section id="profile-setup" class="hidden card">
       <h2>Completa tu perfil</h2>
-
       <select id="setup-role">
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
       </select>
-
       <input id="setup-display" placeholder="Nombre público" />
       <input id="setup-age" type="number" min="18" placeholder="Edad (18+)" />
-
+      <select id="setup-country">
+        <option value="">País de residencia...</option>
+      </select>
       <button onclick="createProfile()">Guardar perfil</button>
     </section>
 
@@ -266,10 +142,9 @@
             <div id="role-badge" class="badge"></div>
           </div>
           <button class="secondary" onclick="logout()">Cerrar sesión</button>
-                    <button class="danger" onclick="deleteMyAccount()">Eliminar mi cuenta</button>
+          <button class="danger" onclick="deleteMyAccount()">Eliminar mi cuenta</button>
         </div>
       </div>
-
       <div id="dashboard"></div>
     </section>
   </main>
@@ -282,20 +157,18 @@
     let db = null;
     let currentUser = null;
     let currentProfile = null;
-const COUNTRIES = [
-  'Argentina','Bolivia','Brasil','Canadá','Chile','Colombia','Costa Rica','Cuba',
-  'Ecuador','El Salvador','España','Estados Unidos','Guatemala','Honduras','México',
-  'Nicaragua','Panamá','Paraguay','Perú','Puerto Rico','República Dominicana',
-  'Uruguay','Venezuela','Otro'
-];
+
+    const COUNTRIES = [
+      'Argentina','Bolivia','Brasil','Canadá','Chile','Colombia','Costa Rica','Cuba',
+      'Ecuador','El Salvador','España','Estados Unidos','Guatemala','Honduras','México',
+      'Nicaragua','Panamá','Paraguay','Perú','Puerto Rico','República Dominicana',
+      'Uruguay','Venezuela','Otro'
+    ];
 
     function escapeHtml(value) {
       return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function avatarHTML(url, fallback) {
@@ -304,56 +177,31 @@ const COUNTRIES = [
     }
 
     function show(sectionId) {
-            ['loading', 'auth', 'profile-setup', 'app', 'reset'].forEach(id => {
+      ['loading', 'auth', 'profile-setup', 'app', 'reset'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
-
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-        async function init() {
-      if (window.location.hash.includes('type=recovery')) {
-        show('reset');
-        return;
-      }
-
+    async function init() {
+      if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
       currentUser = session?.user || null;
-                checkImpersonation(!!currentUser);
-
-      if (!currentUser) {
-        show('auth');
-        return;
-      }
-
+      checkImpersonation(!!currentUser);
+      if (!currentUser) { show('auth'); return; }
       await loadProfileAndRender();
     }
 
     async function loadProfileAndRender() {
-      const { data, error } = await db
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-
-      if (error) {
-        alert(error.message);
-        show('auth');
-        return;
-      }
-
+      const { data, error } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+      if (error) { alert(error.message); show('auth'); return; }
       currentProfile = data;
+      if (!currentProfile) { show('profile-setup'); return; }
 
-      if (!currentProfile) {
-        show('profile-setup');
-        return;
-      }
-
-            document.getElementById('welcome').textContent = currentProfile.display_name;
+      document.getElementById('welcome').textContent = currentProfile.display_name;
       document.getElementById('role-badge').textContent =
         currentProfile.role === 'dominant' ? '♛ Dominante' : '⛓ Sumiso';
 
-      // Verificar si es administrador para mostrar el enlace
       const { data: isAdminData } = await db.from('app_admins').select('user_id').eq('user_id', currentUser.id).maybeSingle();
       if (isAdminData) {
         const adminLink = document.getElementById('admin-link');
@@ -362,184 +210,180 @@ const COUNTRIES = [
 
       show('app');
 
-      // Renderizar sección de perfil editable
+      if (currentProfile.role === 'dominant') await renderDominant();
+      else await renderSubmissive();
+
       await renderMyProfile();
-
-      if (currentProfile.role === 'dominant') {
-        await renderDominant();
-      } else {
-        await renderSubmissive();
-      }
     }
 
-        function togglePass(id, show) {
-      document.getElementById(id).type = show ? 'text' : 'password';
+    function togglePass(id, showPass) {
+      document.getElementById(id).type = showPass ? 'text' : 'password';
     }
-        async function forgotPassword() {
-      const email = document.getElementById('login-email').value.trim()
-        || prompt('Escribe tu correo registrado:');
 
+    async function forgotPassword() {
+      const email = document.getElementById('login-email').value.trim() || prompt('Escribe tu correo registrado:');
       if (!email) return;
-
-      const { error } = await db.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/index.html'
-      });
-
+      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/index.html' });
       if (error) return alert(error.message);
-
       alert('Te enviamos un correo con el enlace para restablecer tu contraseña. Revisa también la carpeta de spam.');
     }
 
     async function resetPassword() {
       const p1 = document.getElementById('reset-password').value;
       const p2 = document.getElementById('reset-password2').value;
-
       if (p1.length < 6) return alert('La contraseña debe tener al menos 6 caracteres.');
       if (p1 !== p2) return alert('Las contraseñas no coinciden.');
-
       const { error } = await db.auth.updateUser({ password: p1 });
-
       if (error) return alert(error.message);
-
       alert('Contraseña actualizada. Ya puedes iniciar sesión.');
       window.location.href = 'index.html';
     }
-        function checkImpersonation(loggedIn) {
-      const bar = document.getElementById('impbar');
 
-      if (loggedIn && localStorage.getItem('flr_impersonating') === '1') {
-        bar.classList.remove('hidden');
-      } else {
-        bar.classList.add('hidden');
-      }
+    function checkImpersonation(loggedIn) {
+      const bar = document.getElementById('impbar');
+      if (loggedIn && localStorage.getItem('flr_impersonating') === '1') bar.classList.remove('hidden');
+      else bar.classList.add('hidden');
     }
 
     async function exitImpersonation() {
       const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
       const authKey = 'sb-' + ref + '-auth-token';
       const backup = localStorage.getItem('flr_admin_backup');
-
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
-
       if (backup) localStorage.setItem(authKey, backup);
       else localStorage.removeItem(authKey);
-
       window.location.href = 'index.html';
     }
-       async function login() {
-      if (!db) return alert('Configura Supabase primero.');
 
+    async function login() {
+      if (!db) return alert('Configura Supabase primero.');
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       const remember = document.getElementById('remember').checked;
-
       const { error } = await db.auth.signInWithPassword({ email, password });
-
       if (error) return alert(error.message);
-
       try {
-        if (remember) {
-          localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
-        } else {
-          localStorage.removeItem('flr_cred');
-        }
+        if (remember) localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
+        else localStorage.removeItem('flr_cred');
       } catch (e) {}
-               localStorage.removeItem('flr_impersonating');
+      localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
-
       window.location.reload();
     }
 
-   async function register() {
-  if (!db) return alert('Configura Supabase primero.');
+    async function register() {
+      if (!db) return alert('Configura Supabase primero.');
+      const role = document.getElementById('reg-role').value;
+      const display_name = document.getElementById('reg-display').value.trim();
+      const age = Number(document.getElementById('reg-age').value);
+      const country = document.getElementById('reg-country').value;
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const consent = document.getElementById('reg-consent').checked;
+      const social_links = document.getElementById('reg-social').value.trim();
+      const social_links_public = document.getElementById('reg-social-public').checked;
 
-  const role = document.getElementById('reg-role').value;
-  const display_name = document.getElementById('reg-display').value.trim();
-  const age = Number(document.getElementById('reg-age').value);
-  const country = document.getElementById('reg-country').value;
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const consent = document.getElementById('reg-consent').checked;
-  const social_links = document.getElementById('reg-social').value.trim();
-  const social_links_public = document.getElementById('reg-social-public').checked;
+      if (!display_name || !email || !password) return alert('Completa los campos obligatorios.');
+      if (!country) return alert('Selecciona tu país.');
+      if (!age || age < 18) return alert('Debes ser mayor de 18.');
+      if (!consent) return alert('Debes aceptar la declaración de mayoría de edad.');
 
-  if (!display_name || !email || !password) {
-    return alert('Completa los campos obligatorios.');
-  }
+      const { data, error } = await db.auth.signUp({ email, password });
+      if (error) return alert(error.message);
+      if (!data.user) return alert('Revisa tu correo para confirmar la cuenta.');
+      if (!data.session) return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
 
-  if (!country) return alert('Selecciona tu país.');
-  if (!age || age < 18) return alert('Debes ser mayor de 18.');
-  if (!consent) return alert('Debes aceptar la declaración de mayoría de edad.');
-
-  const { data, error } = await db.auth.signUp({ email, password });
-
-  if (error) return alert(error.message);
-
-  if (!data.user) return alert('Revisa tu correo para confirmar la cuenta.');
-
-  if (!data.session) return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
-
-  const { error: profileError } = await db.from('profiles').insert({
-    id: data.user.id,
-    role,
-    display_name,
-    age,
-    country,
-    social_links: social_links || null,
-    social_links_public
-  });
-
-  if (profileError) return alert(profileError.message);
-
-  window.location.reload();
-}
+      const { error: profileError } = await db.from('profiles').insert({
+        id: data.user.id, role, display_name, age, country,
+        social_links: social_links || null, social_links_public
+      });
+      if (profileError) return alert(profileError.message);
+      window.location.reload();
+    }
 
     async function createProfile() {
       if (!db) return alert('Configura Supabase primero.');
-
       const role = document.getElementById('setup-role').value;
       const display_name = document.getElementById('setup-display').value.trim();
       const age = Number(document.getElementById('setup-age').value);
-
-      if (!display_name || !age || age < 18) {
-        return alert('Completa nombre y edad 18+.');
-      }
-
-      const { error } = await db.from('profiles').insert({
-        id: currentUser.id,
-        role,
-        display_name,
-        age
-      });
-
+      const country = document.getElementById('setup-country').value;
+      if (!display_name || !age || age < 18) return alert('Completa nombre y edad 18+.');
+      const { error } = await db.from('profiles').insert({ id: currentUser.id, role, display_name, age, country });
       if (error) return alert(error.message);
-
       window.location.reload();
     }
 
-        async function deleteMyAccount() {
+    async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
       if (!confirm('Esta acción NO se puede deshacer. ¿Confirmas por segunda vez?')) return;
-
       const { data, error } = await db.functions.invoke('delete-my-account');
-
       if (error) return alert(error.message);
-
-      if (data && data.ok) {
-        alert('Tu cuenta ha sido eliminada. Gracias por participar.');
-        window.location.href = 'index.html';
-      } else {
-        alert('Error: ' + JSON.stringify(data));
-      }
+      if (data && data.ok) { alert('Tu cuenta ha sido eliminada. Gracias por participar.'); window.location.href = 'index.html'; }
+      else alert('Error: ' + JSON.stringify(data));
     }
-       async function logout() {
-      if (!db) return;
 
+    async function logout() {
+      if (!db) return;
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
-
       await db.auth.signOut();
+      window.location.reload();
+    }
+
+    async function renderMyProfile() {
+      const dashboard = document.getElementById('dashboard');
+
+      let isLocked = false;
+      if (currentProfile.role === 'submissive') {
+        const { data: rel } = await db.from('relationships').select('id')
+          .eq('submissive_id', currentUser.id).eq('status', 'confirmed').maybeSingle();
+        if (rel) isLocked = true;
+      }
+
+      const countryOptions = COUNTRIES.map(c =>
+        `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
+      ).join('');
+
+      const profileCard = `
+        <div class="card">
+          <h2>Mi perfil</h2>
+          ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
+          <label class="small">Nombre público</label>
+          <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
+          <label class="small">Bio / presentación</label>
+          <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
+          <label class="small">País de residencia</label>
+          <select id="profile-country" ${isLocked ? 'disabled' : ''}>
+            <option value="">Seleccionar...</option>
+            ${countryOptions}
+          </select>
+          <label class="small">Redes sociales / contacto</label>
+          <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
+          <label class="small">
+            <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
+            Mostrar mi país y redes en el registro público
+          </label>
+          ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
+        </div>
+      `;
+
+      dashboard.insertAdjacentHTML('afterbegin', profileCard);
+    }
+
+    async function saveMyProfile() {
+      const display_name = document.getElementById('profile-display').value.trim();
+      const bio = document.getElementById('profile-bio').value.trim();
+      const country = document.getElementById('profile-country').value;
+      const social_links = document.getElementById('profile-social').value.trim();
+      const social_links_public = document.getElementById('profile-social-public').checked;
+      if (!display_name) return alert('Escribe tu nombre público.');
+      if (!country) return alert('Selecciona un país.');
+      const { error } = await db.from('profiles')
+        .update({ display_name, bio, country, social_links: social_links || null, social_links_public })
+        .eq('id', currentUser.id);
+      if (error) return alert(error.message);
+      alert('Perfil actualizado.');
       window.location.reload();
     }
 
@@ -547,49 +391,25 @@ const COUNTRIES = [
       const dashboard = document.getElementById('dashboard');
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
 
-      const { data: requests, error: reqError } = await db
-        .from('relationships')
+      const { data: requests, error: reqError } = await db.from('relationships')
         .select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name, age, bio, avatar_url)')
-        .eq('dominant_id', currentUser.id)
-        .eq('status', 'pending');
+        .eq('dominant_id', currentUser.id).eq('status', 'pending');
+      if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
-      if (reqError) {
-        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`;
-        return;
-      }
-
-      const { data: submissives, error: subError } = await db
-        .from('relationships')
+      const { data: submissives, error: subError } = await db.from('relationships')
         .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public)')
-        .eq('dominant_id', currentUser.id)
-        .eq('status', 'confirmed');
-
-      if (subError) {
-        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`;
-        return;
-      }
+        .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
+      if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
       let records = [];
       let cards = [];
-
       if (submissives && submissives.length > 0) {
         const relIds = submissives.map(item => item.id);
-
-        const { data: recordData } = await db
-          .from('submissive_records')
-          .select('*')
-          .in('relationship_id', relIds);
-
+        const { data: recordData } = await db.from('submissive_records').select('*').in('relationship_id', relIds);
         records = recordData || [];
-
         const recordIds = records.map(item => item.id);
-
         if (recordIds.length > 0) {
-          const { data: cardData } = await db
-            .from('cards')
-            .select('*')
-            .in('record_id', recordIds);
-
+          const { data: cardData } = await db.from('cards').select('*').in('record_id', recordIds);
           cards = cardData || [];
         }
       }
@@ -597,13 +417,11 @@ const COUNTRIES = [
       let html = '';
 
       html += '<div class="card"><h2>Solicitudes pendientes</h2>';
-
       if (!requests || requests.length === 0) {
         html += '<p class="small">No tienes solicitudes pendientes.</p>';
       } else {
         requests.forEach(req => {
           const profile = req.profiles || {};
-
           html += `
             <div class="item">
               <div class="rowitem">
@@ -615,15 +433,12 @@ const COUNTRIES = [
               <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
               <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>
               <button class="secondary" onclick="messageSub('${req.submissive_id}')">💬 Mensaje</button>
-            </div>
-          `;
+            </div>`;
         });
       }
-
       html += '</div>';
 
       html += '<div class="card"><h2>Mis sumisos</h2>';
-
       if (!submissives || submissives.length === 0) {
         html += '<p class="small">Todavía no tienes sumisos confirmados.</p>';
       } else {
@@ -638,62 +453,50 @@ const COUNTRIES = [
             html += `<p class="small">No se encontró el registro. Intenta recargar.</p>`;
           } else {
             html += `<p class="small">Nº registro: ${escapeHtml(record.registration_number)}</p>`;
-
             html += `<label>Nombre de sumiso</label>`;
             html += `<input id="slave_name_${record.relationship_id}" value="${escapeHtml(record.slave_name || '')}" />`;
-
             html += `<label>Nivel</label>`;
             html += `<select id="level_${record.relationship_id}">
-              ${['inicial', 'entrenamiento', 'avanzado', 'total'].map(level => {
-                return `<option value="${level}" ${record.obedience_level === level ? 'selected' : ''}>${level}</option>`;
-              }).join('')}
+              ${['inicial', 'entrenamiento', 'avanzado', 'total'].map(level =>
+                `<option value="${level}" ${record.obedience_level === level ? 'selected' : ''}>${level}</option>`).join('')}
             </select>`;
-
             html += `<label>Notas</label>`;
             html += `<textarea id="notes_${record.relationship_id}" rows="3">${escapeHtml(record.notes || '')}</textarea>`;
-
             html += `<label class="small">
               <input type="checkbox" id="public_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.is_public ? 'checked' : ''}>
               Mostrar en registro público
             </label>`;
-            
             html += `<label class="small">
               <input type="checkbox" id="avatar_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>
               Mostrar su avatar en el registro público
             </label>`;
-                        html += `<label class="small" style="margin-top:10px;">🌎 País de residencia</label>`;
+
+            html += `<label class="small" style="margin-top:10px;">🌎 País de residencia</label>`;
             html += `<select id="pcountry_${sub.submissive_id}">
               <option value="">Seleccionar...</option>
               ${COUNTRIES.map(c => `<option value="${c}" ${sub.profiles?.country === c ? 'selected' : ''}>${c}</option>`).join('')}
             </select>`;
-
             html += `<label class="small">📱 Redes sociales / contacto</label>`;
             html += `<input id="psocial_${sub.submissive_id}" value="${escapeHtml(sub.profiles?.social_links || '')}" />`;
-
             html += `<label class="small">
               <input type="checkbox" id="psocialpublic_${sub.submissive_id}" style="width:auto; margin-right:6px;" ${sub.profiles?.social_links_public ? 'checked' : ''}>
               Mostrar país y redes en el registro público
             </label>`;
-
             html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar país y redes</button>`;
 
             html += `<div class="row" style="margin-top:10px;">`;
             html += `<button onclick="saveRecord('${record.relationship_id}')">Guardar</button>`;
-
             if (!card) {
               html += `<button class="secondary" onclick="issueCard('${record.id}')">Emitir carnet</button>`;
             } else {
               html += `<div class="small">Carnet: ${escapeHtml(card.card_number)}<br>Verificación: ${escapeHtml(card.verification_code || '')}</div>`;
               html += `<button class="secondary" onclick="issueCard('${record.id}')">Emitir otro carnet</button>`;
             }
-
             html += `</div>`;
           }
-
           html += `</div>`;
         });
       }
-
       html += '</div>';
 
       dashboard.innerHTML = html;
@@ -704,13 +507,8 @@ const COUNTRIES = [
     }
 
     async function respondRequest(id, status) {
-      const { error } = await db
-        .from('relationships')
-        .update({ status })
-        .eq('id', id);
-
+      const { error } = await db.from('relationships').update({ status }).eq('id', id);
       if (error) return alert(error.message);
-
       window.location.reload();
     }
 
@@ -720,42 +518,28 @@ const COUNTRIES = [
       const notes = document.getElementById(`notes_${relationshipId}`).value;
       const is_public = document.getElementById(`public_${relationshipId}`).checked;
       const show_avatar = document.getElementById(`avatar_${relationshipId}`).checked;
-
-      const { error } = await db
-        .from('submissive_records')
+      const { error } = await db.from('submissive_records')
         .update({ slave_name, obedience_level, notes, is_public, show_avatar })
         .eq('relationship_id', relationshipId);
-
       if (error) return alert(error.message);
-
       alert('Registro guardado.');
     }
-    
+
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
-
-      const { error } = await db
-        .from('profiles')
+      const { error } = await db.from('profiles')
         .update({ country, social_links: social_links || null, social_links_public })
         .eq('id', submissiveId);
-
       if (error) return alert(error.message);
-
       alert('País y redes del sumiso actualizados.');
     }
+
     async function issueCard(recordId) {
-      const { data, error } = await db
-        .from('cards')
-        .insert({ record_id: recordId })
-        .select()
-        .single();
-
+      const { data, error } = await db.from('cards').insert({ record_id: recordId }).select().single();
       if (error) return alert(error.message);
-
       alert(`Carnet emitido.\nNúmero: ${data.card_number}\nCódigo: ${data.verification_code || ''}`);
-
       window.location.reload();
     }
 
@@ -763,26 +547,15 @@ const COUNTRIES = [
       const dashboard = document.getElementById('dashboard');
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
 
-      const { data: domRequests } = await db
-        .from('relationships')
+      const { data: domRequests } = await db.from('relationships')
         .select('id, dominant_id, profiles!relationships_dominant_id_fkey(display_name, bio)')
-        .eq('submissive_id', currentUser.id)
-        .eq('status', 'pending')
-        .eq('initiated_by', 'dominant');
+        .eq('submissive_id', currentUser.id).eq('status', 'pending').eq('initiated_by', 'dominant');
 
-      const { data: rel, error: relError } = await db
-        .from('relationships')
+      const { data: rel, error: relError } = await db.from('relationships')
         .select('id, status, dominant_id, profiles!relationships_dominant_id_fkey(display_name)')
-        .eq('submissive_id', currentUser.id)
-        .in('status', ['pending', 'confirmed'])
-        .order('requested_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (relError) {
-        dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(relError.message)}</div>`;
-        return;
-      }
+        .eq('submissive_id', currentUser.id).in('status', ['pending', 'confirmed'])
+        .order('requested_at', { ascending: false }).limit(1).maybeSingle();
+      if (relError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(relError.message)}</div>`; return; }
 
       let html = '';
 
@@ -797,27 +570,17 @@ const COUNTRIES = [
                 <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
                 <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>
                 <button class="secondary" onclick="messageSub('${req.dominant_id}')">💬 Mensaje</button>
-              </div>
-            `;
+              </div>`;
           });
           html += '</div>';
         }
       }
 
       if (!rel) {
-        const { data: dominants, error: domError } = await db
-          .from('profiles')
-          .select('id, display_name, bio')
-          .eq('role', 'dominant')
-          .order('display_name');
-
-        if (domError) {
-          dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(domError.message)}</div>`;
-          return;
-        }
-
+        const { data: dominants, error: domError } = await db.from('profiles')
+          .select('id, display_name, bio').eq('role', 'dominant').order('display_name');
+        if (domError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(domError.message)}</div>`; return; }
         html += '<div class="card"><h2>Solicitar Dominante</h2>';
-
         if (!dominants || dominants.length === 0) {
           html += '<p class="small">Todavía no hay Dominantes registradas.</p>';
         } else {
@@ -825,10 +588,8 @@ const COUNTRIES = [
             <option value="">Elige una Dominante...</option>
             ${dominants.map(d => `<option value="${d.id}">${escapeHtml(d.display_name)}</option>`).join('')}
           </select>`;
-
           html += `<button onclick="requestDominant()">Enviar solicitud</button>`;
         }
-
         html += '</div>';
       }
 
@@ -841,38 +602,19 @@ const COUNTRIES = [
       }
 
       if (rel && rel.status === 'confirmed') {
-        const { data: record, error: recError } = await db
-          .from('submissive_records')
-          .select('*')
-          .eq('relationship_id', rel.id)
-          .maybeSingle();
-
-        if (recError) {
-          dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(recError.message)}</div>`;
-          return;
-        }
-
-        const { data: card } = await db
-          .from('cards')
-          .select('*')
-          .eq('record_id', record?.id)
-          .order('issued_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
+        const { data: record, error: recError } = await db.from('submissive_records')
+          .select('*').eq('relationship_id', rel.id).maybeSingle();
+        if (recError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(recError.message)}</div>`; return; }
+        const { data: card } = await db.from('cards').select('*').eq('record_id', record?.id)
+          .order('issued_at', { ascending: false }).limit(1).maybeSingle();
         html += `<div class="card">
           <h2>Estado confirmado</h2>
           <p>Perteneces a <b>♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
-
           ${record ? `
             <p>Nº registro: <b>${escapeHtml(record.registration_number)}</b></p>
             <p>Nombre de sumiso: <b>${escapeHtml(record.slave_name || 'Aún no asignado')}</b></p>
             <p>Nivel: <b>${escapeHtml(record.obedience_level || '')}</b></p>
-
-            ${card ? `
-              <p>Carnet: <b>${escapeHtml(card.card_number)}</b><br>
-              Código: <b>${escapeHtml(card.verification_code || '')}</b></p>
-            ` : '<p class="small">La Dominante aún no emite carnet.</p>'}
+            ${card ? `<p>Carnet: <b>${escapeHtml(card.card_number)}</b><br>Código: <b>${escapeHtml(card.verification_code || '')}</b></p>` : '<p class="small">La Dominante aún no emite carnet.</p>'}
           ` : '<p class="small">No hay registro todavía.</p>'}
         </div>`;
       }
@@ -882,216 +624,38 @@ const COUNTRIES = [
 
     async function requestDominant() {
       const dominantId = document.getElementById('dominant-select').value;
-
       if (!dominantId) return alert('Elige una Dominante.');
-
       const { error } = await db.from('relationships').insert({
-        dominant_id: dominantId,
-        submissive_id: currentUser.id,
-        status: 'pending',
-        initiated_by: 'submissive'
+        dominant_id: dominantId, submissive_id: currentUser.id, status: 'pending', initiated_by: 'submissive'
       });
-
       if (error) return alert(error.message);
-
       window.location.reload();
     }
 
     async function cancelRequest(id) {
-      const { error } = await db
-        .from('relationships')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await db.from('relationships').delete().eq('id', id);
       if (error) return alert(error.message);
-
       window.location.reload();
     }
 
-    async function renderMyProfile() {
-  const dashboard = document.getElementById('dashboard');
+    // Rellenar desplegables de países
+    ['reg-country', 'setup-country'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (sel) COUNTRIES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        sel.appendChild(opt);
+      });
+    });
 
-  let isLocked = false;
-  if (currentProfile.role === 'submissive') {
-    const { data: rel } = await db
-      .from('relationships')
-      .select('id')
-      .eq('submissive_id', currentUser.id)
-      .eq('status', 'confirmed')
-      .maybeSingle();
-    if (rel) isLocked = true;
-  }
-
-  const countryOptions = COUNTRIES.map(c =>
-    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
-  ).join('');
-
-  const profileCard = `
-    <div class="card">
-      <h2>Mi perfil</h2>
-      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
-
-      <label class="small">Nombre público</label>
-      <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
-
-      <label class="small">Bio / presentación</label>
-      <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
-
-      <label class="small">País de residencia</label>
-      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
-        <option value="">Seleccionar...</option>
-        ${countryOptions}
-      </select>
-
-      <label class="small">Redes sociales / contacto</label>
-      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
-
-      <label class="small">
-        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
-        Mostrar mi país y redes en el registro público
-      </label>
-
-      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-    </div>
-  `;
-
-  dashboard.insertAdjacentHTML('afterbegin', profileCard);
-}
-
-async function renderMyProfile() {
-  const dashboard = document.getElementById('dashboard');
-
-  let isLocked = false;
-  if (currentProfile.role === 'submissive') {
-    const { data: rel } = await db
-      .from('relationships')
-      .select('id')
-      .eq('submissive_id', currentUser.id)
-      .eq('status', 'confirmed')
-      .maybeSingle();
-    if (rel) isLocked = true;
-  }
-
-  const countryOptions = COUNTRIES.map(c =>
-    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
-  ).join('');
-
-  const profileCard = `
-    <div class="card">
-      <h2>Mi perfil</h2>
-      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
-
-      <label class="small">Nombre público</label>
-      <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
-
-      <label class="small">Bio / presentación</label>
-      <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
-
-      <label class="small">País de residencia</label>
-      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
-        <option value="">Seleccionar...</option>
-        ${countryOptions}
-      </select>
-
-      <label class="small">Redes sociales / contacto</label>
-      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
-
-      <label class="small">
-        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
-        Mostrar mi país y redes en el registro público
-      </label>
-
-      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-    </div>
-  `;
-
-  dashboard.insertAdjacentHTML('afterbegin', profileCard);
-}
-
-async function saveMyProfile() {
-  const display_name = document.getElementById('profile-display').value.trim();
-  const bio = document.getElementById('profile-bio').value.trim();
-  const country = document.getElementById('profile-country').value;
-  const social_links = document.getElementById('profile-social').value.trim();
-  const social_links_public = document.getElementById('profile-social-public').checked;
-
-  if (!display_name) return alert('Escribe tu nombre público.');
-  if (!country) return alert('Selecciona un país.');
-
-  const { error } = await db
-    .from('profiles')
-    .update({ display_name, bio, country, social_links: social_links || null, social_links_public })
-    .eq('id', currentUser.id);
-
-  if (error) return alert(error.message);
-
-  alert('Perfil actualizado.');
-  window.location.reload();
-}
-
-  const countryOptions = COUNTRIES.map(c =>
-    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
-  ).join('');
-
-  const profileCard = `
-    <div class="card">
-      <h2>Mi perfil</h2>
-      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
-      
-      <label class="small">País de residencia</label>
-      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
-        <option value="">Seleccionar...</option>
-        ${countryOptions}
-      </select>
-
-      <label class="small">Redes sociales / contacto (Instagram, WhatsApp, Telegram...)</label>
-      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
-
-      <label class="small">
-        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
-        Mostrar mi país y redes en el registro público
-      </label>
-
-      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-    </div>
-  `;
-
-  // Insertar al inicio del dashboard
-  dashboard.insertAdjacentHTML('afterbegin', profileCard);
-}
-
-async function saveMyProfile() {
-  const country = document.getElementById('profile-country').value;
-  const social_links = document.getElementById('profile-social').value.trim();
-  const social_links_public = document.getElementById('profile-social-public').checked;
-
-  if (!country) return alert('Selecciona un país.');
-
-  const { error } = await db
-    .from('profiles')
-    .update({ country, social_links: social_links || null, social_links_public })
-    .eq('id', currentUser.id);
-
-  if (error) return alert(error.message);
-
-  alert('Perfil actualizado.');
-  window.location.reload();
-}
     if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
       document.getElementById('loading').innerHTML = `
         <h2>Falta configurar Supabase</h2>
         <p>Edita el archivo index.html y reemplaza:</p>
-        <p><b>TU_SUPABASE_URL</b><br>y<br><b>TU_SUPABASE_ANON_KEY</b></p>
-      `;
+        <p><b>TU_SUPABASE_URL</b><br>y<br><b>TU_SUPABASE_ANON_KEY</b></p>`;
     } else {
-            db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            db.auth.onAuthStateChange((event) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          show('reset');
-        }
-      });
-      
-
+      db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      db.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') show('reset'); });
       try {
         const saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred') || ''))));
         if (saved && saved.email) {
@@ -1100,17 +664,6 @@ async function saveMyProfile() {
           document.getElementById('remember').checked = true;
         }
       } catch (e) {}
-
-      // Inicializar dropdown de países
-const regCountry = document.getElementById('reg-country');
-if (regCountry) {
-  COUNTRIES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    regCountry.appendChild(opt);
-  });
-}
       init();
     }
   </script>
