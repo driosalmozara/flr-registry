@@ -120,6 +120,32 @@
     .hidden {
       display: none;
     }
+
+    .ava {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold);
+      flex: none;
+      background: #0b0b12;
+    }
+
+    .ava.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #161625;
+      color: var(--gold);
+      font-size: 22px;
+    }
+
+    .rowitem {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -255,6 +281,11 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function avatarHTML(url, fallback) {
+      if (url) return `<img class="ava" src="${escapeHtml(url)}" />`;
+      return `<div class="ava empty">${fallback}</div>`;
     }
 
     function show(sectionId) {
@@ -495,7 +526,7 @@
 
       const { data: requests, error: reqError } = await db
         .from('relationships')
-        .select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name, age, bio)')
+        .select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name, age, bio, avatar_url)')
         .eq('dominant_id', currentUser.id)
         .eq('status', 'pending');
 
@@ -506,7 +537,7 @@
 
       const { data: submissives, error: subError } = await db
         .from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_dominant_id_fkey(display_name)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url)')
         .eq('dominant_id', currentUser.id)
         .eq('status', 'confirmed');
 
@@ -552,7 +583,10 @@
 
           html += `
             <div class="item">
-              <h3 style="margin:0;">${escapeHtml(profile.display_name || 'Sumiso')}</h3>
+              <div class="rowitem">
+                ${avatarHTML(profile.avatar_url, '⛓')}
+                <h3 style="margin:0;">${escapeHtml(profile.display_name || 'Sumiso')}</h3>
+              </div>
               <p class="small">Edad: ${escapeHtml(String(profile.age || ''))}</p>
               <p class="small">${escapeHtml(profile.bio || '')}</p>
               <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
@@ -575,7 +609,7 @@
           const card = record ? cards.find(c => c.record_id === record.id) : null;
 
           html += `<div class="item">`;
-          html += `<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>`;
+          html += `<div class="rowitem">${avatarHTML(sub.profiles?.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3></div>`;
 
           if (!record) {
             html += `<p class="small">No se encontró el registro. Intenta recargar.</p>`;
@@ -677,7 +711,6 @@
       const dashboard = document.getElementById('dashboard');
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
 
-      // Consultar solicitudes de Dominantes (initiated_by = 'dominant')
       const { data: domRequests } = await db
         .from('relationships')
         .select('id, dominant_id, profiles!relationships_dominant_id_fkey(display_name, bio)')
@@ -701,7 +734,6 @@
 
       let html = '';
 
-      // Mostrar solicitudes de Dominantes (si el sumiso no tiene relación confirmada)
       if (!rel || rel.status !== 'confirmed') {
         if (domRequests && domRequests.length > 0) {
           html += '<div class="card"><h2>♛ Solicitudes de Dominantes</h2>';
@@ -865,7 +897,6 @@ function googleTranslateElementInit() {
 <style>
 .goog-te-banner-frame{display:none!important}
 body{top:0!important}
-#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 #impbar{display:flex}
 #impbar.hidden{display:none!important}
 </style>
