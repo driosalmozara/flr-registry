@@ -911,7 +911,6 @@ const COUNTRIES = [
     async function renderMyProfile() {
   const dashboard = document.getElementById('dashboard');
 
-  // Verificar si el sumiso tiene Dominante confirmada
   let isLocked = false;
   if (currentProfile.role === 'submissive') {
     const { data: rel } = await db
@@ -922,6 +921,113 @@ const COUNTRIES = [
       .maybeSingle();
     if (rel) isLocked = true;
   }
+
+  const countryOptions = COUNTRIES.map(c =>
+    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
+  const profileCard = `
+    <div class="card">
+      <h2>Mi perfil</h2>
+      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
+
+      <label class="small">Nombre público</label>
+      <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
+
+      <label class="small">Bio / presentación</label>
+      <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
+
+      <label class="small">País de residencia</label>
+      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
+        <option value="">Seleccionar...</option>
+        ${countryOptions}
+      </select>
+
+      <label class="small">Redes sociales / contacto</label>
+      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
+
+      <label class="small">
+        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
+        Mostrar mi país y redes en el registro público
+      </label>
+
+      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
+    </div>
+  `;
+
+  dashboard.insertAdjacentHTML('afterbegin', profileCard);
+}
+
+async function renderMyProfile() {
+  const dashboard = document.getElementById('dashboard');
+
+  let isLocked = false;
+  if (currentProfile.role === 'submissive') {
+    const { data: rel } = await db
+      .from('relationships')
+      .select('id')
+      .eq('submissive_id', currentUser.id)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+    if (rel) isLocked = true;
+  }
+
+  const countryOptions = COUNTRIES.map(c =>
+    `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
+  const profileCard = `
+    <div class="card">
+      <h2>Mi perfil</h2>
+      ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
+
+      <label class="small">Nombre público</label>
+      <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
+
+      <label class="small">Bio / presentación</label>
+      <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
+
+      <label class="small">País de residencia</label>
+      <select id="profile-country" ${isLocked ? 'disabled' : ''}>
+        <option value="">Seleccionar...</option>
+        ${countryOptions}
+      </select>
+
+      <label class="small">Redes sociales / contacto</label>
+      <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
+
+      <label class="small">
+        <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
+        Mostrar mi país y redes en el registro público
+      </label>
+
+      ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
+    </div>
+  `;
+
+  dashboard.insertAdjacentHTML('afterbegin', profileCard);
+}
+
+async function saveMyProfile() {
+  const display_name = document.getElementById('profile-display').value.trim();
+  const bio = document.getElementById('profile-bio').value.trim();
+  const country = document.getElementById('profile-country').value;
+  const social_links = document.getElementById('profile-social').value.trim();
+  const social_links_public = document.getElementById('profile-social-public').checked;
+
+  if (!display_name) return alert('Escribe tu nombre público.');
+  if (!country) return alert('Selecciona un país.');
+
+  const { error } = await db
+    .from('profiles')
+    .update({ display_name, bio, country, social_links: social_links || null, social_links_public })
+    .eq('id', currentUser.id);
+
+  if (error) return alert(error.message);
+
+  alert('Perfil actualizado.');
+  window.location.reload();
+}
 
   const countryOptions = COUNTRIES.map(c =>
     `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
