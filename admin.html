@@ -19,6 +19,13 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 button.danger{background:#7f1d1d;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 label.small{display:block}
+.ava{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none;background:#0b0b12}
+.ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:18px}
+.ava.small{width:36px;height:36px;font-size:14px}
+.rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.rel-header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.rel-person{display:flex;align-items:center;gap:8px}
+.rel-arrow{color:var(--gold);font-size:20px;font-weight:700}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -41,6 +48,12 @@ let me = null;
 
 function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function avatarHTML(url, fallback, small) {
+  const sizeClass = small ? 'ava small' : 'ava';
+  if (url) return `<img class="${sizeClass}" src="${esc(url)}" />`;
+  return `<div class="${sizeClass} empty">${fallback}</div>`;
 }
 
 async function init() {
@@ -68,7 +81,7 @@ async function render() {
   const content = document.getElementById('content');
 
   const [u, a, r, rec, c] = await Promise.all([
-    db.from('profiles').select('id, role, display_name, age, bio, created_at').order('created_at', { ascending: false }),
+    db.from('profiles').select('id, role, display_name, age, bio, created_at, avatar_url').order('created_at', { ascending: false }),
     db.from('app_admins').select('user_id'),
     db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
@@ -81,7 +94,8 @@ async function render() {
   const records = rec.data || [];
   const cards = c.data || [];
 
-  const nameOf = id => (users.find(x => x.id === id) || {}).display_name || '?';
+  const userOf = id => users.find(x => x.id === id) || {};
+  const nameOf = id => userOf(id).display_name || '?';
 
   let html = '';
 
@@ -89,9 +103,11 @@ async function render() {
   html += '<div class="card"><h2>Administradores</h2>';
 
   users.filter(x => admins.includes(x.id)).forEach(x => {
-    html += `<div class="item"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Administrador</span>`;
-    if (x.id !== me) html += ` <button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
-    html += '</div>';
+    html += `<div class="item"><div class="rowitem">`;
+    html += avatarHTML(x.avatar_url, '♛');
+    html += `<div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Administrador</span></div>`;
+    if (x.id !== me) html += `<button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
+    html += `</div></div>`;
   });
 
   const candidates = users.filter(x => x.role === 'dominant' && !admins.includes(x.id));
@@ -112,12 +128,18 @@ async function render() {
 
   users.forEach(x => {
     const isAdmin = admins.includes(x.id);
+    const fallback = x.role === 'dominant' ? '♛' : '⛓';
 
     html += `
       <div class="item">
-        <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
-        <span class="small">— ${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— ADMIN' : ''}</span>
-        <br><span class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</span>
+        <div class="rowitem" style="margin-bottom:10px;">
+          ${avatarHTML(x.avatar_url, fallback)}
+          <div style="flex:1;min-width:200px;">
+            <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
+            <div class="small">${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— ADMIN' : ''}</div>
+            <div class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</div>
+          </div>
+        </div>
 
         <label class="small">Nombre público</label>
         <input id="name_${x.id}" value="${esc(x.display_name)}" />
@@ -139,12 +161,32 @@ async function render() {
   rels.forEach(rel => {
     const record = records.find(q => q.relationship_id === rel.id);
     const card = record ? cards.find(q => q.record_id === record.id) : null;
+    const dom = userOf(rel.dominant_id);
+    const sub = userOf(rel.submissive_id);
 
     html += `
       <div class="item">
-        <b>${esc(nameOf(rel.dominant_id))}</b> <span class="small">(Dominante)</span>
-        → <b>${esc(nameOf(rel.submissive_id))}</b> <span class="small">(Sumiso)</span>
-        — <span class="small">${esc(rel.status)}</span>
+        <div class="rel-header">
+          <div class="rel-person">
+            ${avatarHTML(dom.avatar_url, '♛', true)}
+            <div>
+              <b>${esc(nameOf(rel.dominant_id))}</b>
+              <div class="small">Dominante</div>
+            </div>
+          </div>
+          <div class="rel-arrow">→</div>
+          <div class="rel-person">
+            ${avatarHTML(sub.avatar_url, '⛓', true)}
+            <div>
+              <b>${esc(nameOf(rel.submissive_id))}</b>
+              <div class="small">Sumiso</div>
+            </div>
+          </div>
+          <div style="margin-left:auto;">
+            <span class="small" style="background:rgba(212,175,55,.15);padding:4px 10px;border-radius:8px;border:1px solid var(--gold);">${esc(rel.status)}</span>
+          </div>
+        </div>
+
         <div style="margin:8px 0;">
     `;
 
