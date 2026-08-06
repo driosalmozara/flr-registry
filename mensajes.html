@@ -312,31 +312,50 @@ async function startConversation() {
 }
 
 async function startConversationWith(target) {
-  // Verificar si estoy amordazado
+  // Mordaza: un sumiso amordazado SOLO puede iniciar conversación con su propia Dominante
   const { data: myRel } = await db
     .from('relationships')
-    .select('is_muzzled')
+    .select('is_muzzled, dominant_id')
     .eq('submissive_id', me)
     .eq('status', 'confirmed')
     .maybeSingle();
 
-  if (myRel && myRel.is_muzzled) {
-    // Verificar si el destinatario es otra Dominante
-    const targetProfile = users.find(u => u.id === target);
-    if (targetProfile && targetProfile.role === 'dominant') {
-      // Verificar si NO es mi propia Dominante
-      const { data: myDominant } = await db
-        .from('relationships')
-        .select('dominant_id')
-        .eq('submissive_id', me)
-        .eq('status', 'confirmed')
-        .maybeSingle();
-      
-      if (!myDominant || myDominant.dominant_id !== target) {
-        return alert('🔇 Estás amordazado por tu Dominante. No puedes iniciar conversaciones con otras Dominantes.');
-      }
-    }
+  if (myRel && myRel.is_muzzled && target !== myRel.dominant_id) {
+    return alert('🔇 Estás amordazado por tu Dominante. No puedes iniciar conversaciones con otros miembros.');
   }
+
+  const existing = myConvs.find(c =>
+    (c.member_a === target && c.member_b === me) ||
+    (c.member_b === target && c.member_a === me)
+  );
+
+  if (existing) {
+    if (existing.status === 'rejected') return alert('Esta conversación fue rechazada.');
+    await openThread(existing.id);
+    return;
+  }
+
+  const { data: set } = await db
+    .from('messaging_settings')
+    .select('messaging_open')
+    .eq('user_id', target)
+    .maybeSingle();
+
+  if (set && set.messaging_open === false) {
+    return alert('Este miembro tiene la mensajería cerrada.');
+  }
+
+  const { data, error } = await db
+    .from('conversations')
+    .insert({ member_a: me, member_b: target, initiated_by: me })
+    .select()
+    .single();
+
+  if (error) return alert(error.message);
+
+  await load();
+  await openThread(data.id);
+}
 
   const existing = myConvs.find(c =>
     (c.member_a === target && c.member_b === me) ||
@@ -383,37 +402,34 @@ async function sendPrivate(id) {
   const body = document.getElementById('mbody').value.trim();
   if (!body) return;
 
-  // Verificar si estoy amordazado
+  // Mordaza: un sumiso amordazado SOLO puede escribir a su propia Dominante
   const { data: myRel } = await db
     .from('relationships')
-    .select('is_muzzled')
+    .select('is_muzzled, dominant_id')
     .eq('submissive_id', me)
     .eq('status', 'confirmed')
     .maybeSingle();
 
   if (myRel && myRel.is_muzzled) {
-    // Obtener información de la conversación para verificar si es con otra Dominante
     const conv = allConvs.find(c => c.id === id);
     if (conv) {
       const otherId = otherOf(conv);
-      const otherProfile = users.find(u => u.id === otherId);
-      
-      if (otherProfile && otherProfile.role === 'dominant') {
-        // Verificar si NO es mi propia Dominante
-        const { data: myDominant } = await db
-          .from('relationships')
-          .select('dominant_id')
-          .eq('submissive_id', me)
-          .eq('status', 'confirmed')
-          .maybeSingle();
-        
-        if (!myDominant || myDominant.dominant_id !== otherId) {
-          return alert('🔇 Estás amordazado por tu Dominante. No puedes enviar mensajes privados a otras Dominantes.');
-        }
+      if (otherId !== myRel.dominant_id) {
+        return alert('🔇 Estás amordazado por tu Dominante. Solo puedes enviar mensajes a tu Dueña.');
       }
     }
   }
 
+  const { error } = await db.from('private_messages').insert({
+    conversation_id: id,
+    sender_id: me,
+    body
+  });
+
+  if (error) return alert(error.message);
+
+  await openThread(id);
+}
   const { error } = await db.from('private_messages').insert({
     conversation_id: id,
     sender_id: me,
