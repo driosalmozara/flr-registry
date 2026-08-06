@@ -14,10 +14,16 @@ main{max-width:700px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .small{color:#a1a1aa;font-size:13px}
 select,input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer;margin-right:8px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 img.avatar{width:130px;height:130px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0b0b12}
 input[type=file]{color:#a1a1aa}
+.sub-item{display:flex;gap:16px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:12px;margin:10px 0;background:#0b0b12}
+.sub-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#161625;flex:none}
+.sub-info{flex:1;min-width:200px}
+.sub-info h3{margin:0 0 6px;font-size:16px}
+.sub-info p{margin:0;color:#a1a1aa;font-size:13px}
+.hidden{display:none}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -54,7 +60,7 @@ async function init() {
 
   me = session.user.id;
 
-  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me).maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role, avatar_url').eq('id', me).maybeSingle();
   myProfile = profile;
 
   if (!myProfile) {
@@ -65,87 +71,102 @@ async function init() {
   const { data: superFlag } = await db.rpc('am_i_superadmin');
   const isSuper = !!superFlag;
 
-  let targets = [{ id: me, label: 'Mi propio avatar' }];
+  let html = '';
 
-  if (isSuper) {
-    const { data: users } = await db
-      .from('profiles')
-      .select('id, display_name, role')
-      .order('display_name')
-      .limit(300);
-
-    (users || []).forEach(u => {
-      if (u.id !== me) targets.push({ id: u.id, label: (u.role === 'dominant' ? '♛ ' : '⛓ ') + u.display_name });
-    });
-  } else if (myProfile.role === 'dominant') {
-    const { data: subs } = await db
-      .from('relationships')
-      .select('profiles!relationships_submissive_id_fkey(id, display_name)')
-      .eq('dominant_id', me)
-      .eq('status', 'confirmed');
-
-    (subs || []).forEach(s => {
-      if (s.profiles) targets.push({ id: s.profiles.id, label: '⛓ ' + s.profiles.display_name });
-    });
-  }
-
-  content.innerHTML = `
-    <h2>${isSuper ? 'Gestión total de avatares' : myProfile.role === 'dominant' ? 'Tu avatar y el de tus sumisos' : 'Tu avatar'}</h2>
-    <select id="target" onchange="preview()">
-      ${targets.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join('')}
-    </select>
-    <img class="avatar" id="prev" src="" />
-    <br/>
-    <input type="file" id="file" accept="image/*" />
-    <br/>
-    <button onclick="uploadAvatar()">Subir / cambiar avatar</button>
-    <p class="small">
-      ${isSuper ? 'Como superusuario puedes cambiar el avatar de cualquier miembro.' :
-        myProfile.role === 'dominant' ? 'Como Dominante puedes cambiar el avatar de tus sumisos confirmados.' :
-        'Solo tú puedes cambiar tu avatar.'}
-    </p>
+  // Sección 1: Tu propio avatar
+  html += `
+    <div class="card">
+      <h2>Tu avatar</h2>
+      <div style="text-align:center;">
+        <img class="avatar" id="myAvatar" src="${esc(myProfile.avatar_url || '')}" />
+        <br/><br/>
+        <input type="file" id="myFile" accept="image/*" />
+        <br/>
+        <button onclick="uploadMyAvatar()">Cambiar mi avatar</button>
+      </div>
+    </div>
   `;
 
-  await preview();
+  // Sección 2: Avatares de sumisos (solo Dominantes o Superadmin)
+  if (isSuper || myProfile.role === 'dominant') {
+    let subs = [];
+
+    if (isSuper) {
+      const { data: users } = await db
+        .from('profiles')
+        .select('id, display_name, role, avatar_url')
+        .neq('id', me)
+        .order('display_name')
+        .limit(300);
+      subs = users || [];
+    } else {
+      const { data: rels } = await db
+        .from('relationships')
+        .select('profiles!relationships_submissive_id_fkey(id, display_name, avatar_url)')
+        .eq('dominant_id', me)
+        .eq('status', 'confirmed');
+      subs = (rels || []).map(r => r.profiles).filter(Boolean);
+    }
+
+    if (subs.length > 0) {
+      html += `
+        <div class="card">
+          <h2>${isSuper ? 'Avatares de todos los miembros' : 'Avatares de tus sumisos'}</h2>
+          <p class="small">
+            ${isSuper ? 'Como superusuario puedes cambiar el avatar de cualquier miembro sin su consentimiento.' :
+              'Como Dominante puedes cambiar el avatar de tus sumisos sin necesidad de su consentimiento. Los cambios son inmediatos.'}
+          </p>
+          ${subs.map(s => `
+            <div class="sub-item">
+              <img class="sub-avatar" id="sub_${s.id}" src="${esc(s.avatar_url || '')}" />
+              <div class="sub-info">
+                <h3>${s.role === 'dominant' ? '♛' : '⛓'} ${esc(s.display_name)}</h3>
+                <p>${s.role === 'dominant' ? 'Dominante' : 'Sumiso'}</p>
+              </div>
+              <div>
+                <input type="file" id="file_${s.id}" accept="image/*" style="display:none;" onchange="uploadSubAvatar('${s.id}')" />
+                <button onclick="document.getElementById('file_${s.id}').click()">Cambiar</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  }
+
+  content.innerHTML = html;
 }
 
-async function preview() {
-  const target = document.getElementById('target').value;
-
-  const { data: p } = await db
-    .from('profiles')
-    .select('avatar_url')
-    .eq('id', target)
-    .maybeSingle();
-
-  document.getElementById('prev').src = p?.avatar_url || '';
-}
-
-async function uploadAvatar() {
-  const target = document.getElementById('target').value;
-  const file = document.getElementById('file').files[0];
-
+async function uploadMyAvatar() {
+  const file = document.getElementById('myFile').files[0];
   if (!file) return alert('Selecciona una imagen.');
 
-  const path = target + '/avatar';
-
-  const { error } = await db.storage
-    .from('avatars')
-    .upload(path, file, { upsert: true });
-
+  const path = me + '/avatar';
+  const { error } = await db.storage.from('avatars').upload(path, file, { upsert: true });
   if (error) return alert(error.message);
 
   const { data } = db.storage.from('avatars').getPublicUrl(path);
-
-  const { error: updateError } = await db
-    .from('profiles')
-    .update({ avatar_url: data.publicUrl })
-    .eq('id', target);
-
+  const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', me);
   if (updateError) return alert(updateError.message);
 
   alert('Avatar actualizado.');
-  await preview();
+  document.getElementById('myAvatar').src = data.publicUrl;
+}
+
+async function uploadSubAvatar(subId) {
+  const file = document.getElementById('file_' + subId).files[0];
+  if (!file) return alert('Selecciona una imagen.');
+
+  const path = subId + '/avatar';
+  const { error } = await db.storage.from('avatars').upload(path, file, { upsert: true });
+  if (error) return alert(error.message);
+
+  const { data } = db.storage.from('avatars').getPublicUrl(path);
+  const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', subId);
+  if (updateError) return alert(updateError.message);
+
+  alert('Avatar del sumiso actualizado.');
+  document.getElementById('sub_' + subId).src = data.publicUrl;
 }
 
 init();
