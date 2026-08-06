@@ -24,6 +24,8 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 .own-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.1));border:1px solid var(--gold);color:var(--gold);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
 .own-badge::before{content:"♛";font-size:14px}
+.meta-line{color:#a1a1aa;font-size:12px;margin-top:4px}
+.meta-line b{color:#e5e5e5}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -50,6 +52,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let myProfile = null;
 let idByName = {};
+let profilesById = {};
 
 function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -60,7 +63,6 @@ function avatarHTML(url, fallback) {
   return `<div class="ava empty">${fallback}</div>`;
 }
 
-// ID de una Dominante: campo directo si existe, o cruce por nombre con profiles
 function domId(d){
   return d.user_id || d.id || d.dominant_id || idByName[d.display_name] || null;
 }
@@ -78,6 +80,14 @@ function requestSubButton(subId) {
   if (!myProfile || myProfile.role !== 'dominant') return '';
   if (!subId || subId === currentUser?.id) return '';
   return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
+}
+
+function socialMeta(profile) {
+  if (!profile || !profile.social_links_public) return '';
+  const parts = [];
+  if (profile.country) parts.push(`<b>🌎 ${escapeHtml(profile.country)}</b>`);
+  if (profile.social_links) parts.push(`<b>📱 ${escapeHtml(profile.social_links)}</b>`);
+  return parts.length ? `<div class="meta-line">${parts.join(' · ')}</div>` : '';
 }
 
 async function requestSubmissive(subId) {
@@ -114,12 +124,16 @@ async function requestSubmissive(subId) {
   const { data: { session } } = await db.auth.getSession();
   currentUser = session?.user || null;
 
-  // Mapa nombre → ID (para identificar Dominantes, cuyo RPC no trae ID)
+  // Cargar todos los perfiles para mostrar país/redes cuando sea público
   const { data: allProfiles } = await db
     .from('profiles')
-    .select('id, display_name')
+    .select('id, display_name, country, social_links, social_links_public')
     .limit(500);
-  (allProfiles || []).forEach(p => { idByName[p.display_name] = p.id; });
+  
+  (allProfiles || []).forEach(p => {
+    idByName[p.display_name] = p.id;
+    profilesById[p.id] = p;
+  });
 
   if (currentUser) {
     const { data: profile } = await db
@@ -147,6 +161,7 @@ async function requestSubmissive(subId) {
     html += doms.data.map(d => {
       const uid = domId(d);
       const isOwn = !!currentUser && uid === currentUser.id;
+      const prof = profilesById[uid] || {};
       return `
       <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
         ${avatarHTML(d.avatar_url, '♛')}
@@ -154,6 +169,7 @@ async function requestSubmissive(subId) {
           <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
+          ${socialMeta(prof)}
           ${isOwn ? ownBadge() : messageButton(uid)}
         </div>
       </div>
@@ -174,6 +190,7 @@ async function requestSubmissive(subId) {
       const libre = r.dominant_name === 'Sumiso sin Dueña';
       const uid = r.submissive_id || null;
       const isOwn = !!currentUser && uid === currentUser.id;
+      const prof = profilesById[uid] || {};
 
       if (libre) {
         return `
@@ -182,6 +199,7 @@ async function requestSubmissive(subId) {
             <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
+              ${socialMeta(prof)}
               ${isOwn ? ownBadge() : (requestSubButton(uid) + messageButton(uid))}
             </div>
           </div>
@@ -196,6 +214,7 @@ async function requestSubmissive(subId) {
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
+            ${socialMeta(prof)}
             ${isOwn ? ownBadge() : messageButton(uid)}
           </div>
         </div>
