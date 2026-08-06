@@ -128,3 +128,5 @@ div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input
 }
 div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"])))::-webkit-scrollbar{width:8px}
 div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"])))::-webkit-scrollbar-thumb{background:rgba(201,162,75,.35);border-radius:99px}
+/* Nombre propio en oro (los colores del chat se conservan) */
+.card p.small b{color:var(--gold-light)!important}
