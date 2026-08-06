@@ -1,3 +1,12 @@
+/* ══ Corona en la pestaña (favicon) ══ */
+(function(){
+  if (document.querySelector('link[rel="icon"]')) return;
+  var link = document.createElement('link');
+  link.rel = 'icon';
+  link.type = 'image/svg+xml';
+  link.href = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="0.9em" font-size="90">👑</text></svg>');
+  document.head.appendChild(link);
+})();
 /* ══════ TOASTS DE NOTIFICACIONES EN TIEMPO REAL ══════ */
 (function(){
   // Crear el contenedor si no existe
