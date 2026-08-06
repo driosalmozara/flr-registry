@@ -148,4 +148,251 @@ async function renderPage() {
   mutes = (mt.data || []).map(x => x.user_id);
 
   const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
-  const { data: assignedNick } = await db
+  const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  let html = `
+    <div class="card">
+      <h3>Tu identidad en el chat</h3>
+      <p class="small">Apareces como: <b style="color:${colorFor(nameFor(me))}">${esc(nameFor(me))}</b>
+      ${assignedNick ? '· (apodo asignado por tu Dominante o un Administrador)' : ''}</p>
+      <input id="self_nick" placeholder="Tu apodo propio" value="${esc(selfNick?.nickname || '')}" />
+      <button onclick="setSelfNick()">Guardar mi apodo</button>
+    </div>
+  `;
+
+  // ── NUEVO: panel compacto con desplegable ──
+  if (isSuper || myProfile.role === 'dominant') {
+    let targets = [];
+
+    if (isSuper) {
+      targets = people.filter(x => x.id !== me);
+    } else {
+      const { data: subs } = await db
+        .from('relationships')
+        .select('profiles!relationships_submissive_id_fkey(id, display_name, role)')
+        .eq('dominant_id', me)
+        .eq('status', 'confirmed');
+      targets = (subs || []).map(s => s.profiles).filter(Boolean);
+    }
+
+    currentTargets = targets;
+
+    if (targets.length > 0) {
+      html += `
+        <div class="card">
+          <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
+          <p class="small">Elige un miembro, escribe el apodo y asigna. Sin scroll.</p>
+          <div class="nick-row">
+            <div>
+              <label for="assign_target">Miembro</label>
+              <select id="assign_target">
+                <option value="">— Seleccionar —</option>
+                ${targets.map(t => `<option value="${t.id}">${t.role === 'dominant' ? '♛' : '⛓'} ${esc(t.display_name)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label for="assign_nick">Nuevo apodo</label>
+              <input id="assign_nick" placeholder="Escribe el apodo" />
+            </div>
+            <div>
+              <button onclick="assignNickFromSelect()">Asignar</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  html += `
+    <div id="irc">
+      <div id="side" class="card">
+        <h3 id="ptitle">Participantes (${people.length})</h3>
+        <div id="plist"></div>
+      </div>
+      <div id="main">
+        <div id="msgs"></div>
+        <div id="inputrow"></div>
+      </div>
+    </div>
+  `;
+
+  content.innerHTML = html;
+
+  renderParticipants();
+  renderInputRow();
+  await loadMessages();
+}
+
+function renderParticipants() {
+  const box = document.getElementById('plist');
+  const title = document.getElementById('ptitle');
+
+  if (title) {
+    title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
+  }
+
+  box.innerHTML = people.map(p => {
+    const n = nameFor(p.id);
+    const muted = mutes.includes(p.id);
+    const online = onlineIds.has(p.id);
+
+    return `
+      <div class="prow">
+        <span style="color:${colorFor(n)}">
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${muted ? ' 🔇' : ''}
+        </span>
+        ${isSuper && p.id !== me ? `
+          <button class="mini" onclick="muteToggle('${p.id}')">${muted ? '🔊' : '🔇'}</button>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderInputRow() {
+  const row = document.getElementById('inputrow');
+
+  if (mutes.includes(me)) {
+    row.innerHTML = '<p class="small">🔇 Estás silenciado por un Administrador. No puedes enviar mensajes.</p>';
+    return;
+  }
+
+  row.innerHTML = `
+    <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
+    <button onclick="sendMsg()">Enviar</button>
+  `;
+}
+
+async function loadMessages() {
+  const box = document.getElementById('msgs');
+  if (!box) return;
+
+  const { data } = await db
+    .from('chat_messages_public')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  const list = (data || []).reverse();
+
+  box.innerHTML = list.map(m => {
+    const t = new Date(m.created_at);
+    const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+
+    return `
+      <div class="line">
+        <span class="time">[${hh}]</span>
+        <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
+        ${esc(m.body)}
+        ${(m.user_id === me || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
+      </div>
+    `;
+  }).join('') || '<p class="small">Todavía no hay mensajes.</p>';
+
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendMsg() {
+  const input = document.getElementById('msg');
+  const body = input.value.trim();
+
+  if (!body) return;
+
+  const { error } = await db.from('chat_messages').insert({ user_id: me, body });
+
+  if (error) return alert(error.message);
+
+  input.value = '';
+  await loadMessages();
+}
+
+async function deleteMsg(id) {
+  const { error } = await db.from('chat_messages').delete().eq('id', id);
+  if (error) return alert(error.message);
+  await loadMessages();
+}
+
+async function muteToggle(id) {
+  if (mutes.includes(id)) {
+    const { error } = await db.from('chat_mutes').delete().eq('user_id', id);
+    if (error) return alert(error.message);
+  } else {
+    const { error } = await db.from('chat_mutes').insert({ user_id: id, muted_by: me });
+    if (error) return alert(error.message);
+  }
+
+  await renderPage();
+}
+
+async function setSelfNick() {
+  const nickname = document.getElementById('self_nick').value.trim();
+
+  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
+
+  const { error } = await db
+    .from('chat_self_nicknames')
+    .upsert({ user_id: me, nickname }, { onConflict: 'user_id' });
+
+  if (error) return alert(error.message);
+
+  window.location.reload();
+}
+
+// ── NUEVA: asignar apodo desde el desplegable ──
+async function assignNickFromSelect() {
+  const targetId = document.getElementById('assign_target').value;
+  const nickname = document.getElementById('assign_nick').value.trim();
+
+  if (!targetId) return alert('Selecciona un miembro.');
+  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
+
+  const { error } = await db.from('chat_assigned_nicknames').insert({
+    target_user_id: targetId,
+    nickname,
+    assigned_by: me
+  });
+
+  if (error) return alert(error.message);
+
+  alert('Apodo asignado.');
+  window.location.reload();
+}
+
+// Se conserva por compatibilidad, aunque ya no se usa desde la UI
+async function assignNick(targetId) {
+  const nickname = document.getElementById('assign_' + targetId).value.trim();
+
+  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
+
+  const { error } = await db.from('chat_assigned_nicknames').insert({
+    target_user_id: targetId,
+    nickname,
+    assigned_by: me
+  });
+
+  if (error) return alert(error.message);
+
+  alert('Apodo asignado.');
+  window.location.reload();
+}
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
