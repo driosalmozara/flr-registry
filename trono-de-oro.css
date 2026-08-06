@@ -72,3 +72,24 @@ main p{max-width:860px}
 footer{border-top:1px solid var(--line)!important;color:var(--muted)!important;
 text-align:center;padding:40px 20px!important;background:transparent!important}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* ── v5: ajuste fino sobre captura real ── */
+/* Encabezado fijo al hacer scroll */
+header,nav,.navbar,.header{position:sticky;top:0;z-index:50}
+
+/* Píldoras del menú todas del mismo tamaño
+   (en la captura “Registro público” salía más grande) */
+nav a[href$=".html"],main a[href$=".html"],.menu a[href$=".html"]{
+font-size:.85rem!important;padding:11px 22px!important;letter-spacing:.08em!important}
+
+/* Tarjetas con brillo sutil al pasar el mouse */
+.card,.panel,.box{transition:.3s}
+.card:hover,.panel:hover,.box:hover{border-color:rgba(201,162,75,.45);transform:translateY(-2px)}
+
+/* Insignias de rol (♛ Dominante / ⛓ Sumiso) uniformes */
+.chip,.badge,.tag,span[class*="role"],span[class*="badge"]{
+display:inline-block;padding:4px 14px;border:1px solid rgba(201,162,75,.5);
+border-radius:999px;color:var(--gold-light)!important;font-size:.72rem;
+letter-spacing:.12em;text-transform:uppercase;background:rgba(201,162,75,.08)}
+
+/* Títulos de sección sin salto extra */
+h2{margin-top:0}
