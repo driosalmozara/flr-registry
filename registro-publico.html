@@ -49,6 +49,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 let myProfile = null;
+let idByName = {};
 
 function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -59,18 +60,13 @@ function avatarHTML(url, fallback) {
   return `<div class="ava empty">${fallback}</div>`;
 }
 
-// Detecta si el objeto corresponde al usuario actual (compara varios posibles campos)
-function isMe(obj) {
-  if (!currentUser || !obj) return false;
-  return obj.id === currentUser.id ||
-         obj.user_id === currentUser.id ||
-         obj.dominant_id === currentUser.id ||
-         obj.submissive_id === currentUser.id;
+// ID de una Dominante: campo directo si existe, o cruce por nombre con profiles
+function domId(d){
+  return d.user_id || d.id || d.dominant_id || idByName[d.display_name] || null;
 }
 
-function messageButton(obj) {
-  if (!currentUser || isMe(obj)) return '';
-  const userId = obj.user_id || obj.id || obj.submissive_id;
+function messageButton(userId) {
+  if (!currentUser || !userId || userId === currentUser.id) return '';
   return `<button onclick="window.location.href='mensajes.html?start=${userId}'">💬 Mensaje</button>`;
 }
 
@@ -80,7 +76,7 @@ function ownBadge() {
 
 function requestSubButton(subId) {
   if (!myProfile || myProfile.role !== 'dominant') return '';
-  if (subId === currentUser?.id) return '';
+  if (!subId || subId === currentUser?.id) return '';
   return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
 }
 
@@ -118,6 +114,13 @@ async function requestSubmissive(subId) {
   const { data: { session } } = await db.auth.getSession();
   currentUser = session?.user || null;
 
+  // Mapa nombre → ID (para identificar Dominantes, cuyo RPC no trae ID)
+  const { data: allProfiles } = await db
+    .from('profiles')
+    .select('id, display_name')
+    .limit(500);
+  (allProfiles || []).forEach(p => { idByName[p.display_name] = p.id; });
+
   if (currentUser) {
     const { data: profile } = await db
       .from('profiles')
@@ -142,7 +145,8 @@ async function requestSubmissive(subId) {
     html += '<p class="small">Todavía no hay Dominantes públicas.</p>';
   } else {
     html += doms.data.map(d => {
-      const isOwn = isMe(d);
+      const uid = domId(d);
+      const isOwn = !!currentUser && uid === currentUser.id;
       return `
       <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
         ${avatarHTML(d.avatar_url, '♛')}
@@ -150,7 +154,7 @@ async function requestSubmissive(subId) {
           <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
-          ${isOwn ? ownBadge() : messageButton(d)}
+          ${isOwn ? ownBadge() : messageButton(uid)}
         </div>
       </div>
     `}).join('');
@@ -168,7 +172,8 @@ async function requestSubmissive(subId) {
   } else {
     html2 += subs.data.map(r => {
       const libre = r.dominant_name === 'Sumiso sin Dueña';
-      const isOwn = isMe(r);
+      const uid = r.submissive_id || null;
+      const isOwn = !!currentUser && uid === currentUser.id;
 
       if (libre) {
         return `
@@ -177,7 +182,7 @@ async function requestSubmissive(subId) {
             <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
-              ${isOwn ? ownBadge() : (requestSubButton(r.submissive_id) + messageButton(r))}
+              ${isOwn ? ownBadge() : (requestSubButton(uid) + messageButton(uid))}
             </div>
           </div>
         `;
@@ -191,7 +196,7 @@ async function requestSubmissive(subId) {
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
-            ${isOwn ? ownBadge() : messageButton(r)}
+            ${isOwn ? ownBadge() : messageButton(uid)}
           </div>
         </div>
       `;
