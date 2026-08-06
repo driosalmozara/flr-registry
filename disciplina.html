@@ -15,6 +15,7 @@ main{max-width:1100px;margin:0 auto;padding:20px}
 .item{border-radius:12px;padding:14px;margin:10px 0;transition:.25s}
 .item.punishment{border:2px solid var(--burgundy-light);background:linear-gradient(135deg,rgba(110,31,42,.12),rgba(110,31,42,.04))}
 .item.reward{border:2px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.04))}
+.item.muzzle{border:2px solid #dc2626;background:linear-gradient(135deg,rgba(220,38,38,.15),rgba(220,38,38,.05))}
 .item.acknowledged{opacity:.7}
 .item.fulfilled{opacity:.5}
 .small{color:#a1a1aa;font-size:13px}
@@ -22,6 +23,8 @@ input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line)
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 button.danger{background:#7f1d1d;color:#fff}
+button.muzzle-btn{background:#dc2626;color:#fff;border:none;padding:10px 16px;font-weight:700}
+button.muzzle-btn.lift{background:#059669}
 button.quick{background:rgba(212,175,55,.15);color:var(--gold);border:1px solid rgba(212,175,55,.4);padding:6px 10px;font-size:12px;margin:4px 4px 4px 0}
 button.quick:hover{background:rgba(212,175,55,.25)}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
@@ -32,6 +35,9 @@ button.quick:hover{background:rgba(212,175,55,.25)}
 .balance-card.punishments .value{color:var(--burgundy-light)}
 .balance-card.rewards .value{color:var(--gold)}
 .balance-card.streak .value{color:#4ade80}
+.muzzle-status{background:rgba(220,38,38,.15);border:2px solid #dc2626;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center}
+.muzzle-status h4{margin:0 0 8px;color:#dc2626;font-size:18px}
+.muzzle-status p{margin:0;color:#fca5a5;font-size:13px}
 .filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .filter-btn{background:transparent;color:#a1a1aa;border:1px solid var(--line);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px}
 .filter-btn.active{background:var(--gold);color:#000;border-color:var(--gold)}
@@ -66,7 +72,6 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null;
 let currentFilter = 'all';
 
-// Catálogo rápido predefinido
 const QUICK_CATALOG = {
   punishment: [
     { title: 'Desobediencia leve', severity: 2, category: 'conducta' },
@@ -89,10 +94,12 @@ function escapeHtml(v){
 }
 
 function entryIcon(type){
+  if (type === 'muzzle') return '🔇';
   return type === 'reward' ? '🏅' : '⚖';
 }
 
 function entryLabel(type){
+  if (type === 'muzzle') return 'Mordaza';
   return type === 'reward' ? 'Recompensa' : 'Castigo';
 }
 
@@ -129,18 +136,15 @@ async function init() {
 }
 
 function calculateBalance(entries) {
-  const punishments = entries.filter(e => e.entry_type === 'punishment');
+  const punishments = entries.filter(e => e.entry_type === 'punishment' || e.entry_type === 'muzzle');
   const rewards = entries.filter(e => e.entry_type === 'reward');
   
   const punishmentScore = punishments.reduce((sum, e) => sum + (e.severity || 0), 0);
   const rewardScore = rewards.reduce((sum, e) => sum + (e.severity || 0), 0);
-  const balance = rewardScore - punishmentScore;
 
-  // Calcular racha (días consecutivos sin castigos desde el último castigo)
   const sortedPunishments = punishments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   let streak = 0;
   if (sortedPunishments.length === 0) {
-    // Sin castigos, racha = días desde el registro más antiguo
     const oldest = entries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
     if (oldest) {
       const daysSince = Math.floor((new Date() - new Date(oldest.created_at)) / (1000 * 60 * 60 * 24));
@@ -155,7 +159,6 @@ function calculateBalance(entries) {
   return {
     punishments: punishments.length,
     rewards: rewards.length,
-    balance,
     streak
   };
 }
@@ -197,7 +200,7 @@ function setFilter(filter) {
 
 function filterEntries(entries) {
   if (currentFilter === 'all') return entries;
-  return entries.filter(e => e.entry_type === currentFilter);
+  return entries.filter(e => e.entry_type === currentFilter || (currentFilter === 'punishment' && e.entry_type === 'muzzle'));
 }
 
 function renderCatalog(relId, type) {
@@ -232,7 +235,6 @@ async function quickAdd(relId, type, index) {
 
   if (error) return alert(error.message);
 
-  // Crear notificación
   await createNotification(relId, type, item.title);
 
   window.location.reload();
@@ -247,9 +249,17 @@ async function createNotification(relId, type, title) {
 
   if (!rel) return;
 
-  const notifType = type === 'reward' ? 'discipline_reward' : 'discipline_punishment';
-  const notifTitle = type === 'reward' ? '🏅 Nueva recompensa' : '⚖ Nuevo castigo';
-  const notifBody = `${rel.profiles?.display_name || 'Tu Dominante'} te asignó: ${title}`;
+  let notifType, notifTitle, notifBody;
+  
+  if (type === 'muzzle') {
+    notifType = 'discipline_muzzle';
+    notifTitle = '🔇 Has sido amordazado';
+    notifBody = `${rel.profiles?.display_name || 'Tu Dominante'} te ha impuesto el castigo de mordaza. No podrás enviar mensajes privados ni participar en el chat hasta que lo levante.`;
+  } else {
+    notifType = type === 'reward' ? 'discipline_reward' : 'discipline_punishment';
+    notifTitle = type === 'reward' ? '🏅 Nueva recompensa' : '⚖ Nuevo castigo';
+    notifBody = `${rel.profiles?.display_name || 'Tu Dominante'} te asignó: ${title}`;
+  }
 
   await db.from('notifications').insert({
     user_id: rel.submissive_id,
@@ -260,12 +270,66 @@ async function createNotification(relId, type, title) {
   });
 }
 
+async function applyMuzzle(relId) {
+  if (!confirm('¿Aplicar el castigo de MORDAZA?\n\nEl sumiso no podrá enviar mensajes privados a otras Dominantes ni participar en el chat hasta que levantes el castigo.')) return;
+
+  // Crear entrada de disciplina
+  const { data: entry, error: entryError } = await db.from('discipline_entries').insert({
+    relationship_id: relId,
+    entry_type: 'muzzle',
+    title: 'Mordaza',
+    description: 'Castigo de silencio. El sumiso no puede comunicarse con otras Dominantes ni participar en el chat.',
+    severity: 5,
+    category: 'silencio',
+    status: 'pending',
+    visible_to_submissive: true,
+    created_by: me.id
+  }).select().single();
+
+  if (entryError) return alert(entryError.message);
+
+  // Actualizar la relación
+  const { error: relError } = await db.from('relationships').update({
+    is_muzzled: true,
+    muzzled_at: new Date().toISOString(),
+    muzzled_by_entry_id: entry.id
+  }).eq('id', relId);
+
+  if (relError) return alert(relError.message);
+
+  await createNotification(relId, 'muzzle', 'Mordaza');
+
+  alert('Mordaza aplicada. El sumiso está ahora silenciado.');
+  window.location.reload();
+}
+
+async function liftMuzzle(relId) {
+  if (!confirm('¿Levantar el castigo de mordaza?')) return;
+
+  const { error: relError } = await db.from('relationships').update({
+    is_muzzled: false,
+    muzzled_at: null,
+    muzzled_by_entry_id: null
+  }).eq('id', relId);
+
+  if (relError) return alert(relError.message);
+
+  // Marcar la entrada como cumplida
+  const { data: rel } = await db.from('relationships').select('muzzled_by_entry_id').eq('id', relId).maybeSingle();
+  if (rel && rel.muzzled_by_entry_id) {
+    await db.from('discipline_entries').update({ status: 'fulfilled' }).eq('id', rel.muzzled_by_entry_id);
+  }
+
+  alert('Mordaza levantada. El sumiso puede volver a comunicarse.');
+  window.location.reload();
+}
+
 async function renderDominant() {
   const content = document.getElementById('content');
 
   const { data: subs, error } = await db
     .from('relationships')
-    .select('id, profiles!relationships_submissive_id_fkey(display_name)')
+    .select('id, is_muzzled, muzzled_at, profiles!relationships_submissive_id_fkey(display_name)')
     .eq('dominant_id', me.id)
     .eq('status', 'confirmed');
 
@@ -290,11 +354,20 @@ async function renderDominant() {
     const allEntries = (entries || []).filter(e => e.relationship_id === sub.id);
     const balance = calculateBalance(allEntries);
     const filtered = filterEntries(allEntries);
+    const isMuzzled = sub.is_muzzled;
 
     html += `
       <div class="card">
         <h3>⛓ ${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>
         
+        ${isMuzzled ? `
+          <div class="muzzle-status">
+            <h4>🔇 AMORDAZADO</h4>
+            <p>Desde: ${new Date(sub.muzzled_at).toLocaleString()}</p>
+            <button class="muzzle-btn lift" onclick="liftMuzzle('${sub.id}')">✓ Levantar mordaza</button>
+          </div>
+        ` : ''}
+
         ${renderBalance(balance)}
         ${renderFilters()}
 
@@ -315,6 +388,8 @@ async function renderDominant() {
           <option value="5">Nivel 5 — severo</option>
         </select>
         <button onclick="addEntry('${sub.id}')">Agregar entrada</button>
+        
+        ${!isMuzzled ? `<button class="muzzle-btn" onclick="applyMuzzle('${sub.id}')">🔇 Aplicar mordaza</button>` : ''}
 
         <div style="margin-top:20px;">
           ${filtered.map(e => renderEntry(e, true)).join('') || '<p class="small">Sin registros todavía.</p>'}
@@ -336,7 +411,7 @@ async function renderSubmissive() {
 
   const { data: rel } = await db
     .from('relationships')
-    .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+    .select('id, is_muzzled, muzzled_at, profiles!relationships_dominant_id_fkey(display_name)')
     .eq('submissive_id', me.id)
     .eq('status', 'confirmed')
     .maybeSingle();
@@ -356,11 +431,20 @@ async function renderSubmissive() {
   const allEntries = entries || [];
   const balance = calculateBalance(allEntries);
   const filtered = filterEntries(allEntries);
+  const isMuzzled = rel.is_muzzled;
 
   let html = `
     <div class="card">
       <h3>Tu historial con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>
       
+      ${isMuzzled ? `
+        <div class="muzzle-status">
+          <h4>🔇 ESTÁS AMORDAZADO</h4>
+          <p>Desde: ${new Date(rel.muzzled_at).toLocaleString()}</p>
+          <p>No puedes enviar mensajes privados a otras Dominantes ni participar en el chat.</p>
+        </div>
+      ` : ''}
+
       ${renderBalance(balance)}
       ${renderFilters()}
 
@@ -376,6 +460,7 @@ async function renderSubmissive() {
 function renderEntry(e, isDominant) {
   const canAcknowledge = !isDominant && e.status === 'pending';
   const canFulfill = isDominant && (e.status === 'pending' || e.status === 'acknowledged');
+  const isMuzzle = e.entry_type === 'muzzle';
 
   return `
     <div class="item ${e.entry_type} ${e.status}">
@@ -398,9 +483,9 @@ function renderEntry(e, isDominant) {
       </div>
       
       <div style="margin-top:12px;">
-        ${canAcknowledge ? `<button onclick="acknowledgeEntry('${e.id}')">✓ Acepto</button>` : ''}
-        ${canFulfill ? `<button class="secondary" onclick="fulfillEntry('${e.id}')">✓ Marcar cumplido</button>` : ''}
-        ${isDominant ? `<button class="danger" onclick="deleteEntry('${e.id}')">Eliminar</button>` : ''}
+        ${canAcknowledge && !isMuzzle ? `<button onclick="acknowledgeEntry('${e.id}')">✓ Acepto</button>` : ''}
+        ${canFulfill && !isMuzzle ? `<button class="secondary" onclick="fulfillEntry('${e.id}')">✓ Marcar cumplido</button>` : ''}
+        ${isDominant && !isMuzzle ? `<button class="danger" onclick="deleteEntry('${e.id}')">Eliminar</button>` : ''}
       </div>
     </div>
   `;
