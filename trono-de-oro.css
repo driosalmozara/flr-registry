@@ -114,3 +114,17 @@ cursor:pointer;position:relative;flex:none}
 input[type="checkbox"]:checked{background:var(--gold);border-color:var(--gold)}
 input[type="checkbox"]:checked::after{content:"✓";position:absolute;inset:0;
 display:grid;place-items:center;color:#0d0c0a;font-size:12px;font-weight:700}
+/* ── v7: panel de apodos compacto ── */
+div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"]))){
+  max-height:360px; overflow-y:auto;
+  background:rgba(255,255,255,.02);
+  border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px;
+}
+div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"])))::before{
+  content:"Apodos de miembros · desplázate para ver todos";
+  display:block; color:var(--muted); font-size:.7rem;
+  letter-spacing:.14em; text-transform:uppercase; margin-bottom:12px;
+}
+div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"])))::-webkit-scrollbar{width:8px}
+div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input[placeholder="Nuevo apodo"])))::-webkit-scrollbar-thumb{background:rgba(201,162,75,.35);border-radius:99px}
