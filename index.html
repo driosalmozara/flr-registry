@@ -166,7 +166,7 @@
     <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
         <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería</a>
     <a href="cesiones.html">Cesiones</a>
-    <a style="color:#d4af37;text-decoration:none;" href="admin.html">Admin</a>
+    <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
         <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
   </nav>
 </header>
@@ -334,9 +334,16 @@
         return;
       }
 
-      document.getElementById('welcome').textContent = currentProfile.display_name;
+            document.getElementById('welcome').textContent = currentProfile.display_name;
       document.getElementById('role-badge').textContent =
         currentProfile.role === 'dominant' ? '♛ Dominante' : '⛓ Sumiso';
+
+      // Verificar si es administrador para mostrar el enlace
+      const { data: isAdminData } = await db.from('app_admins').select('user_id').eq('user_id', currentUser.id).maybeSingle();
+      if (isAdminData) {
+        const adminLink = document.getElementById('admin-link');
+        if (adminLink) adminLink.style.display = 'inline';
+      }
 
       show('app');
 
