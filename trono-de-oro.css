@@ -93,3 +93,24 @@ letter-spacing:.12em;text-transform:uppercase;background:rgba(201,162,75,.08)}
 
 /* Títulos de sección sin salto extra */
 h2{margin-top:0}
+/* ── v6: remate final ── */
+
+/* 1) Botones de eliminación en burdeos elegante (disuasorios pero finos) */
+button[class*="danger"],button[class*="delete"],button[class*="eliminar"],
+button[id*="danger"],button[id*="delete"],button[id*="eliminar"],.btn-danger{
+color:#eec3c9!important;border-color:rgba(158,58,72,.75)!important;
+background:linear-gradient(180deg,rgba(110,31,42,.4),rgba(110,31,42,.18))!important;
+box-shadow:0 0 30px rgba(110,31,42,.28)!important}
+button[class*="danger"]:hover,button[class*="delete"]:hover,button[class*="eliminar"]:hover{
+background:linear-gradient(180deg,rgba(158,58,72,.55),rgba(110,31,42,.3))!important}
+
+/* 2) Enlaces sueltos siempre dorados (vi uno azulado en el chat) */
+a:any-link,a:visited,p a,main a,.card a{color:var(--gold-light)!important}
+
+/* 3) Checkboxes a juego con el trono (marcados en oro, sin cuadros blancos) */
+input[type="checkbox"]{appearance:none;-webkit-appearance:none;width:18px;height:18px;
+border:1px solid rgba(201,162,75,.55);border-radius:4px;background:var(--surface);
+cursor:pointer;position:relative;flex:none}
+input[type="checkbox"]:checked{background:var(--gold);border-color:var(--gold)}
+input[type="checkbox"]:checked::after{content:"✓";position:absolute;inset:0;
+display:grid;place-items:center;color:#0d0c0a;font-size:12px;font-weight:700}
