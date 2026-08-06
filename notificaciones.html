@@ -12,11 +12,24 @@ header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justif
 h1,h2,h3{color:var(--gold)}
 main{max-width:800px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:#0b0b12}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12;transition:.25s}
+.item:hover{border-color:rgba(212,175,55,.5);background:rgba(212,175,55,.04)}
+.item.unread{border-color:var(--gold);box-shadow:0 0 18px rgba(212,175,55,.15)}
+.item.message{border-left:3px solid var(--gold)}
 .small{color:#a1a1aa;font-size:13px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.danger{background:#7f1d1d;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-.unread{border-color:var(--gold)}
+.notif-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.notif-header > div:first-child{flex:1;min-width:200px}
+.notif-title{font-size:15px;font-weight:600;color:var(--gold);margin-bottom:4px}
+.notif-body{color:#e5e5e5;font-size:14px;line-height:1.5}
+.notif-meta{color:#a1a1aa;font-size:12px;margin-top:6px}
+.badge-new{display:inline-block;background:var(--gold);color:#000;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.btn-go{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:6px 14px;border-radius:8px;font-size:12px;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:.25s;white-space:nowrap}
+.btn-go:hover{background:var(--gold);color:#000}
+.empty{text-align:center;padding:40px 20px;color:#a1a1aa}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css">
@@ -39,11 +52,22 @@ function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function iconFor(type) {
+  if (type === 'new_submissive_request') return '📩';
+  if (type === 'relationship_confirmed') return '✅';
+  if (type === 'relationship_released') return '🕊';
+  if (type === 'message_request') return '💌';
+  if (type === 'private_message') return '💬';
+  return '🔔';
+}
+
 function labelFor(type) {
-  if (type === 'new_submissive_request') return '📩 Nueva solicitud de un sumiso';
-  if (type === 'relationship_confirmed') return '✅ Tu Dominante te ha confirmado';
-  if (type === 'relationship_released') return '🕊 Has sido liberado';
-  return '🔔 ' + escapeHtml(type);
+  if (type === 'new_submissive_request') return 'Nueva solicitud de un sumiso';
+  if (type === 'relationship_confirmed') return 'Tu Dominante te ha confirmado';
+  if (type === 'relationship_released') return 'Has sido liberado';
+  if (type === 'message_request') return 'Solicitud de mensaje';
+  if (type === 'private_message') return 'Mensaje privado';
+  return escapeHtml(type);
 }
 
 async function init() {
@@ -60,37 +84,64 @@ async function init() {
     .select('*')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (!items || items.length === 0) {
-    content.innerHTML = '<h2>Sin notificaciones</h2><p class="small">Aquí verás solicitudes, confirmaciones y liberaciones.</p>';
+    content.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔔</div>
+        <h2 style="color:var(--gold);margin-bottom:8px;">Sin notificaciones</h2>
+        <p>Aquí verás solicitudes, confirmaciones, mensajes y liberaciones.</p>
+      </div>
+    `;
     return;
   }
 
+  const unreadCount = items.filter(n => !n.read).length;
+
   content.innerHTML = `
-    <h2>Notificaciones</h2>
-    <button onclick="markRead()">Marcar todas como leídas</button>
-    ${items.map(n => `
-      <div class="item ${n.read ? '' : 'unread'}">
-        <b>${labelFor(n.type)}</b>
-        <br><span class="small">${escapeHtml(new Date(n.created_at).toLocaleString())}</span>
-        ${n.read ? '' : ' <span class="small" style="color:var(--gold);">● nueva</span>'}
-      </div>
-    `).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+      <h2 style="margin:0;">Notificaciones ${unreadCount > 0 ? `<span class="small">· ${unreadCount} sin leer</span>` : ''}</h2>
+      ${unreadCount > 0 ? `<button onclick="markRead()">Marcar todas como leídas</button>` : ''}
+    </div>
+    ${items.map(n => {
+      const isMessage = n.type === 'private_message' || n.type === 'message_request';
+      const title = n.title || labelFor(n.type);
+      const body = n.body || '';
+      const link = n.link || '';
+      return `
+        <div class="item ${n.read ? '' : 'unread'} ${isMessage ? 'message' : ''}">
+          <div class="notif-header">
+            <div>
+              <div class="notif-title">${iconFor(n.type)} ${escapeHtml(title)}</div>
+              ${body ? `<div class="notif-body">${escapeHtml(body)}</div>` : ''}
+              <div class="notif-meta">
+                ${new Date(n.created_at).toLocaleString()}
+                ${n.read ? '' : ' · <span class="badge-new">Nueva</span>'}
+              </div>
+            </div>
+            ${link ? `<a href="${escapeHtml(link)}" class="btn-go" onclick="markThisRead('${n.id}')">Ver</a>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('')}
   `;
+}
+
+async function markThisRead(id) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return;
+  await db.from('notifications').update({ read: true }).eq('id', id);
 }
 
 async function markRead() {
   const { data: { session } } = await db.auth.getSession();
-
   const { error } = await db
     .from('notifications')
     .update({ read: true })
     .eq('user_id', session.user.id)
     .eq('read', false);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
@@ -114,4 +165,3 @@ body{top:0!important}
 </style>
 </body>
 </html>
- 
