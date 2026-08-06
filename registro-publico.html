@@ -13,14 +13,17 @@ h1,h2,h3{color:var(--gold)}
 main{max-width:900px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
+.item.own-profile{border-color:var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.02))}
 .small{color:#a1a1aa;font-size:13px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .free{color:#4ade80;font-size:13px}
 .rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
 .ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-top:8px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-top:8px;margin-right:6px}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.own-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.1));border:1px solid var(--gold);color:var(--gold);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+.own-badge::before{content:"♛";font-size:14px}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -56,13 +59,28 @@ function avatarHTML(url, fallback) {
   return `<div class="ava empty">${fallback}</div>`;
 }
 
-function messageButton(userId) {
-  if (!currentUser || userId === currentUser.id) return '';
+// Detecta si el objeto corresponde al usuario actual (compara varios posibles campos)
+function isMe(obj) {
+  if (!currentUser || !obj) return false;
+  return obj.id === currentUser.id ||
+         obj.user_id === currentUser.id ||
+         obj.dominant_id === currentUser.id ||
+         obj.submissive_id === currentUser.id;
+}
+
+function messageButton(obj) {
+  if (!currentUser || isMe(obj)) return '';
+  const userId = obj.user_id || obj.id || obj.submissive_id;
   return `<button onclick="window.location.href='mensajes.html?start=${userId}'">💬 Mensaje</button>`;
 }
 
+function ownBadge() {
+  return `<div class="own-badge">Este es tu perfil</div>`;
+}
+
 function requestSubButton(subId) {
-  if (!myProfile || myProfile.role !== 'dominant' || subId === currentUser?.id) return '';
+  if (!myProfile || myProfile.role !== 'dominant') return '';
+  if (subId === currentUser?.id) return '';
   return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
 }
 
@@ -123,17 +141,19 @@ async function requestSubmissive(subId) {
   if (!doms.data || doms.data.length === 0) {
     html += '<p class="small">Todavía no hay Dominantes públicas.</p>';
   } else {
-    html += doms.data.map(d => `
-      <div class="item rowitem">
+    html += doms.data.map(d => {
+      const isOwn = isMe(d);
+      return `
+      <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
         ${avatarHTML(d.avatar_url, '♛')}
         <div style="flex:1;min-width:200px;">
           <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span></h3>
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
-          ${messageButton(d.user_id)}
+          ${isOwn ? ownBadge() : messageButton(d)}
         </div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   domsBox.innerHTML = html;
@@ -148,30 +168,30 @@ async function requestSubmissive(subId) {
   } else {
     html2 += subs.data.map(r => {
       const libre = r.dominant_name === 'Sumiso sin Dueña';
+      const isOwn = isMe(r);
 
       if (libre) {
         return `
-          <div class="item rowitem">
+          <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
             ${avatarHTML(r.avatar_url, '⛓')}
             <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
-              ${requestSubButton(r.submissive_id)}
-              ${messageButton(r.submissive_id)}
+              ${isOwn ? ownBadge() : (requestSubButton(r.submissive_id) + messageButton(r))}
             </div>
           </div>
         `;
       }
 
       return `
-        <div class="item rowitem">
+        <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
           ${avatarHTML(r.avatar_url, '⛓')}
           <div style="flex:1;min-width:200px;">
             <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
-            ${messageButton(r.submissive_id)}
+            ${isOwn ? ownBadge() : messageButton(r)}
           </div>
         </div>
       `;
