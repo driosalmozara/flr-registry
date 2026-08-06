@@ -18,6 +18,8 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 button.danger{background:#7f1d1d;color:#fff}
 .badge{display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.anexo{background:rgba(201,162,75,.08);border:2px solid var(--gold);border-radius:14px;padding:18px;margin:18px 0}
+.anexo h3{color:var(--gold);margin-top:0}
 </style>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css">
@@ -71,7 +73,7 @@ Derecho a mantener privacidad de comunicaciones
 Derecho a decidir sobre su apariencia personal
 Cualquier otro derecho que La Dueña considere necesario regular
 
-Cláusula de cesión. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
+CLÁUSULA DE CESIÓN. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
 
 CLÁUSULA III: OBLIGACIONES DEL ESCLAVO
 3.1 Obedecer todas las órdenes, reglas y directrices emitidas por La Dueña sin cuestionamiento ni demora injustificada.
@@ -169,11 +171,16 @@ async function init() {
 
   me = profile;
 
+  const { data: { session: s } } = await db.auth.getSession();
+  if (s) {
+    await fetch('/api/expire-transfers', { method: 'POST', headers: { Authorization: 'Bearer ' + s.access_token } });
+  }
+
   if (me.role === 'dominant') await renderDominant();
   else await renderSubmissive();
 }
 
-function contractHTML(c, isDom) {
+function contractHTML(c, isDom, activeTransfer, fromDom, toDom) {
   let html = `
     <p>Estado: <span class="badge">${escapeHtml(c.status)}</span></p>
     <textarea id="ctext_${c.id}" rows="12" ${isDom ? '' : 'disabled'}>${escapeHtml(c.content)}</textarea>
@@ -190,7 +197,20 @@ function contractHTML(c, isDom) {
   html += `<p class="small">Firma Dominante: ${c.dominant_signed_at ? escapeHtml(new Date(c.dominant_signed_at).toLocaleString()) : 'pendiente'}</p>`;
   html += `<p class="small">Firma sumiso: ${c.submissive_signed_at ? escapeHtml(new Date(c.submissive_signed_at).toLocaleString()) : 'pendiente'}</p>`;
 
-    html += `<button onclick="downloadContractPDF('${c.id}')">⬇ Descargar PDF</button>`;
+  if (activeTransfer) {
+    html += `
+      <div class="anexo">
+        <h3>📜 ANEXO DE CESIÓN</h3>
+        <p class="small"><b>Duración:</b> ${activeTransfer.duration === 'indefinida' ? 'Indefinida' : 'Temporal'}</p>
+        ${activeTransfer.expires_at ? `<p class="small"><b>Retorno automático:</b> ${new Date(activeTransfer.expires_at).toLocaleDateString()}</p>` : ''}
+        ${activeTransfer.note ? `<p class="small"><b>Condiciones especiales:</b><br>${escapeHtml(activeTransfer.note)}</p>` : ''}
+        <p class="small"><b>Firmado por:</b> ${activeTransfer.signed_at ? escapeHtml(new Date(activeTransfer.signed_at).toLocaleString()) : 'pendiente'}</p>
+        ${!activeTransfer.signed_at && isDom ? `<button onclick="signAnexo('${activeTransfer.id}')">Firmar anexo de cesión</button>` : ''}
+      </div>
+    `;
+  }
+
+  html += `<button onclick="downloadContractPDF('${c.id}')">⬇ Descargar PDF</button>`;
   return html;
 }
 
@@ -199,7 +219,7 @@ async function renderDominant() {
 
   const { data: subs } = await db
     .from('relationships')
-    .select('id, profiles!relationships_submissive_id_fkey(display_name)')
+    .select('id, profiles!relationships_submissive_id_fkey(display_name, id)')
     .eq('dominant_id', me.id)
     .eq('status', 'confirmed');
 
@@ -215,17 +235,24 @@ async function renderDominant() {
     .select('*')
     .in('relationship_id', ids);
 
+  const { data: transfers } = await db
+    .from('transfers')
+    .select('*, from_profile:profiles!transfers_from_dominant_id_fkey(display_name), to_profile:profiles!transfers_to_dominant_id_fkey(display_name)')
+    .eq('to_dominant_id', me.id)
+    .eq('status', 'activa');
+
   let html = '';
 
   subs.forEach(sub => {
     const c = (contracts || []).find(x => x.relationship_id === sub.id);
+    const activeTransfer = (transfers || []).find(t => t.submissive_id === sub.profiles?.id);
 
     html += `<div class="card"><h3>⛓ ${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>`;
 
     if (!c) {
       html += `<p class="small">Aún no hay contrato.</p><button onclick="createContract('${sub.id}')">Crear contrato</button>`;
     } else {
-      html += contractHTML(c, true);
+      html += contractHTML(c, true, activeTransfer);
     }
 
     html += '</div>';
@@ -239,7 +266,7 @@ async function renderSubmissive() {
 
   const { data: rel } = await db
     .from('relationships')
-    .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+    .select('id, profiles!relationships_dominant_id_fkey(display_name, id)')
     .eq('submissive_id', me.id)
     .eq('status', 'confirmed')
     .maybeSingle();
@@ -260,7 +287,14 @@ async function renderSubmissive() {
     return;
   }
 
-  content.innerHTML = `<div class="card"><h3>Contrato con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>` + contractHTML(c, false) + '</div>';
+  const { data: activeTransfer } = await db
+    .from('transfers')
+    .select('*, from_profile:profiles!transfers_from_dominant_id_fkey(display_name), to_profile:profiles!transfers_to_dominant_id_fkey(display_name)')
+    .eq('submissive_id', me.id)
+    .eq('status', 'activa')
+    .maybeSingle();
+
+  content.innerHTML = `<div class="card"><h3>Contrato con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>` + contractHTML(c, false, activeTransfer) + '</div>';
 }
 
 async function createContract(relId) {
@@ -322,7 +356,21 @@ async function revokeContract(id) {
   window.location.reload();
 }
 
-  async function downloadContractPDF(id) {
+async function signAnexo(transferId) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return alert('Inicia sesión.');
+  const r = await fetch('/api/sign-transfer', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transfer_id: transferId })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error || 'Error al firmar el anexo.');
+  alert('Anexo firmado. Cesión activa.');
+  window.location.reload();
+}
+
+async function downloadContractPDF(id) {
   const { data: c } = await db
     .from('contracts')
     .select('*, relationships(dominant_id, submissive_id)')
@@ -333,6 +381,13 @@ async function revokeContract(id) {
 
   const { data: dom } = await db.from('profiles').select('display_name').eq('id', c.relationships.dominant_id).maybeSingle();
   const { data: sub } = await db.from('profiles').select('display_name').eq('id', c.relationships.submissive_id).maybeSingle();
+
+  const { data: activeTransfer } = await db
+    .from('transfers')
+    .select('*, from_profile:profiles!transfers_from_dominant_id_fkey(display_name), to_profile:profiles!transfers_to_dominant_id_fkey(display_name)')
+    .eq('submissive_id', c.relationships.submissive_id)
+    .eq('status', 'activa')
+    .maybeSingle();
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -353,10 +408,42 @@ async function revokeContract(id) {
   const lines = pdf.splitTextToSize(c.content || '', 515);
   pdf.text(lines, 40, 175);
 
-  const y = 175 + lines.length * 14 + 30;
+  let y = 175 + lines.length * 14 + 30;
   pdf.text('Firma Dominante: ' + (c.dominant_signed_at ? new Date(c.dominant_signed_at).toLocaleString() : 'pendiente'), 40, y);
   pdf.text('Firma Sumiso: ' + (c.submissive_signed_at ? new Date(c.submissive_signed_at).toLocaleString() : 'pendiente'), 40, y + 18);
   pdf.text('Documento simbolico y consensuado entre adultos.', 40, y + 46);
+
+  if (activeTransfer) {
+    pdf.addPage();
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('ANEXO DE CESIÓN', 40, 60);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11);
+    
+    let ay = 90;
+    pdf.text('Duración: ' + (activeTransfer.duration === 'indefinida' ? 'Indefinida' : 'Temporal'), 40, ay);
+    ay += 18;
+    
+    if (activeTransfer.expires_at) {
+      pdf.text('Retorno automático: ' + new Date(activeTransfer.expires_at).toLocaleDateString(), 40, ay);
+      ay += 18;
+    }
+    
+    if (activeTransfer.note) {
+      pdf.text('Condiciones especiales:', 40, ay);
+      ay += 18;
+      const noteLines = pdf.splitTextToSize(activeTransfer.note, 515);
+      pdf.text(noteLines, 40, ay);
+      ay += noteLines.length * 14 + 10;
+    }
+    
+    pdf.text('Firmado por Dominante receptora: ' + (activeTransfer.signed_at ? new Date(activeTransfer.signed_at).toLocaleString() : 'pendiente'), 40, ay);
+    ay += 18;
+    pdf.text('Cedida por: ' + (activeTransfer.from_profile?.display_name || ''), 40, ay);
+    ay += 18;
+    pdf.text('Aceptada por: ' + (activeTransfer.to_profile?.display_name || ''), 40, ay);
+  }
 
   pdf.save('contrato-supremacia-femenina.pdf');
 }
