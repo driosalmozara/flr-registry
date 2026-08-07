@@ -164,3 +164,25 @@
     if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
   });
 })();
+/* ══ PWA: manifest + service worker ══ */
+(function(){
+  if (!document.querySelector('link[rel="manifest"]')) {
+    var l = document.createElement('link');
+    l.rel = 'manifest';
+    l.href = 'manifest.json';
+    document.head.appendChild(l);
+  }
+  var a = document.createElement('link');
+  a.rel = 'apple-touch-icon';
+  a.href = 'corona.png';
+  document.head.appendChild(a);
+  var m = document.createElement('meta');
+  m.name = 'theme-color';
+  m.content = '#0f0f1a';
+  document.head.appendChild(m);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+})();
