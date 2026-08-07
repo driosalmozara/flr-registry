@@ -1,0 +1,15 @@
+{
+  "name": "Supremacía Femenina",
+  "short_name": "Supremacía",
+  "description": "Plataforma consensuada de Dominio y sumisión entre adultos.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#0f0f1a",
+  "lang": "es",
+  "icons": [
+    { "src": "corona.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "corona.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
