@@ -1,4 +1,9 @@
-/* ══ Corona en la pestaña (favicon) ══ */
+/* ══════════════════════════════════════════════════
+   TRONO DE ORO — toasts.js (versión integral)
+   Toasts + favicon + compartir + PWA + notificaciones
+   ══════════════════════════════════════════════════ */
+
+/* ── 1) Favicon corona ── */
 (function(){
   if (document.querySelector('link[rel="icon"]')) return;
   var link = document.createElement('link');
@@ -7,96 +12,129 @@
   link.href = 'corona.png';
   document.head.appendChild(link);
 })();
-/* ══════ TOASTS DE NOTIFICACIONES EN TIEMPO REAL ══════ */
+
+/* ── 2) PWA: manifest + service worker ── */
 (function(){
-  // Crear el contenedor si no existe
+  if (!document.querySelector('link[rel="manifest"]')) {
+    var l = document.createElement('link');
+    l.rel = 'manifest';
+    l.href = 'manifest.json';
+    document.head.appendChild(l);
+  }
+  var a = document.createElement('link');
+  a.rel = 'apple-touch-icon';
+  a.href = 'corona.png';
+  document.head.appendChild(a);
+  var m = document.createElement('meta');
+  m.name = 'theme-color';
+  m.content = '#0f0f1a';
+  document.head.appendChild(m);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+})();
+
+/* ── 3) Permiso de notificaciones (primer toque) ── */
+function pedirPermisoNotificaciones(){
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') Notification.requestPermission();
+}
+document.addEventListener('click', function once(){
+  pedirPermisoNotificaciones();
+  document.removeEventListener('click', once);
+});
+
+/* ── 4) Notificación del sistema (con corona) ── */
+function notificacionSistema(title, body){
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(function(reg){
+      reg.showNotification(title || '♛ Supremacía Femenina', {
+        body: body || '',
+        icon: 'corona.png',
+        badge: 'corona.png'
+      });
+    }).catch(function(){});
+  }
+}
+
+/* ── 5) Toasts en pantalla ── */
+(function(){
   if(!document.getElementById('toast-container')){
-    const c = document.createElement('div');
+    var c = document.createElement('div');
     c.id = 'toast-container';
     document.body.appendChild(c);
   }
+})();
 
-  function escapeHtml(v){
-    return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
-  function showToast(n){
-    const container = document.getElementById('toast-container');
-    if(!container) return;
+function showToast(n){
+  var container = document.getElementById('toast-container');
+  if(!container) return;
+  var a = document.createElement('a');
+  a.className = 'toast';
+  a.href = n.link || 'notificaciones.html';
+  a.innerHTML =
+    '<div class="toast-title">♛ ' + escapeHtml(n.title || 'Nueva notificación') + '</div>' +
+    (n.body ? '<div class="toast-body">' + escapeHtml(n.body) + '</div>' : '') +
+    '<div class="toast-meta">Ahora · toca para ver</div>';
+  container.appendChild(a);
+  var timer = setTimeout(function(){ dismissToast(a); }, 6000);
+  a.addEventListener('click', function(){ clearTimeout(timer); dismissToast(a); });
+}
 
-    const a = document.createElement('a');
-    a.className = 'toast';
-    a.href = n.link || 'notificaciones.html';
-    a.innerHTML = `
-      <div class="toast-title">♛ ${escapeHtml(n.title || 'Nueva notificación')}</div>
-      ${n.body ? `<div class="toast-body">${escapeHtml(n.body)}</div>` : ''}
-      <div class="toast-meta">Ahora · clic para ver</div>
-    `;
-    container.appendChild(a);
+function dismissToast(el){
+  if(!el || el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(function(){ el.remove(); }, 350);
+}
 
-    // Auto-cerrar a los 6 segundos
-    const timer = setTimeout(()=>dismissToast(a), 6000);
+/* ── 6) Realtime: toast + notificación del sistema ── */
+function waitForSupabase(cb, tries){
+  tries = tries || 0;
+  if (window.supabase && typeof window.supabase.createClient === 'function') cb();
+  else if (tries < 50) setTimeout(function(){ waitForSupabase(cb, tries+1); }, 100);
+}
 
-    a.addEventListener('click', () => {
-      clearTimeout(timer);
-      dismissToast(a);
-    });
-  }
-
-  function dismissToast(el){
-    if(!el || el.classList.contains('out')) return;
-    el.classList.add('out');
-    setTimeout(()=>el.remove(), 350);
-  }
-
-  // Esperar a que Supabase esté disponible (cada página lo carga a su ritmo)
-  function waitForSupabase(cb, tries){
-    tries = tries || 0;
-    if(window.supabase && typeof window.supabase.createClient === 'function'){
-      cb();
-    } else if(tries < 50){
-      setTimeout(()=>waitForSupabase(cb, tries+1), 100);
-    }
-  }
-
-  async function start(){
-    waitForSupabase(async () => {
-      // Crear nuestro propio cliente (las credenciales ya son públicas en el frontend)
+(function(){
+  function start(){
+    waitForSupabase(async function(){
       if(!window.__toastClient){
         window.__toastClient = window.supabase.createClient(
           'https://ofyedqoipexpsvjsipze.supabase.co',
           'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
         );
       }
-      const client = window.__toastClient;
-
-      const { data: { session } } = await client.auth.getSession();
+      var client = window.__toastClient;
+      var s = await client.auth.getSession();
+      var session = s.data && s.data.session;
       if(!session) return;
+      var userId = session.user.id;
 
-      const userId = session.user.id;
-
-      // Suscribirse a nuevas notificaciones para este usuario
       client.channel('toast-notifs-' + userId)
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`
-        }, (payload) => {
-          showToast(payload.new);
+          filter: 'user_id=eq.' + userId
+        }, function(payload){
+          showToast(payload.new);                                   // popup dorado
+          notificacionSistema(payload.new.title, payload.new.body); // barra de Android
         })
         .subscribe();
     });
   }
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    start();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();
-/* ══ Botón Compartir (Trono de Oro) ══ */
+
+/* ── 7) Botón Compartir ── */
 (function(){
   var style = document.createElement('style');
   style.textContent = `
@@ -133,9 +171,7 @@
       ['📋 Copiar enlace', function(){
         if (navigator.clipboard) {
           navigator.clipboard.writeText(url).then(function(){ alert('Enlace copiado al portapapeles.'); });
-        } else {
-          prompt('Copia el enlace:', url);
-        }
+        } else { prompt('Copia el enlace:', url); }
       }],
       ['💬 WhatsApp', function(){ window.open('https://wa.me/?text=' + enc(title + ' ' + url), '_blank'); }],
       ['✈️ Telegram', function(){ window.open('https://t.me/share/url?url=' + enc(url) + '&text=' + enc(title), '_blank'); }],
@@ -163,26 +199,4 @@
   document.addEventListener('click', function(e){
     if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
   });
-})();
-/* ══ PWA: manifest + service worker ══ */
-(function(){
-  if (!document.querySelector('link[rel="manifest"]')) {
-    var l = document.createElement('link');
-    l.rel = 'manifest';
-    l.href = 'manifest.json';
-    document.head.appendChild(l);
-  }
-  var a = document.createElement('link');
-  a.rel = 'apple-touch-icon';
-  a.href = 'corona.png';
-  document.head.appendChild(a);
-  var m = document.createElement('meta');
-  m.name = 'theme-color';
-  m.content = '#0f0f1a';
-  document.head.appendChild(m);
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js').catch(function(){});
-    });
-  }
 })();
