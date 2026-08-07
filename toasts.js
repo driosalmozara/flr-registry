@@ -96,3 +96,71 @@
     start();
   }
 })();
+/* ══ Botón Compartir (Trono de Oro) ══ */
+(function(){
+  var style = document.createElement('style');
+  style.textContent = `
+    #share-fab{position:fixed;bottom:18px;left:18px;z-index:9998;width:52px;height:52px;border-radius:50%;
+      background:linear-gradient(180deg,#e6c664,#b48a2a);color:#0d0c0a;border:none;cursor:pointer;
+      font-size:22px;box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 20px rgba(201,162,75,.25);transition:.3s}
+    #share-fab:hover{transform:scale(1.06)}
+    #share-menu{position:fixed;bottom:80px;left:18px;z-index:9998;display:none;flex-direction:column;gap:8px;
+      background:rgba(13,12,10,.97);border:1px solid rgba(201,162,75,.5);border-radius:14px;padding:12px;
+      box-shadow:0 20px 60px rgba(0,0,0,.6);min-width:200px}
+    #share-menu.open{display:flex}
+    #share-menu button{display:flex;align-items:center;gap:10px;background:transparent;
+      border:1px solid rgba(201,162,75,.25);color:#e5e5e5;border-radius:10px;padding:8px 12px;
+      cursor:pointer;font-size:13px;text-align:left}
+    #share-menu button:hover{border-color:#c9a24b;color:#c9a24b}
+  `;
+  document.head.appendChild(style);
+
+  var fab = document.createElement('button');
+  fab.id = 'share-fab';
+  fab.title = 'Compartir';
+  fab.innerHTML = '📤';
+  document.body.appendChild(fab);
+
+  var menu = document.createElement('div');
+  menu.id = 'share-menu';
+  document.body.appendChild(menu);
+
+  function buildMenu(){
+    var url = window.location.href;
+    var title = document.title || 'Supremacía Femenina';
+    var enc = encodeURIComponent;
+    var items = [
+      ['📋 Copiar enlace', function(){
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(function(){ alert('Enlace copiado al portapapeles.'); });
+        } else {
+          prompt('Copia el enlace:', url);
+        }
+      }],
+      ['💬 WhatsApp', function(){ window.open('https://wa.me/?text=' + enc(title + ' ' + url), '_blank'); }],
+      ['✈️ Telegram', function(){ window.open('https://t.me/share/url?url=' + enc(url) + '&text=' + enc(title), '_blank'); }],
+      ['🐦 X / Twitter', function(){ window.open('https://twitter.com/intent/tweet?text=' + enc(title) + '&url=' + enc(url), '_blank'); }],
+      ['📘 Facebook', function(){ window.open('https://www.facebook.com/sharer/sharer.php?u=' + enc(url), '_blank'); }],
+      ['✉️ Correo', function(){ window.location.href = 'mailto:?subject=' + enc(title) + '&body=' + enc('Descubre Supremacía Femenina: ' + url); }]
+    ];
+    if (navigator.share) {
+      items.unshift(['📲 Compartir (nativo)', function(){ navigator.share({ title: title, url: url }).catch(function(){}); }]);
+    }
+    menu.innerHTML = '';
+    items.forEach(function(it){
+      var b = document.createElement('button');
+      b.textContent = it[0];
+      b.onclick = function(){ it[1](); };
+      menu.appendChild(b);
+    });
+  }
+
+  fab.onclick = function(e){
+    e.stopPropagation();
+    if(!menu.classList.contains('open')) buildMenu();
+    menu.classList.toggle('open');
+  };
+  document.addEventListener('click', function(e){
+    if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
+  });
+})();
