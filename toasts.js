@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════
-   TRONO DE ORO — toasts.js (versión integral)
-   Toasts + favicon + compartir + PWA + notificaciones
+   TRONO DE ORO — toasts.js v3
+   Toasts + favicon + compartir + PWA + push cerrado
    ══════════════════════════════════════════════════ */
 
 /* ── 1) Favicon corona ── */
@@ -36,7 +36,43 @@
   }
 })();
 
-/* ── 3) Permiso de notificaciones (primer toque) ── */
+/* ── 3) Notificaciones: permiso + sistema + push ── */
+function b64ToU8(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const out = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+  return out;
+}
+
+async function ensurePushSubscription(client){
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const r = await fetch('/api/vapid-public');
+    const j = await r.json();
+    if (!j.publicKey) return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToU8(j.publicKey)
+      });
+    }
+    const js = sub.toJSON();
+    const s = await client.auth.getSession();
+    if (!s.data.session) return;
+    await client.from('push_subscriptions').upsert({
+      user_id: s.data.session.user.id,
+      endpoint: js.endpoint,
+      p256dh: js.keys.p256dh,
+      auth: js.keys.auth
+    }, { onConflict: 'endpoint' });
+  } catch(e) {}
+}
+
 function pedirPermisoNotificaciones(){
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') Notification.requestPermission();
@@ -44,23 +80,23 @@ function pedirPermisoNotificaciones(){
 document.addEventListener('click', function once(){
   pedirPermisoNotificaciones();
   document.removeEventListener('click', once);
+  setTimeout(function(){
+    if (window.__toastClient) ensurePushSubscription(window.__toastClient);
+  }, 2000);
 });
 
-/* ── 4) Notificación del sistema (con corona) ── */
 function notificacionSistema(title, body){
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function(reg){
       reg.showNotification(title || '♛ Supremacía Femenina', {
-        body: body || '',
-        icon: 'corona.png',
-        badge: 'corona.png'
+        body: body || '', icon: 'corona.png', badge: 'corona.png'
       });
     }).catch(function(){});
   }
 }
 
-/* ── 5) Toasts en pantalla ── */
+/* ── 4) Toasts en pantalla ── */
 (function(){
   if(!document.getElementById('toast-container')){
     var c = document.createElement('div');
@@ -95,7 +131,7 @@ function dismissToast(el){
   setTimeout(function(){ el.remove(); }, 350);
 }
 
-/* ── 6) Realtime: toast + notificación del sistema ── */
+/* ── 5) Realtime + suscripción push ── */
 function waitForSupabase(cb, tries){
   tries = tries || 0;
   if (window.supabase && typeof window.supabase.createClient === 'function') cb();
@@ -119,22 +155,22 @@ function waitForSupabase(cb, tries){
 
       client.channel('toast-notifs-' + userId)
         .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
+          event: 'INSERT', schema: 'public', table: 'notifications',
           filter: 'user_id=eq.' + userId
         }, function(payload){
-          showToast(payload.new);                                   // popup dorado
-          notificacionSistema(payload.new.title, payload.new.body); // barra de Android
+          showToast(payload.new);
+          notificacionSistema(payload.new.title, payload.new.body);
         })
         .subscribe();
+
+      ensurePushSubscription(client);
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
 
-/* ── 7) Botón Compartir ── */
+/* ── 6) Botón Compartir ── */
 (function(){
   var style = document.createElement('style');
   style.textContent = `
