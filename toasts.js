@@ -236,3 +236,60 @@ function waitForSupabase(cb, tries){
     if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
   });
 })();
+/* ══ Créditos permanentes (pie de página) ══ */
+(function(){
+  var f = document.createElement('div');
+  f.style.cssText = 'text-align:center;color:#8a8578;font-size:12px;padding:20px 12px 28px;letter-spacing:.08em;';
+  f.innerHTML = '♛ Créditos — plataforma dirigida a las <b style="color:#c9a24b;">Diosas Almozara</b> · Contenido simbólico y consensuado entre adultos.';
+  document.body.appendChild(f);
+})();
+
+/* ══ Chat: retroiluminación dorada con mensajes sin leer ══ */
+(function(){
+  var KEY = 'flr_chat_lastseen';
+  var inChat = /chat\.html/.test(location.pathname);
+
+  function setSeen(){ try { localStorage.setItem(KEY, new Date().toISOString()); } catch(e){} }
+  if (inChat) { setSeen(); window.addEventListener('beforeunload', setSeen); }
+
+  var style = document.createElement('style');
+  style.textContent = 'a.chat-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);border-radius:999px;animation:chatPulse 2.2s ease-in-out infinite}@keyframes chatPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95)}}';
+  document.head.appendChild(style);
+
+  function glow(on){
+    var link = document.querySelector('a[href="chat.html"]');
+    if (!link) return;
+    if (on && !inChat) link.classList.add('chat-glow');
+    else link.classList.remove('chat-glow');
+  }
+
+  waitForSupabase(async function(){
+    if(!window.__toastClient){
+      window.__toastClient = window.supabase.createClient(
+        'https://ofyedqoipexpsvjsipze.supabase.co',
+        'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
+      );
+    }
+    var client = window.__toastClient;
+    var s = await client.auth.getSession();
+    var session = s.data && s.data.session;
+    if(!session) return;
+    var me = session.user.id;
+
+    var last = localStorage.getItem(KEY);
+    if (last && !inChat) {
+      var r = await client.from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .gt('created_at', last)
+        .neq('sender_id', me);
+      if ((r.count || 0) > 0) glow(true);
+    }
+
+    client.channel('chat-glow-' + me)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, function(p){
+        if (inChat) { setSeen(); return; }
+        if (p.new && p.new.sender_id !== me) glow(true);
+      })
+      .subscribe();
+  });
+})();
