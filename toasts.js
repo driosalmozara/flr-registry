@@ -293,3 +293,56 @@ function waitForSupabase(cb, tries){
       .subscribe();
   });
 })();
+/* ══ Mensajes: retroiluminación dorada con no leídos ══ */
+(function(){
+  var style = document.createElement('style');
+  style.textContent = 'a.msg-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);border-radius:999px;animation:msgPulse 2.2s ease-in-out infinite}@keyframes msgPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95)}}';
+  document.head.appendChild(style);
+
+  function glow(on){
+    var link = document.querySelector('a[href="mensajes.html"]');
+    if(!link) return;
+    if(on) link.classList.add('msg-glow'); else link.classList.remove('msg-glow');
+  }
+
+  async function refresh(client, me){
+    try {
+      const { data: convs } = await client.from('conversations')
+        .select('id')
+        .or('member_a.eq.' + me + ',member_b.eq.' + me);
+      if (!convs || convs.length === 0) { glow(false); return; }
+      const ids = convs.map(function(c){ return c.id; });
+      const r = await client.from('private_messages')
+        .select('*', { count: 'exact', head: true })
+        .in('conversation_id', ids)
+        .neq('sender_id', me)
+        .eq('read', false);
+      glow((r.count || 0) > 0);
+    } catch(e) {}
+  }
+
+  waitForSupabase(async function(){
+    if(!window.__toastClient){
+      window.__toastClient = window.supabase.createClient(
+        'https://ofyedqoipexpsvjsipze.supabase.co',
+        'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
+      );
+    }
+    var client = window.__toastClient;
+    var s = await client.auth.getSession();
+    var session = s.data && s.data.session;
+    if(!session) return;
+    var me = session.user.id;
+
+    refresh(client, me);
+
+    client.channel('msg-glow-' + me)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(p){
+        if (p.new && p.new.sender_id !== me) refresh(client, me);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'private_messages' }, function(){
+        refresh(client, me);
+      })
+      .subscribe();
+  });
+})();
