@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════
-   TRONO DE ORO — toasts.js v3
-   Toasts + favicon + compartir + PWA + push cerrado
+   TRONO DE ORO — toasts.js v4 (integral)
+   Toasts · push · favicon · PWA · compartir · créditos
+   Halos dorados: Chat y Mensajes
    ══════════════════════════════════════════════════ */
 
 /* ── 1) Favicon corona ── */
@@ -13,7 +14,7 @@
   document.head.appendChild(link);
 })();
 
-/* ── 2) PWA: manifest + service worker ── */
+/* ── 2) PWA ── */
 (function(){
   if (!document.querySelector('link[rel="manifest"]')) {
     var l = document.createElement('link');
@@ -36,7 +37,7 @@
   }
 })();
 
-/* ── 3) Notificaciones: permiso + sistema + push ── */
+/* ── 3) Notificaciones del sistema + push ── */
 function b64ToU8(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -131,23 +132,28 @@ function dismissToast(el){
   setTimeout(function(){ el.remove(); }, 350);
 }
 
-/* ── 5) Realtime + suscripción push ── */
+/* ── 5) Utilidad Realtime ── */
 function waitForSupabase(cb, tries){
   tries = tries || 0;
   if (window.supabase && typeof window.supabase.createClient === 'function') cb();
   else if (tries < 50) setTimeout(function(){ waitForSupabase(cb, tries+1); }, 100);
 }
 
+function getClient(){
+  if(!window.__toastClient){
+    window.__toastClient = window.supabase.createClient(
+      'https://ofyedqoipexpsvjsipze.supabase.co',
+      'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
+    );
+  }
+  return window.__toastClient;
+}
+
+/* ── 6) Notificaciones en vivo ── */
 (function(){
   function start(){
     waitForSupabase(async function(){
-      if(!window.__toastClient){
-        window.__toastClient = window.supabase.createClient(
-          'https://ofyedqoipexpsvjsipze.supabase.co',
-          'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
-        );
-      }
-      var client = window.__toastClient;
+      var client = getClient();
       var s = await client.auth.getSession();
       var session = s.data && s.data.session;
       if(!session) return;
@@ -170,7 +176,115 @@ function waitForSupabase(cb, tries){
   else start();
 })();
 
-/* ── 6) Botón Compartir ── */
+/* ── 7) Halo dorado: CHAT ── */
+(function(){
+  var KEY = 'flr_chat_lastseen';
+  var inChat = /chat\.html/.test(location.pathname);
+
+  function setSeen(){ try { localStorage.setItem(KEY, new Date().toISOString()); } catch(e){} }
+  if (inChat) {
+    setSeen();
+    window.addEventListener('beforeunload', setSeen);
+    document.addEventListener('visibilitychange', function(){ setSeen(); glowChat(false); });
+  }
+
+  var st = document.createElement('style');
+  st.textContent = 'a.chat-glow,a.msg-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);border-radius:999px;animation:glowPulse 2.2s ease-in-out infinite}@keyframes glowPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95)}}';
+  document.head.appendChild(st);
+
+  function glowChat(on){
+    var link = document.querySelector('a[href="chat.html"]');
+    if(!link) return;
+    if(on && !inChat) link.classList.add('chat-glow'); else link.classList.remove('chat-glow');
+  }
+
+  async function checkChat(client, me){
+    if (inChat) return;
+    var last = localStorage.getItem(KEY);
+    if (!last) return;
+    var r = await client.from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .gt('created_at', last)
+      .neq('sender_id', me);
+    glowChat((r.count || 0) > 0);
+  }
+
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    var session = s.data && s.data.session;
+    if(!session) return;
+    var me = session.user.id;
+
+    if (!localStorage.getItem(KEY)) setSeen();
+    checkChat(client, me);
+
+    client.channel('chat-glow-' + me)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, function(p){
+        if (inChat) { setSeen(); return; }
+        if (p.new && p.new.sender_id !== me) glowChat(true);
+      })
+      .subscribe();
+
+    setInterval(function(){ checkChat(client, me); }, 30000);
+  });
+})();
+
+/* ── 8) Halo dorado: MENSAJES ── */
+(function(){
+  function glowMsg(on){
+    var link = document.querySelector('a[href="mensajes.html"]');
+    if(!link) return;
+    if(on) link.classList.add('msg-glow'); else link.classList.remove('msg-glow');
+  }
+
+  async function refreshMsg(client, me){
+    try {
+      var convs = await client.from('conversations')
+        .select('id')
+        .or('member_a.eq.' + me + ',member_b.eq.' + me);
+      if (!convs.data || convs.data.length === 0) { glowMsg(false); return; }
+      var ids = convs.data.map(function(c){ return c.id; });
+      var r = await client.from('private_messages')
+        .select('*', { count: 'exact', head: true })
+        .in('conversation_id', ids)
+        .neq('sender_id', me)
+        .eq('read', false);
+      glowMsg((r.count || 0) > 0);
+    } catch(e) {}
+  }
+
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    var session = s.data && s.data.session;
+    if(!session) return;
+    var me = session.user.id;
+
+    refreshMsg(client, me);
+
+    client.channel('msg-glow-' + me)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(p){
+        if (p.new && p.new.sender_id !== me) refreshMsg(client, me);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'private_messages' }, function(){
+        refreshMsg(client, me);
+      })
+      .subscribe();
+
+    setInterval(function(){ refreshMsg(client, me); }, 30000);
+  });
+})();
+
+/* ── 9) Créditos permanentes ── */
+(function(){
+  var f = document.createElement('div');
+  f.style.cssText = 'text-align:center;color:#8a8578;font-size:12px;padding:20px 12px 28px;letter-spacing:.08em;';
+  f.innerHTML = '♛ Créditos — plataforma dirigida a las <b style="color:#c9a24b;">Diosas Almozara</b> · Contenido simbólico y consensuado entre adultos.';
+  document.body.appendChild(f);
+})();
+
+/* ── 10) Botón Compartir ── */
 (function(){
   var style = document.createElement('style');
   style.textContent = `
@@ -234,115 +348,5 @@ function waitForSupabase(cb, tries){
   };
   document.addEventListener('click', function(e){
     if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
-  });
-})();
-/* ══ Créditos permanentes (pie de página) ══ */
-(function(){
-  var f = document.createElement('div');
-  f.style.cssText = 'text-align:center;color:#8a8578;font-size:12px;padding:20px 12px 28px;letter-spacing:.08em;';
-  f.innerHTML = '♛ Créditos — plataforma dirigida a las <b style="color:#c9a24b;">Diosas Almozara</b> · Contenido simbólico y consensuado entre adultos.';
-  document.body.appendChild(f);
-})();
-
-/* ══ Chat: retroiluminación dorada con mensajes sin leer ══ */
-(function(){
-  var KEY = 'flr_chat_lastseen';
-  var inChat = /chat\.html/.test(location.pathname);
-
-  function setSeen(){ try { localStorage.setItem(KEY, new Date().toISOString()); } catch(e){} }
-  if (inChat) { setSeen(); window.addEventListener('beforeunload', setSeen); }
-
-  var style = document.createElement('style');
-  style.textContent = 'a.chat-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);border-radius:999px;animation:chatPulse 2.2s ease-in-out infinite}@keyframes chatPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95)}}';
-  document.head.appendChild(style);
-
-  function glow(on){
-    var link = document.querySelector('a[href="chat.html"]');
-    if (!link) return;
-    if (on && !inChat) link.classList.add('chat-glow');
-    else link.classList.remove('chat-glow');
-  }
-
-  waitForSupabase(async function(){
-    if(!window.__toastClient){
-      window.__toastClient = window.supabase.createClient(
-        'https://ofyedqoipexpsvjsipze.supabase.co',
-        'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
-      );
-    }
-    var client = window.__toastClient;
-    var s = await client.auth.getSession();
-    var session = s.data && s.data.session;
-    if(!session) return;
-    var me = session.user.id;
-
-    var last = localStorage.getItem(KEY);
-    if (last && !inChat) {
-      var r = await client.from('chat_messages')
-        .select('*', { count: 'exact', head: true })
-        .gt('created_at', last)
-        .neq('sender_id', me);
-      if ((r.count || 0) > 0) glow(true);
-    }
-
-    client.channel('chat-glow-' + me)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, function(p){
-        if (inChat) { setSeen(); return; }
-        if (p.new && p.new.sender_id !== me) glow(true);
-      })
-      .subscribe();
-  });
-})();
-/* ══ Mensajes: retroiluminación dorada con no leídos ══ */
-(function(){
-  var style = document.createElement('style');
-  style.textContent = 'a.msg-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);border-radius:999px;animation:msgPulse 2.2s ease-in-out infinite}@keyframes msgPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95)}}';
-  document.head.appendChild(style);
-
-  function glow(on){
-    var link = document.querySelector('a[href="mensajes.html"]');
-    if(!link) return;
-    if(on) link.classList.add('msg-glow'); else link.classList.remove('msg-glow');
-  }
-
-  async function refresh(client, me){
-    try {
-      const { data: convs } = await client.from('conversations')
-        .select('id')
-        .or('member_a.eq.' + me + ',member_b.eq.' + me);
-      if (!convs || convs.length === 0) { glow(false); return; }
-      const ids = convs.map(function(c){ return c.id; });
-      const r = await client.from('private_messages')
-        .select('*', { count: 'exact', head: true })
-        .in('conversation_id', ids)
-        .neq('sender_id', me)
-        .eq('read', false);
-      glow((r.count || 0) > 0);
-    } catch(e) {}
-  }
-
-  waitForSupabase(async function(){
-    if(!window.__toastClient){
-      window.__toastClient = window.supabase.createClient(
-        'https://ofyedqoipexpsvjsipze.supabase.co',
-        'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b'
-      );
-    }
-    var client = window.__toastClient;
-    var s = await client.auth.getSession();
-    var session = s.data && s.data.session;
-    if(!session) return;
-    var me = session.user.id;
-
-    refresh(client, me);
-
-    client.channel('msg-glow-' + me)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(p){
-        if (p.new && p.new.sender_id !== me) refresh(client, me);
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'private_messages' }, function(){
-        refresh(client, me);
-      })
-      .subscribe();
   });
 })();
