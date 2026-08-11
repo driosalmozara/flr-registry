@@ -19,10 +19,23 @@ main{max-width:900px;margin:0 auto;padding:20px}
 select,input,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.danger{background:#7f1d1d;color:#fff}
-button.wide{width:100%;text-align:left;background:transparent;color:#fff;border:1px solid var(--line)}
+button.wide{width:100%;text-align:left;background:transparent;color:#fff;border:1px solid var(--line);transition:.25s}
+button.wide:hover{border-color:var(--gold)}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 label{display:flex;gap:10px;align-items:center;margin:10px 0}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+/* ── Desplegables elegantes ── */
+details{border:1px solid var(--line);border-radius:14px;margin:0 0 16px;background:var(--panel);overflow:hidden}
+summary{cursor:pointer;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+  color:var(--gold);font-weight:600;list-style:none;font-size:15px;letter-spacing:.02em}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▾';transition:.25s;color:var(--gold);font-size:14px}
+details[open] summary::after{transform:rotate(180deg)}
+details[open] summary{border-bottom:1px solid var(--line)}
+details .body{padding:14px 18px}
+.count{background:var(--gold);color:#000;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;margin-left:8px}
+.newrow{display:flex;gap:10px;flex-wrap:wrap}
+.newrow select{flex:1;margin:0;min-width:200px}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -118,50 +131,55 @@ async function load() {
 
 async function render() {
   const content = document.getElementById('content');
-  let html = '';
+  let html = '<h2 style="margin-top:0;">♛ Mensajes privados</h2>';
 
+  // ⚙ Configuración (Dominantes) — plegable
   if (myProfile.role === 'dominant') {
     const open = mySettings ? mySettings.messaging_open : true;
-
     html += `
-      <div class="card">
-        <h3>Tu mensajería privada</h3>
-        <label>
-          <input type="checkbox" id="mopen" ${open ? 'checked' : ''} />
-          Mensajería abierta (permitir que otros miembros te escriban)
-        </label>
-        <button onclick="saveMessaging()">Guardar</button>
-      </div>
-
-      <div class="card">
-        <h3>Supervisión de tus sumisos</h3>
-        <p class="small">Privada: no ves sus conversaciones. Supervisada: ves todas sus conversaciones.</p>
-        ${mySubs.map(s => `
+      <details>
+        <summary>⚙ Mi mensajería y supervisión</summary>
+        <div class="body">
           <label>
-            <input type="checkbox" onchange="saveMode('${s.id}', this.checked)" ${s.messaging_mode === 'supervised' ? 'checked' : ''} />
-            👁 Supervisar la mensajería de ⛓ ${esc(s.profiles?.display_name || 'Sumiso')}
+            <input type="checkbox" id="mopen" ${open ? 'checked' : ''} />
+            Mensajería abierta (permitir que otros miembros te escriban)
           </label>
-        `).join('') || '<p class="small">No tienes sumisos confirmados.</p>'}
-      </div>
+          <button onclick="saveMessaging()">Guardar</button>
+          <h3 style="margin-top:16px;">👁 Supervisión de tus sumisos</h3>
+          <p class="small">Privada: no ves sus conversaciones. Supervisada: ves todas.</p>
+          ${mySubs.map(s => `
+            <label>
+              <input type="checkbox" onchange="saveMode('${s.id}', this.checked)" ${s.messaging_mode === 'supervised' ? 'checked' : ''} />
+              Supervisar a ⛓ ${esc(s.profiles?.display_name || 'Sumiso')}
+            </label>
+          `).join('') || '<p class="small">No tienes sumisos confirmados.</p>'}
+        </div>
+      </details>
     `;
   }
 
+  // Nueva conversación — línea compacta
   html += `
     <div class="card">
-      <h3>Nueva conversación</h3>
-      <select id="target">
-        ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
-      </select>
-      <button onclick="startConversation()">Abrir conversación</button>
-      <p class="small">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud.</p>
+      <div class="newrow">
+        <select id="target">
+          ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+        </select>
+        <button onclick="startConversation()">💬 Abrir conversación</button>
+      </div>
+      <p class="small" style="margin:8px 0 0;">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud.</p>
     </div>
   `;
 
+  // 📨 Solicitudes — plegable con contador
   const requests = myConvs.filter(c => c.status === 'pending' && c.initiated_by !== me);
 
   if (requests.length > 0) {
-    html += '<div class="card"><h3>Solicitudes de mensaje</h3>';
-
+    html += `
+      <details open>
+        <summary>📨 Solicitudes de mensaje <span class="count">${requests.length}</span></summary>
+        <div class="body">
+    `;
     for (const c of requests) {
       const { data: first } = await db
         .from('private_messages')
@@ -173,17 +191,17 @@ async function render() {
       html += `
         <div class="item">
           <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
-          ${first && first[0] ? `<p class="small">"${esc(first[0].body)}"</p>` : ''}
+          ${first && first[0] ? `<p class="small">“${esc(first[0].body)}”</p>` : ''}
           <button onclick="decide('${c.id}','accepted')">Aceptar</button>
           <button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>
         </div>
       `;
     }
-
-    html += '</div>';
+    html += '</div></details>';
   }
 
-  html += '<div class="card"><h3>Conversaciones</h3>';
+  // 💬 Conversaciones
+  html += '<div class="card"><h3 style="margin-top:0;">💬 Conversaciones</h3>';
 
   const threads = myConvs.filter(c => c.status !== 'pending' || c.initiated_by === me);
 
@@ -191,7 +209,6 @@ async function render() {
 
   threads.forEach(c => {
     const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
-
     html += `
       <div class="item">
         <button class="wide" onclick="openThread('${c.id}')">
@@ -203,31 +220,30 @@ async function render() {
 
   html += '</div>';
 
+  // 👁 Supervisadas — plegable con contador
   if (myProfile.role === 'dominant') {
     const subIds = mySubs.map(s => s.submissive_id);
-
     const supervised = allConvs.filter(c =>
       !involvesMe(c) &&
       (subIds.includes(c.member_a) || subIds.includes(c.member_b))
     );
 
     if (supervised.length > 0) {
-      html += '<div class="card"><h3>👁 Conversaciones supervisadas</h3>';
-
+      html += `
+        <details>
+          <summary>👁 Conversaciones supervisadas <span class="count">${supervised.length}</span></summary>
+          <div class="body">
+      `;
       supervised.forEach(c => {
         const subId = subIds.includes(c.member_a) ? c.member_a : c.member_b;
         const otherId = subId === c.member_a ? c.member_b : c.member_a;
-
         html += `
           <div class="item">
-            <button class="wide" onclick="openThread('${c.id}')">
-              👁  ${esc(nameOf(subId))} ↔ ${esc(nameOf(otherId))}
-            </button>
+            <button class="wide" onclick="openThread('${c.id}')">👁 ${esc(nameOf(subId))} ↔ ${esc(nameOf(otherId))}</button>
           </div>
         `;
       });
-
-      html += '</div>';
+      html += '</div></details>';
     }
   }
 
@@ -363,9 +379,7 @@ async function autoOpenFromLink() {
 
 async function decide(id, status) {
   const { error } = await db.from('conversations').update({ status }).eq('id', id);
-
   if (error) return alert(error.message);
-
   await load();
 }
 
@@ -394,13 +408,10 @@ async function sendPrivate(id) {
 
 async function saveMessaging() {
   const value = document.getElementById('mopen').checked;
-
   const { error } = await db
     .from('messaging_settings')
     .upsert({ user_id: me, messaging_open: value }, { onConflict: 'user_id' });
-
   if (error) return alert(error.message);
-
   alert('Guardado.');
   await load();
 }
@@ -410,9 +421,7 @@ async function saveMode(relId, supervised) {
     .from('relationships')
     .update({ messaging_mode: supervised ? 'supervised' : 'private' })
     .eq('id', relId);
-
   if (error) return alert(error.message);
-
   await load();
 }
 
