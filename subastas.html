@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Subastas — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
+.ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
+.bid{background:rgba(212,175,55,.12);border:1px solid var(--gold);color:var(--gold);border-radius:999px;padding:4px 14px;font-weight:700}
+.mark{color:#dc2626;font-weight:700}
+details{border:1px solid var(--line);border-radius:14px;margin:0 0 16px;background:var(--panel)}
+summary{cursor:pointer;padding:14px 18px;color:var(--gold);font-weight:600;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' ▾'}
+details .body{padding:14px 18px;border-top:1px solid var(--line)}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">🔨 Sala de Subastas</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null, myProfile = null, people = {}, auctions = [], mySubs = [];
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function nameOf(id){ return (people[id] || {}).display_name || '?'; }
+function avaOf(id, fb){
+  const u = (people[id] || {}).avatar_url;
+  return u ? `<img class="ava" src="${esc(u)}"/>` : `<div class="ava empty">${fb}</div>`;
+}
+
+async function init(){
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+  const { data: profile } = await db.from('profiles').select('id, role, auctioned').eq('id', me).maybeSingle();
+  myProfile = profile;
+  if (!myProfile) { content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  await load();
+}
+
+async function load(){
+  const [p, a, subs] = await Promise.all([
+    db.from('profiles').select('id, display_name, role, avatar_url').limit(500),
+    db.from('auctions').select('*').order('created_at', { ascending: false }),
+    myProfile.role === 'dominant'
+      ? db.from('relationships').select('id, submissive_id, profiles!relationships_submissive_id_fkey(id, display_name, avatar_url, auctioned)').eq('dominant_id', me).eq('status', 'confirmed')
+      : Promise.resolve({ data: [] })
+  ]);
+  (p.data || []).forEach(x => people[x.id] = x);
+  auctions = a.data || [];
+  mySubs = subs.data || [];
+  await render();
+}
+
+async function notify(userId, type, title, body, link){
+  await db.from('notifications').insert({ user_id: userId, type, title, body, link: link || 'subastas.html' });
+}
+
+async function createAuction(){
+  const relId = document.getElementById('auc-select').value;
+  if (!relId) return alert('Elige un sumiso.');
+  const rel = mySubs.find(s => s.id === relId);
+  const { error } = await db.from('auctions').insert({
+    owner_id: me, submissive_id: rel.submissive_id, relationship_id: relId
+  });
+  if (error) return alert(error.message);
+  await notify(rel.submissive_id, 'auction_created', '🔨 Has sido puesto en subasta',
+    `${myProfile.display_name} te ha puesto en la Sala de Subastas.`, 'subastas.html');
+  alert('Subasta abierta.');
+  window.location.reload();
+}
+
+async function placeBid(aucId){
+  const { error } = await db.rpc('place_bid', { auc_id: aucId });
+  if (error) return alert(error.message);
+  const auc = auctions.find(a => a.id === aucId);
+  if (auc) await notify(auc.owner_id, 'auction_bid', '💰 Nueva puja en tu subasta',
+    `${nameOf(me)} ha pujado por ${nameOf(auc.submissive_id)}.`, 'subastas.html');
+  window.location.reload();
+}
+
+async function award(aucId){
+  if (!confirm('Adjudicarás al sumiso a la mejor puja. Quedará marcado como SUBASTADO hasta que completes la cesión.')) return;
+  const { data, error } = await db.rpc('award_auction', { auc_id: aucId });
+  if (error) return alert(error.message);
+  const auc = auctions.find(a => a.id === aucId);
+  if (auc) {
+    await notify(data.winner, 'auction_won', '🏆 Has ganado una subasta',
+      `Has ganado la subasta de ${nameOf(auc.submissive_id)}. Completa la cesión con su dueña en la sección Cesiones.`, 'cesiones.html');
+    await notify(auc.submissive_id, 'auctioned', '🔨 Has sido subastado',
+      `Pertenecerás a ${nameOf(data.winner)} cuando se complete la cesión.`, 'subastas.html');
+  }
+  alert('Subasta adjudicada. Completa la cesión en la sección Cesiones.');
+  window.location.reload();
+}
+
+async function cancelAuction(aucId){
+  if (!confirm('¿Cancelar esta subasta?')) return;
+  const { error } = await db.from('auctions').update({ status: 'cancelled' }).eq('id', aucId).eq('owner_id', me);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function render(){
+  const content = document.getElementById('content');
+  const open = auctions.filter(a => a.status === 'open');
+  const past = auctions.filter(a => a.status !== 'open');
+  let html = '<h2 style="margin-top:0;">🔨 Subastas abiertas</h2>';
+
+  if (open.length === 0) html += '<p class="small">No hay subastas abiertas en este momento.</p>';
+
+  open.forEach(a => {
+    const mine = a.owner_id === me;
+    html += `
+      <div class="item">
+        <div class="rowitem">
+          ${avaOf(a.submissive_id, '⛓')}
+          <div style="flex:1;min-width:200px;">
+            <h3 style="margin:0;">${esc(nameOf(a.submissive_id))}</h3>
+            <p class="small">Ofrecido por ♛ ${esc(nameOf(a.owner_id))}</p>
+            <p class="small">Mejor puja: <span class="bid">♛ ${a.current_bid}</span>
+              ${a.leading_bidder_id ? ` — lidera ♛ ${esc(nameOf(a.leading_bidder_id))}` : ' — sin pujas aún'}</p>
+          </div>
+          <div>
+            ${mine
+              ? `${a.leading_bidder_id ? `<button onclick="award('${a.id}')">🏆 Adjudicar</button>` : ''}
+                 <button class="danger" onclick="cancelAuction('${a.id}')">Cancelar</button>`
+              : (myProfile.role === 'dominant' ? `<button onclick="placeBid('${a.id}')">♛ Pujar ${a.current_bid + 1}</button>` : '')}
+          </div>
+        </div>
+      </div>`;
+  });
+
+  if (myProfile.role === 'dominant') {
+    const eligible = mySubs.filter(s => !s.profiles.auctioned && !open.some(a => a.submissive_id === s.submissive_id));
+    html += `
+      <div class="card">
+        <h3>Poner en subasta</h3>
+        ${eligible.length ? `
+          <select id="auc-select">
+            <option value="">Elige a tu sumiso...</option>
+            ${eligible.map(s => `<option value="${s.id}">⛓ ${esc(s.profiles.display_name)}</option>`).join('')}
+          </select>
+          <button onclick="createAuction()">🔨 Abrir subasta</button>
+        ` : '<p class="small">No tienes sumisos elegibles (sin marca de subasta ni subastas abiertas).</p>'}
+      </div>
+      <div class="card">
+        <h3>Mis subastas</h3>
+        ${auctions.filter(a => a.owner_id === me).map(a => `
+          <div class="item">
+            <b>${esc(nameOf(a.submissive_id))}</b> —
+            ${a.status === 'open' ? `abierta · ♛ ${a.current_bid}` : a.status === 'awarded' ? `adjudicada a ♛ ${esc(nameOf(a.awarded_to))} · ♛ ${a.current_bid}` : 'cancelada'}
+          </div>`).join('') || '<p class="small">No has abierto subastas.</p>'}
+      </div>`;
+  }
+
+  if (past.length > 0) {
+    html += `
+      <details>
+        <summary>📜 Historial de subastas</summary>
+        <div class="body">
+          ${past.map(a => `
+            <div class="item">
+              <b>${esc(nameOf(a.submissive_id))}</b> —
+              ${a.status === 'awarded' ? `adjudicado a ♛ ${esc(nameOf(a.awarded_to))} por <span class="bid">♛ ${a.current_bid}</span>` : 'subasta cancelada'}
+            </div>`).join('')}
+        </div>
+      </details>`;
+  }
+
+  if (myProfile.role === 'submissive' && myProfile.auctioned) {
+    const aw = auctions.find(a => a.submissive_id === me && a.status === 'awarded');
+    html += `
+      <div class="card">
+        <h3 class="mark">🔨 Marca de Subastado</h3>
+        <p class="small">Has sido subastado${aw ? ` a ♛ ${esc(nameOf(aw.awarded_to))}` : ''}.
+        Tu cesión está pendiente: cuando tu Dominante la complete, pasarás a tu nueva dueña.</p>
+      </div>`;
+  }
+
+  content.innerHTML = html;
+}
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
