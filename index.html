@@ -424,7 +424,7 @@
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public)')auctioned
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -475,6 +475,10 @@
 
           html += `<div class="item">`;
           html += `<div class="rowitem">${avatarHTML(sub.profiles?.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3></div>`;
+                    if (sub.profiles?.auctioned) {
+            html += `<p class="small" style="color:#dc2626;">🔨 Subastado — pendiente de cesión</p>`;
+            html += `<button class="secondary" onclick="clearAuctionMark('${sub.submissive_id}')">Retirar marca (cesión completada)</button>`;
+          }
 
           if (!record) {
             html += `<p class="small">No se encontró el registro. Intenta recargar.</p>`;
@@ -552,6 +556,12 @@
       alert('Registro guardado.');
     }
 
+        async function clearAuctionMark(subId) {
+      const { error } = await db.rpc('clear_auction_mark', { sub_id: subId });
+      if (error) return alert(error.message);
+      alert('Marca de subasta retirada.');
+      window.location.reload();
+    }
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
