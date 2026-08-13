@@ -350,3 +350,16 @@ function getClient(){
     if(!menu.contains(e.target) && e.target !== fab) menu.classList.remove('open');
   });
 })();
+/* ══ Enlace Subastas en el menú ══ */
+(function(){
+  var nav = document.querySelector('header nav') || document.querySelector('header div');
+  if (nav && !document.querySelector('a[href="subastas.html"]')) {
+    var a = document.createElement('a');
+    a.href = 'subastas.html';
+    a.textContent = 'Subastas';
+    a.style.color = '#d4af37';
+    a.style.textDecoration = 'none';
+    if (!nav.querySelector('a.navlink') === false) a.className = 'navlink';
+    nav.appendChild(a);
+  }
+})();
