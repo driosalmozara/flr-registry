@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Moderación — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
+.ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
+.flag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;margin-right:6px}
+.flag.on{background:rgba(220,38,38,.2);color:#dc2626;border:1px solid #dc2626}
+.flag.off{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid #4ade80}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">🛡 Moderación</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+async function init(){
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2>'; return; }
+  me = session.user.id;
+
+  const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
+  if (!adm && !mod) { content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no forma parte del Staff.</p>'; return; }
+
+  await render();
+}
+
+async function render(){
+  const content = document.getElementById('content');
+
+  const [p, r] = await Promise.all([
+    db.from('profiles').select('id, display_name, avatar_url, pm_banned, chat_muted, created_at').eq('role', 'submissive').order('created_at', { ascending: false }),
+    db.from('relationships').select('submissive_id').eq('status', 'confirmed')
+  ]);
+
+  const owned = new Set((r.data || []).map(x => x.submissive_id));
+  const libres = (p.data || []).filter(x => !owned.has(x.id));
+
+  let html = `
+    <div class="card">
+      <h2>🛡 Sumisos sin dueña</h2>
+      <p class="small">Facultades del Staff: silenciar en el chat, prohibir mensajes privados o eliminar la cuenta.
+      Los sumisos con dueña quedan fuera de tu jurisdicción: pertenecen a su Dominante.</p>
+    </div>
+  `;
+
+  if (libres.length === 0) html += '<div class="card"><p class="small">No hay sumisos sin dueña registrados.</p></div>';
+
+  libres.forEach(s => {
+    html += `
+      <div class="item">
+        <div class="rowitem">
+          ${s.avatar_url ? `<img class="ava" src="${esc(s.avatar_url)}"/>` : '<div class="ava empty">⛓</div>'}
+          <div style="flex:1;min-width:200px;">
+            <h3 style="margin:0;">${esc(s.display_name)}</h3>
+            <div style="margin-top:6px;">
+              <span class="flag ${s.chat_muted ? 'on' : 'off'}">${s.chat_muted ? '🔇 Silenciado en chat' : '🔊 Chat libre'}</span>
+              <span class="flag ${s.pm_banned ? 'on' : 'off'}">${s.pm_banned ? '🚫 Privados prohibidos' : '✉️ Privados permitidos'}</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="secondary" onclick="setFlag('${s.id}','chat_muted',${!s.chat_muted})">${s.chat_muted ? '🔊 Devolver voz en chat' : '🔇 Silenciar en chat'}</button>
+          <button class="secondary" onclick="setFlag('${s.id}','pm_banned',${!s.pm_banned})">${s.pm_banned ? '✉️ Permitir privados' : '🚫 Prohibir privados'}</button>
+          <button class="danger" onclick="removeUser('${s.id}')">❌ Eliminar de la aplicación</button>
+        </div>
+      </div>
+    `;
+  });
+
+  content.innerHTML = html;
+}
+
+async function setFlag(id, flag, on){
+  const { error } = await db.rpc('mod_set_flag', { target_id: id, flag, on_val: on });
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function removeUser(id){
+  if (!confirm('¿Eliminar DEFINITIVAMENTE a este miembro? Esta acción no puede deshacerse.')) return;
+  if (!confirm('Segunda confirmación: se borrará su cuenta y sus datos.')) return;
+
+  const { data: { session } } = await db.auth.getSession();
+  const res = await fetch('/api/mod-delete-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+    body: JSON.stringify({ user_id: id })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return alert('Error: ' + (data.error || res.status));
+  alert('Miembro eliminado.');
+  window.location.reload();
+}
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
