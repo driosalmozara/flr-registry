@@ -363,3 +363,24 @@ function getClient(){
     nav.appendChild(a);
   }
 })();
+/* ══ Enlace Moderación para Staff ══ */
+(function(){
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    if (!s.data.session) return;
+    var a = await client.rpc('am_i_superadmin');
+    var m = a ? true : await client.rpc('am_i_moderator');
+    if (a || m) {
+      var nav = document.querySelector('header nav') || document.querySelector('header div');
+      if (nav && !document.querySelector('a[href="moderacion.html"]')) {
+        var l = document.createElement('a');
+        l.href = 'moderacion.html';
+        l.textContent = 'Moderación';
+        l.style.color = '#d4af37';
+        l.style.textDecoration = 'none';
+        nav.appendChild(l);
+      }
+    }
+  });
+})();
