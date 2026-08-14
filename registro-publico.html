@@ -72,6 +72,10 @@ function messageButton(userId) {
   return `<button onclick="window.location.href='mensajes.html?start=${userId}'">💬 Mensaje</button>`;
 }
 
+  function galleryButton(userId) {
+  if (!userId) return '';
+  return `<button class="secondary" onclick="window.location.href='mi-galeria.html?user=${userId}'">🖼 Galería</button>`;
+}
 function ownBadge() {
   return `<div class="own-badge">Este es tu perfil</div>`;
 }
@@ -170,8 +174,7 @@ async function requestSubmissive(subId) {
           <p class="small">${escapeHtml(d.bio || '')}</p>
           <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
           ${socialMeta(prof)}
-          ${isOwn ? ownBadge() : messageButton(uid)}
-        </div>
+          ${isOwn ? ownBadge() : (galleryButton(uid) + messageButton(uid))}        </div>
       </div>
     `}).join('');
   }
@@ -200,8 +203,7 @@ async function requestSubmissive(subId) {
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
               ${socialMeta(prof)}
-              ${isOwn ? ownBadge() : (requestSubButton(uid) + messageButton(uid))}
-            </div>
+              ${isOwn ? ownBadge() : (galleryButton(uid) + requestSubButton(uid) + messageButton(uid))}            </div>
           </div>
         `;
       }
@@ -215,8 +217,7 @@ async function requestSubmissive(subId) {
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
             ${socialMeta(prof)}
-            ${isOwn ? ownBadge() : messageButton(uid)}
-          </div>
+            ${isOwn ? ownBadge() : (galleryButton(uid) + messageButton(uid))}          </div>
         </div>
       `;
     }).join('');
