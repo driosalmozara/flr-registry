@@ -93,7 +93,7 @@ async function init() {
 
   me = session.user.id;
 
-  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me).maybeSingle();
+    const { data: profile } = await db.from('profiles').select('id, role, pm_banned').eq('id', me).maybeSingle();
   myProfile = profile;
 
   if (!myProfile) {
@@ -321,6 +321,7 @@ async function startConversation() {
 }
 
 async function startConversationWith(target) {
+    if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
   const mz = await myMuzzle();
   if (mz && mz.is_muzzled && target !== mz.dominant_id) {
     return alert('🔇 Estás amordazado por tu Dominante. No puedes iniciar conversaciones con otros miembros.');
@@ -384,6 +385,7 @@ async function decide(id, status) {
 }
 
 async function sendPrivate(id) {
+    if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
   const body = document.getElementById('mbody').value.trim();
   if (!body) return;
 
