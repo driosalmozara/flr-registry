@@ -80,9 +80,10 @@ async function init() {
 async function render() {
   const content = document.getElementById('content');
 
-  const [u, a, r, rec, c] = await Promise.all([
+  const [u, a, m, r, rec, c] = await Promise.all([
     db.from('profiles').select('id, role, display_name, age, bio, created_at, avatar_url').order('created_at', { ascending: false }),
     db.from('app_admins').select('user_id'),
+    db.from('app_moderators').select('user_id'),
     db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
     db.from('cards').select('*')
@@ -90,6 +91,7 @@ async function render() {
 
   const users = u.data || [];
   const admins = (a.data || []).map(x => x.user_id);
+    const mods = (m.data || []).map(x => x.user_id);
   const rels = r.data || [];
   const records = rec.data || [];
   const cards = c.data || [];
@@ -122,6 +124,21 @@ async function render() {
   }
 
   html += '</div>';
+
+  async function makeMod() {
+  const id = document.getElementById('newmod').value;
+  const { error } = await db.from('app_moderators').insert({ user_id: id });
+  if (error) return alert(error.message);
+  alert('Moderadora nombrada.');
+  window.location.reload();
+}
+
+async function removeMod(id) {
+  if (!confirm('¿Quitar facultades de moderación?')) return;
+  const { error } = await db.from('app_moderators').delete().eq('user_id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
 
   // ===== MIEMBROS =====
   html += '<div class="card"><h2>Miembros</h2>';
