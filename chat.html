@@ -62,6 +62,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null;
 let myProfile = null;
 let isSuper = false;
+let isMod = false;
 let mutes = [];
 let people = [];
 let presenceChannel = null;
@@ -111,6 +112,9 @@ async function init() {
   const { data: superFlag } = await db.rpc('am_i_superadmin');
   isSuper = !!superFlag;
 
+  const { data: modFlag } = await db.rpc('am_i_moderator');
+  isMod = !!modFlag;
+
   await renderPage();
 
   db.channel('flr-chat')
@@ -135,21 +139,19 @@ async function init() {
 async function renderPage() {
   const content = document.getElementById('content');
 
-  const [p, sn, an, mt] = await Promise.all([
-    db.from('profiles').select('id, display_name, role, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
+  const [p, sn, an] = await Promise.all([
+    db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
-    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
-    db.from('chat_mutes').select('user_id')
+    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false })
   ]);
 
   people = p.data || [];
   people = (p.data || []).map(person => ({
-  ...person,
-  is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
-}));
+    ...person,
+    is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
+  }));
   selfNicks = sn.data || [];
   assignedNicks = an.data || [];
-  mutes = (mt.data || []).map(x => x.user_id);
 
   const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
   const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -164,7 +166,7 @@ async function renderPage() {
     </div>
   `;
 
-  // ── NUEVO: panel compacto con desplegable ──
+  // ── Panel compacto con desplegable ──
   if (isSuper || myProfile.role === 'dominant') {
     let targets = [];
 
@@ -237,29 +239,33 @@ function renderParticipants() {
 
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
-    const muted = mutes.includes(p.id);
+    const chatMuted = p.chat_muted || false;
     const online = onlineIds.has(p.id);
-
-    // Verificar si está amordazado
     const isMuzzled = p.is_muzzled || false;
+
+    // Determinar si puedo silenciar a este usuario
+    const canMute = (isSuper || isMod) && p.id !== me && p.role === 'submissive';
 
     return `
       <div class="prow">
-        <span style="color:${isMuzzled ? '#dc2626' : colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO POR SU DUEÑA)</span>' : ''}${muted ? ' 🔇' : ''}
+        <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO POR SU DUEÑA)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
         </span>
-        ${isSuper && p.id !== me ? `
-          <button class="mini" onclick="muteToggle('${p.id}')">${muted ? '🔊' : '🔇'}</button>
+        ${canMute ? `
+          <button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>
         ` : ''}
       </div>
     `;
   }).join('');
 }
+
 async function renderInputRow() {
   const row = document.getElementById('inputrow');
 
-  if (mutes.includes(me)) {
-    row.innerHTML = '<p class="small">🔇 Estás silenciado por un Administrador. No puedes enviar mensajes.</p>';
+  // Verificar si estoy silenciado por moderación
+  const { data: myProfileData } = await db.from('profiles').select('chat_muted').eq('id', me).maybeSingle();
+  if (myProfileData && myProfileData.chat_muted) {
+    row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Has sido silenciado por el Staff. No puedes participar en el chat.</p>';
     return;
   }
 
@@ -331,15 +337,9 @@ async function deleteMsg(id) {
   await loadMessages();
 }
 
-async function muteToggle(id) {
-  if (mutes.includes(id)) {
-    const { error } = await db.from('chat_mutes').delete().eq('user_id', id);
-    if (error) return alert(error.message);
-  } else {
-    const { error } = await db.from('chat_mutes').insert({ user_id: id, muted_by: me });
-    if (error) return alert(error.message);
-  }
-
+async function chatMuteToggle(id, shouldMute) {
+  const { error } = await db.rpc('mod_set_flag', { target_id: id, flag: 'chat_muted', on_val: shouldMute });
+  if (error) return alert(error.message);
   await renderPage();
 }
 
@@ -357,7 +357,7 @@ async function setSelfNick() {
   window.location.reload();
 }
 
-// ── NUEVA: asignar apodo desde el desplegable ──
+// ── Asignar apodo desde el desplegable ──
 async function assignNickFromSelect() {
   const targetId = document.getElementById('assign_target').value;
   const nickname = document.getElementById('assign_nick').value.trim();
