@@ -363,15 +363,19 @@ function getClient(){
     nav.appendChild(a);
   }
 })();
-/* ══ Enlace Moderación para Staff ══ */
+/* ══ Enlace Moderación solo para Staff ══ */
 (function(){
   waitForSupabase(async function(){
     var client = getClient();
     var s = await client.auth.getSession();
     if (!s.data.session) return;
-    var a = await client.rpc('am_i_superadmin');
-    var m = a ? true : await client.rpc('am_i_moderator');
-    if (a || m) {
+    
+    var [adm, mod] = await Promise.all([
+      client.rpc('am_i_superadmin'),
+      client.rpc('am_i_moderator')
+    ]);
+    
+    if (adm.data || mod.data) {
       var nav = document.querySelector('header nav') || document.querySelector('header div');
       if (nav && !document.querySelector('a[href="moderacion.html"]')) {
         var l = document.createElement('a');
