@@ -1,3 +1,57 @@
+/* ══ Puerta de acceso +18 ══ */
+(function(){
+  if (localStorage.getItem('flr_adult_ok') === '1') return;
+
+  var st = document.createElement('style');
+  st.textContent = `
+    #adult-gate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+      background:url('portada-adultos.jpg') center/cover no-repeat fixed, #1a0d12;
+      padding:20px;overflow:auto}
+    #adult-gate:before{content:'';position:absolute;inset:0;
+      background:radial-gradient(ellipse at center, rgba(15,10,14,.55), rgba(10,6,10,.92));}
+    #adult-gate .ag-card{position:relative;max-width:520px;width:100%;background:rgba(13,10,14,.93);
+      border:1px solid rgba(212,175,55,.6);border-radius:18px;padding:34px 30px;text-align:center;
+      box-shadow:0 30px 90px rgba(0,0,0,.8),0 0 40px rgba(212,175,55,.15);
+      font-family:Jost,'Segoe UI',sans-serif;color:#f5efe0}
+    #adult-gate .ag-crown{font-size:44px;color:#d4af37;text-shadow:0 0 24px rgba(212,175,55,.7)}
+    #adult-gate h2{font-family:'Cormorant Garamond',serif;color:#d4af37;font-size:30px;margin:8px 0 2px;letter-spacing:.04em}
+    #adult-gate .ag-warn{color:#e0808f;letter-spacing:.28em;text-transform:uppercase;font-size:12px;font-weight:600;margin:6px 0 14px}
+    #adult-gate .ag-text{font-size:14px;line-height:1.7;color:#cfc6bb;margin:0 0 22px}
+    #adult-gate button{display:block;width:100%;margin:8px 0 0;border:none;border-radius:12px;padding:13px;
+      cursor:pointer;font-weight:700;font-size:15px}
+    #adult-gate #ag-yes{background:linear-gradient(180deg,#e6c664,#b48a2a);color:#14100a;
+      box-shadow:0 6px 24px rgba(212,175,55,.35)}
+    #adult-gate #ag-yes:hover{filter:brightness(1.08)}
+    #adult-gate .ag-exit{background:transparent;color:#a1a1aa;border:1px solid #3a3a4a !important}
+  `;
+  document.head.appendChild(st);
+
+  var lock = document.createElement('div');
+  lock.id = 'adult-gate';
+  lock.innerHTML = `
+    <div class="ag-card">
+      <div class="ag-crown">♛</div>
+      <h2>Supremacía Femenina</h2>
+      <p class="ag-warn">Contenido para adultos</p>
+      <p class="ag-text">Esta plataforma reúne dinámicas consensuadas de Dominio y sumisión entre
+      personas adultas. Al entrar declaras, bajo tu responsabilidad, que eres
+      <b>mayor de 18 años</b> y que aceptas los Términos y Consentimiento de la casa.</p>
+      <button id="ag-yes">Soy mayor de 18 — Entrar</button>
+      <button id="ag-no" class="ag-exit">Soy menor — Salir</button>
+    </div>
+  `;
+  document.body.appendChild(lock);
+  document.body.style.overflow = 'hidden';
+
+  document.getElementById('ag-yes').onclick = function(){
+    localStorage.setItem('flr_adult_ok', '1');
+    lock.remove();
+    document.body.style.overflow = '';
+  };
+  document.getElementById('ag-no').onclick = function(){
+    window.location.href = 'https://www.google.com';
+  };
+})();
 /* ══════════════════════════════════════════════════
    TRONO DE ORO — toasts.js v4 (integral)
    Toasts · push · favicon · PWA · compartir · créditos
