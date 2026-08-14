@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Verificar carnet — Supremacía Femenina</title>
 <style>
-:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d;--violet:#7c3aed}
 *{box-sizing:border-box}
 body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
 header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
@@ -16,6 +16,10 @@ main{max-width:700px;margin:0 auto;padding:20px}
 input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:6px 0 12px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.chastity-box{background:rgba(124,58,237,.14);border:2px solid var(--violet);border-radius:10px;padding:14px;margin-top:14px;text-align:center}
+.chastity-box h4{margin:0 0 6px;color:#c4b5fd;font-size:16px;font-weight:700}
+.chastity-box p{margin:0;color:#ddd6fe;font-size:14px}
+.chastity-box .big{font-size:22px;font-weight:800;color:#a78bfa;margin:6px 0}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -44,6 +48,12 @@ function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function chastityDaysCalc(sinceISO){
+  if (!sinceISO) return 0;
+  const ms = Math.max(0, Date.now() - new Date(sinceISO));
+  return Math.floor(ms / 864e5);
+}
+
 async function verify() {
   const code = document.getElementById('code').value.trim();
   if (!code) return alert('Escribe el código.');
@@ -67,6 +77,30 @@ async function verify() {
 
   const c = data[0];
 
+  // Consultar si hay castidad activa
+  let chastityHTML = '';
+  if (c.relationship_id) {
+    const { data: rel } = await db.from('relationships')
+      .select('submissive_id')
+      .eq('id', c.relationship_id)
+      .maybeSingle();
+    
+    if (rel) {
+      const { data: chastityAll } = await db.rpc('active_chastity');
+      const activeChastity = (chastityAll || []).find(ch => ch.submissive_id === rel.submissive_id);
+      
+      if (activeChastity) {
+        const days = chastityDaysCalc(activeChastity.since);
+        chastityHTML = `
+          <div class="chastity-box">
+            <h4>🔒 CASTIDAD ACTIVA</h4>
+            <p class="big">${days} día${days === 1 ? '' : 's'}</p>
+            <p>Desde: ${new Date(activeChastity.since).toLocaleDateString()}</p>
+          </div>`;
+      }
+    }
+  }
+
   result.innerHTML = `
     <div class="card">
       <h2>${c.revoked ? '❌ Carnet REVOCADO' : '✅ Carnet VÁLIDO'}</h2>
@@ -75,9 +109,11 @@ async function verify() {
       <p>Dominante: <b>♛ ${escapeHtml(c.dominant_name)}</b></p>
       <p>Carnet: <b>${escapeHtml(c.card_number)}</b></p>
       <p>Emitido: <b>${escapeHtml(new Date(c.issued_at).toLocaleDateString())}</b></p>
+      ${chastityHTML}
     </div>`;
 }
-  const params = new URLSearchParams(window.location.search);
+
+const params = new URLSearchParams(window.location.search);
 const preCode = params.get('code');
 if (preCode) {
   document.getElementById('code').value = preCode;
