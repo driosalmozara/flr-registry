@@ -388,3 +388,44 @@ function getClient(){
     }
   });
 })();
+/* ══ Idioma preferido del miembro ══ */
+(function(){
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    if (!s.data.session) return;
+    var p = await client.from('profiles').select('lang').eq('id', s.data.session.user.id).maybeSingle();
+    var lang = (p.data && p.data.lang) || 'es';
+    var cur = 'es';
+    var m = document.cookie.match(/googtrans=\/es\/([a-z-]+)/i);
+    if (m) cur = m[1];
+    if (lang === cur) return;
+    if (lang === 'es') {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    } else {
+      document.cookie = 'googtrans=/es/' + lang + '; path=/';
+    }
+    if (sessionStorage.getItem('lang_applied') !== lang) {
+      sessionStorage.setItem('lang_applied', lang);
+      location.reload();
+    }
+  });
+})();
+
+/* ══ Enlace Mi Galería ══ */
+(function(){
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    if (!s.data.session) return;
+    var nav = document.querySelector('header nav') || document.querySelector('header div');
+    if (nav && !document.querySelector('a[href="mi-galeria.html"]')) {
+      var l = document.createElement('a');
+      l.href = 'mi-galeria.html';
+      l.textContent = 'Mi Galería';
+      l.style.color = '#d4af37';
+      l.style.textDecoration = 'none';
+      nav.appendChild(l);
+    }
+  });
+})();
