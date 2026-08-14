@@ -15,11 +15,14 @@ main{max-width:1000px;margin:0 auto;padding:20px}
 .small{color:#a1a1aa;font-size:13px}
 input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.danger{background:#7f1d1d;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
 .tag{display:inline-block;padding:2px 10px;border:1px solid var(--line);border-radius:999px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a1a1aa}
+.tag.rechazada{background:rgba(127,29,29,.2);border-color:#7f1d1d;color:#fca5a5}
+.tag.activa{background:rgba(212,175,55,.15);border-color:var(--gold);color:var(--gold)}
 label{margin-right:14px}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
@@ -101,18 +104,23 @@ async function render(){
           <p class="small">Cedida por ♛ ${esc(name(t.from_dominant_id))}${t.expires_at ? ' · retorno automático: ' + new Date(t.expires_at).toLocaleDateString() : ''}</p>
           ${t.note ? `<p class="small">📜 Condiciones: ${esc(t.note)}</p>` : ''}
           <button onclick="signTransfer('${t.id}')">Firmar anexo de cesión</button>
+          <button class="danger" onclick="rejectTransfer('${t.id}')">Rechazar cesión (retorna a su Dominante)</button>
         </div>`).join('') : '<p class="small">No tienes cesiones pendientes de firma.</p>'}
     </div>`;
-  const mias = transfers.filter(t=>t.from_dominant_id===me || t.submissive_id===me);
+  const mias = transfers.filter(t=>t.from_dominant_id===me || t.to_dominant_id===me || t.submissive_id===me);
   html += `
     <div class="card">
       <h3>Historial de cesiones</h3>
-      ${mias.length ? mias.map(t=>`
+      ${mias.length ? mias.map(t=>{
+        const tagClass = t.status === 'rechazada' ? 'tag rechazada' : t.status === 'activa' ? 'tag activa' : 'tag';
+        return `
         <div class="item">
-          <b>⛓ ${esc(name(t.submissive_id))}</b> <span class="tag">${t.status}</span> <span class="tag">${t.duration}</span>
+          <b>⛓ ${esc(name(t.submissive_id))}</b> <span class="${tagClass}">${t.status}</span> <span class="tag">${t.duration}</span>
           <p class="small">De ♛ ${esc(name(t.from_dominant_id))} a ♛ ${esc(name(t.to_dominant_id))}${t.expires_at ? ' · fecha máxima: ' + new Date(t.expires_at).toLocaleDateString() : ''}</p>
           ${t.note ? `<p class="small">📜 ${esc(t.note)}</p>` : ''}
-        </div>`).join('') : '<p class="small">Aún no hay cesiones.</p>'}
+          ${t.status === 'rechazada' ? '<p class="small" style="color:#fca5a5;">❌ Cesión rechazada por la Dominante receptora. El sumiso retornó a su Dominante de origen.</p>' : ''}
+        </div>`;
+      }).join('') : '<p class="small">Aún no hay cesiones.</p>'}
     </div>`;
   content.innerHTML = html;
 }
@@ -144,6 +152,14 @@ async function signTransfer(id){
   const j = await r.json();
   if(!r.ok) return alert(j.error || 'Error al firmar.');
   alert('Cesión activa. Contrato y carnet actualizados.');
+  window.location.reload();
+}
+
+async function rejectTransfer(id){
+  if(!confirm('¿Rechazar esta cesión? El sumiso retornará automáticamente a su Dominante de origen.')) return;
+  const { error } = await db.from('transfers').update({ status: 'rechazada' }).eq('id', id);
+  if(error) return alert(error.message);
+  alert('Cesión rechazada. El sumiso retorna a su Dominante de origen.');
   window.location.reload();
 }
 
