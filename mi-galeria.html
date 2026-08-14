@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Galería — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:1000px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+select,input[type=file]{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px;margin:6px 0 10px}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.gitem{border:1px solid var(--line);border-radius:12px;padding:8px;background:#0b0b12}
+.gitem img{width:100%;height:150px;object-fit:cover;border-radius:8px;display:block}
+.gitem .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:6px;flex-wrap:wrap}
+.tag{display:inline-block;padding:2px 10px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:#a1a1aa}
+.tag.pub{border-color:var(--gold);color:var(--gold)}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header><h1 style="margin:0;">🖼 Galería</h1><div><a class="navlink" href="index.html">Inicio</a></div></header>
+<main><div id="content" class="card">Cargando...</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let me = null, myProfile = null;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+async function notify(userId, type, title, body, link){
+  await db.from('notifications').insert({ user_id: userId, type, title, body, link: link || 'mi-galeria.html' });
+}
+
+async function myOwnership(){
+  if (myProfile.role === 'dominant') return null;
+  const { data } = await db.from('relationships')
+    .select('id, dominant_id, profiles!relationships_dominant_id_fkey(display_name)')
+    .eq('submissive_id', me).eq('status','confirmed').maybeSingle();
+  return data || null;
+}
+
+async function init(){
+  const content = document.getElementById('content');
+  const viewUser = new URLSearchParams(location.search).get('user');
+  if (viewUser) { await renderPublic(viewUser); return; }
+
+  const { data:{session} } = await db.auth.getSession();
+  if(!session){ content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+  const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
+  myProfile = profile;
+  if(!myProfile){ content.innerHTML = '<h2>Completa tu perfil primero</h2>'; return; }
+  await renderManage();
+}
+
+async function renderPublic(uid){
+  const [p, g] = await Promise.all([
+    db.from('profiles').select('display_name, role').eq('id', uid).maybeSingle(),
+    db.from('gallery_photos').select('*').eq('owner_id', uid).eq('is_public', true).order('created_at', { ascending: false })
+  ]);
+  const photos = g.data || [];
+  document.getElementById('content').innerHTML = `
+    <h2 style="margin-top:0;">🖼 Galería de ${esc(p.data?.display_name || 'Miembro')}</h2>
+    <p class="small">${photos.length} imagen(es) públicas.</p>
+    ${photos.length ? `<div class="gal">${photos.map(f => `<div class="gitem"><img src="${esc(f.url)}"/></div>`).join('')}</div>`
+      : '<p class="small">Este miembro aún no tiene imágenes públicas.</p>'}
+  `;
+}
+
+function photoGrid(photos, mode){
+  if (!photos.length) return '<p class="small">Sin imágenes todavía.</p>';
+  return `<div class="gal">` + photos.map(f => `
+    <div class="gitem">
+      <img src="${esc(f.url)}"/>
+      <div class="row">
+        <span class="tag ${f.is_public ? 'pub' : ''}">${f.is_public ? '🌐 Pública' : '🔒 Privada'}</span>
+        ${mode === 'locked' ? `<button class="secondary" onclick="requestRemove('${f.id}')">Solicitar quitar</button>` : ''}
+        ${mode === 'manage' ? `
+          <label class="small" style="margin:0;"><input type="checkbox" style="width:auto;" ${f.is_public ? 'checked' : ''} onchange="togglePublic('${f.id}', this.checked)"> Pública</label>
+          <button class="danger" onclick="delPhoto('${f.id}')">✕</button>` : ''}
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+async function renderManage(){
+  const content = document.getElementById('content');
+  const rel = await myOwnership();
+  const owned = !!rel;
+
+  const [photos, reqs] = await Promise.all([
+    db.from('gallery_photos').select('*').eq('owner_id', me).order('created_at', { ascending: false }),
+    db.from('gallery_requests').select('*').eq('submissive_id', me).eq('status','pending')
+  ]);
+
+  let html = `<h2 style="margin-top:0;">🖼 Mi galería</h2><div class="card">`;
+  html += owned
+    ? `<p class="small">Tu galería la gestiona ♛ ${esc(rel.profiles?.display_name || 'tu Dominante')}. Sube imágenes y ella decidirá si se aprueban y si son públicas.</p>`
+    : `<p class="small">Sube imágenes y elige cuáles se ven en el registro público.</p>`;
+  html += `<input type="file" id="up_own" accept="image/*" onchange="uploadOwn(this)"/>`;
+  html += photoGrid(photos.data || [], owned ? 'locked' : 'manage');
+  html += `</div>`;
+
+  if (owned && (reqs.data || []).length) {
+    html += `<div class="card"><h3>⏳ Mis solicitudes pendientes</h3>` + reqs.data.map(r => `
+      <div class="gitem" style="margin:8px 0;">
+        ${r.action === 'add' && r.photo_url ? `<img src="${esc(r.photo_url)}" style="height:100px;width:100px;object-fit:cover;"/>` : ''}
+        <span class="small">${r.action === 'add' ? 'Agregar imagen' : 'Quitar imagen'} · ${new Date(r.created_at).toLocaleDateString()}</span>
+        <button class="secondary" onclick="cancelReq('${r.id}')">Cancelar</button>
+      </div>`).join('') + `</div>`;
+  }
+
+  if (myProfile.role === 'dominant') {
+    const { data: subs } = await db.from('relationships')
+      .select('submissive_id, profiles!relationships_submissive_id_fkey(display_name)')
+      .eq('dominant_id', me).eq('status','confirmed');
+    if ((subs || []).length) {
+      html += `<div class="card"><h3>👑 Galerías de mis sumisos</h3>
+        <select id="sub_pick" onchange="renderSubGal()">
+          <option value="">— Elegir sumiso —</option>
+          ${(subs||[]).map(s => `<option value="${s.submissive_id}">⛓ ${esc(s.profiles.display_name)}</option>`).join('')}
+        </select>
+        <div id="subgal"></div></div>`;
+    }
+  }
+
+  content.innerHTML = html;
+}
+
+async function renderSubGal(){
+  const subId = document.getElementById('sub_pick').value;
+  const box = document.getElementById('subgal');
+  if(!subId){ box.innerHTML = ''; return; }
+  const [photos, reqs] = await Promise.all([
+    db.from('gallery_photos').select('*').eq('owner_id', subId).order('created_at', { ascending: false }),
+    db.from('gallery_requests').select('*').eq('submissive_id', subId).eq('status','pending')
+  ]);
+  let h = `<p class="small">Subir imagen directamente a su galería:</p>
+    <input type="file" accept="image/*" onchange="uploadToSub(this,'${subId}')"/>`;
+  if ((reqs.data||[]).length) {
+    h += `<h3>Solicitudes del sumiso</h3>` + reqs.data.map(r => `
+      <div class="gitem" style="margin:8px 0;">
+        ${r.action === 'add' && r.photo_url ? `<img src="${esc(r.photo_url)}" style="height:100px;width:100px;object-fit:cover;"/>` : ''}
+        <span class="small">${r.action === 'add' ? 'Agregar imagen' : 'Quitar imagen'}</span><br>
+        ${r.action === 'add' ? `<button onclick="approveAdd('${r.id}')">Aprobar</button>` : `<button onclick="approveRemove('${r.id}')">Aprobar quitar</button>`}
+        <button class="danger" onclick="rejectReq('${r.id}')">Rechazar</button>
+      </div>`).join('');
+  }
+  h += photoGrid(photos.data || [], 'manage');
+  box.innerHTML = h;
+}
+
+async function uploadFile(file, folder){
+  const ext = file.name.split('.').pop();
+  const path = folder + '/' + Date.now() + '.' + ext;
+  const { error } = await db.storage.from('galeria').upload(path, file);
+  if (error) throw error;
+  return db.storage.from('galeria').getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadOwn(input){
+  const file = input.files[0]; if(!file) return;
+  const rel = await myOwnership();
+  try {
+    const url = await uploadFile(file, me);
+    if (rel) {
+      const { error } = await db.from('gallery_requests').insert({ submissive_id: me, action: 'add', photo_url: url });
+      if (error) return alert(error.message);
+      await notify(rel.dominant_id, 'gallery_request', '🖼 Solicitud de galería', `${myProfile.display_name} pidió agregar una imagen a su galería.`);
+      alert('Imagen enviada a tu Dominante para aprobación.');
+    } else {
+      const { error } = await db.from('gallery_photos').insert({ owner_id: me, url, is_public: false });
+      if (error) return alert(error.message);
+    }
+    window.location.reload();
+  } catch(e){ alert(e.message); }
+}
+
+async function uploadToSub(input, subId){
+  const file = input.files[0]; if(!file) return;
+  try {
+    const url = await uploadFile(file, subId);
+    const pub = confirm('¿Visible en el registro público?');
+    const { error } = await db.from('gallery_photos').insert({ owner_id: subId, url, is_public: pub });
+    if (error) return alert(error.message);
+    renderSubGal();
+  } catch(e){ alert(e.message); }
+}
+
+async function togglePublic(id, val){
+  const { error } = await db.from('gallery_photos').update({ is_public: val }).eq('id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function delPhoto(id){
+  if(!confirm('¿Eliminar esta imagen?')) return;
+  const { error } = await db.from('gallery_photos').delete().eq('id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function requestRemove(id){
+  const { error } = await db.from('gallery_requests').insert({ submissive_id: me, action: 'remove', photo_id: id });
+  if (error) return alert(error.message);
+  const rel = await myOwnership();
+  if (rel) await notify(rel.dominant_id, 'gallery_request', '🖼 Solicitud de galería', `${myProfile.display_name} pidió quitar una imagen de su galería.`);
+  alert('Solicitud enviada a tu Dominante.');
+  window.location.reload();
+}
+
+async function cancelReq(id){
+  const { error } = await db.from('gallery_requests').update({ status: 'rejected' }).eq('id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function approveAdd(id){
+  const { data: r } = await db.from('gallery_requests').select('*').eq('id', id).maybeSingle();
+  if(!r) return;
+  const pub = confirm('¿La imagen será visible en el registro público?');
+  const { error } = await db.from('gallery_photos').insert({ owner_id: r.submissive_id, url: r.photo_url, is_public: pub });
+  if (error) return alert(error.message);
+  await db.from('gallery_requests').update({ status: 'approved' }).eq('id', id);
+  await notify(r.submissive_id, 'gallery_approved', '🖼 Imagen aprobada', 'Tu Dominante aprobó una imagen en tu galería.');
+  renderSubGal();
+}
+
+async function approveRemove(id){
+  const { data: r } = await db.from('gallery_requests').select('*').eq('id', id).maybeSingle();
+  if(!r) return;
+  await db.from('gallery_photos').delete().eq('id', r.photo_id);
+  await db.from('gallery_requests').update({ status: 'approved' }).eq('id', id);
+  await notify(r.submissive_id, 'gallery_approved', '🖼 Imagen retirada', 'Tu Dominante aprobó quitar la imagen.');
+  renderSubGal();
+}
+
+async function rejectReq(id){
+  const { data: r } = await db.from('gallery_requests').select('*').eq('id', id).maybeSingle();
+  await db.from('gallery_requests').update({ status: 'rejected' }).eq('id', id);
+  if (r) await notify(r.submissive_id, 'gallery_rejected', '🖼 Solicitud rechazada', 'Tu Dominante rechazó tu solicitud de galería.');
+  renderSubGal();
+}
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
