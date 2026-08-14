@@ -45,6 +45,7 @@
     <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
     <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería</a>
     <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
+    <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
     <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
     <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
   </nav>
@@ -58,13 +59,6 @@
     <section id="loading" class="card">Cargando...</section>
 
     <section id="auth" class="hidden">
-            <div class="card" style="padding:0;overflow:hidden;border:1px solid rgba(212,175,55,.45);box-shadow:0 0 40px rgba(212,175,55,.12);">
-        <img src="arte-trono.png" alt="El Trono de Oro — Dominio y devoción" style="width:100%;max-height:430px;object-fit:cover;object-position:center 30%;display:block;" />
-        <div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:linear-gradient(180deg,rgba(22,17,10,.9),rgba(13,12,10,.95));">
-          <p class="small" style="margin:0;">Un espacio simbólico, privado y consensuado entre adultos · SSC · RACK · Consentimiento revocable.</p>
-          <span class="small" style="color:var(--gold);">♛ Créditos: página dirigida a las <b>Diosas Almozara</b></span>
-        </div>
-      </div>
       <div class="row">
         <div class="col card">
           <h2>Iniciar sesión</h2>
@@ -165,7 +159,7 @@
     let currentUser = null;
     let currentProfile = null;
 
-        const COUNTRIES = [
+    const COUNTRIES = [
       'Afganistán','Albania','Alemania','Andorra','Angola','Antigua y Barbuda','Arabia Saudita','Argelia','Argentina','Armenia','Australia','Austria','Azerbaiyán',
       'Bahamas','Bangladés','Barbados','Baréin','Bélgica','Belice','Benín','Bielorrusia','Birmania (Myanmar)','Bolivia','Bosnia y Herzegovina','Botsuana','Brasil','Brunéi','Bulgaria','Burkina Faso','Burundi','Bután',
       'Cabo Verde','Camboya','Camerún','Canadá','Catar','Chad','Chile','China','Chipre','Ciudad del Vaticano','Colombia','Comoras','Corea del Norte','Corea del Sur','Costa de Marfil','Costa Rica','Croacia','Cuba',
@@ -424,7 +418,7 @@
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public)')auctioned
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -475,7 +469,8 @@
 
           html += `<div class="item">`;
           html += `<div class="rowitem">${avatarHTML(sub.profiles?.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3></div>`;
-                    if (sub.profiles?.auctioned) {
+
+          if (sub.profiles?.auctioned) {
             html += `<p class="small" style="color:#dc2626;">🔨 Subastado — pendiente de cesión</p>`;
             html += `<button class="secondary" onclick="clearAuctionMark('${sub.submissive_id}')">Retirar marca (cesión completada)</button>`;
           }
@@ -556,12 +551,6 @@
       alert('Registro guardado.');
     }
 
-        async function clearAuctionMark(subId) {
-      const { error } = await db.rpc('clear_auction_mark', { sub_id: subId });
-      if (error) return alert(error.message);
-      alert('Marca de subasta retirada.');
-      window.location.reload();
-    }
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
@@ -571,6 +560,13 @@
         .eq('id', submissiveId);
       if (error) return alert(error.message);
       alert('País y redes del sumiso actualizados.');
+    }
+
+    async function clearAuctionMark(subId) {
+      const { error } = await db.rpc('clear_auction_mark', { sub_id: subId });
+      if (error) return alert(error.message);
+      alert('Marca de subasta retirada.');
+      window.location.reload();
     }
 
     async function issueCard(recordId) {
@@ -651,6 +647,7 @@
             <p>Nº registro: <b>${escapeHtml(record.registration_number)}</b></p>
             <p>Nombre de sumiso: <b>${escapeHtml(record.slave_name || 'Aún no asignado')}</b></p>
             <p>Nivel: <b>${escapeHtml(record.obedience_level || '')}</b></p>
+            ${currentProfile.auctioned ? '<p class="small" style="color:#dc2626;">🔨 Marca de Subastado — pendiente de cesión</p>' : ''}
             ${card ? `<p>Carnet: <b>${escapeHtml(card.card_number)}</b><br>Código: <b>${escapeHtml(card.verification_code || '')}</b></p>` : '<p class="small">La Dominante aún no emite carnet.</p>'}
           ` : '<p class="small">No hay registro todavía.</p>'}
         </div>`;
@@ -675,7 +672,6 @@
       window.location.reload();
     }
 
-    // Rellenar desplegables de países
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
