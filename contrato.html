@@ -73,7 +73,9 @@ Derecho a mantener privacidad de comunicaciones
 Derecho a decidir sobre su apariencia personal
 Cualquier otro derecho que La Dueña considere necesario regular
 
-CLÁUSULA DE CESIÓN. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
+CLÁUSULA DE CESIÓN. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. La Dominante receptora podrá rechazar la cesión, en cuyo caso el sumiso retornará automáticamente a su Dominante de origen sin que medie penalidad alguna. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
+
+CLÁUSULA DE SUBASTA. La Dominante podrá poner al Esclavo en subasta pública dentro de la plataforma, ofertándolo a otras Dominantes que deseen pujar por él. El Esclavo consiente expresamente esta facultad como manifestación de la cesión de voluntad establecida en la Cláusula II. Una vez adjudicada la subasta a la mejor puja, el Esclavo quedará marcado con la condición de "Subastado" hasta que se complete la cesión formal a la Dominante ganadora mediante el procedimiento de la Cláusula de Cesión. La Dominante adjudicataria asumirá todos los derechos y obligaciones sobre el Esclavo a partir del momento de la firma del correspondiente anexo de cesión. Todo ello sin perjuicio del derecho del Esclavo a revocar su consentimiento en cualquier momento conforme a los Términos y Consentimiento.
 
 CLÁUSULA III: OBLIGACIONES DEL ESCLAVO
 3.1 Obedecer todas las órdenes, reglas y directrices emitidas por La Dueña sin cuestionamiento ni demora injustificada.
@@ -97,7 +99,8 @@ CLÁUSULA IV: DERECHOS Y PRERROGATIVAS DE LA DUEÑA
 4.7 Determinar la apariencia, vestimenta y presentación personal del Esclavo.
 4.8 Autorizar o denegar permisos para cualquier actividad.
 4.9 Mantener registros de comportamiento, cumplimiento y progreso del Esclavo.
-4.10 Cualquier otra prerrogativa que La Dueña considere necesaria para el ejercicio de su dominio.
+4.10 Poner al Esclavo en subasta pública y cederlo a otra Dominante conforme a las cláusulas correspondientes.
+4.11 Cualquier otra prerrogativa que La Dueña considere necesaria para el ejercicio de su dominio.
 
 CLÁUSULA V: LÍMITES Y SALVAGUARDAS
 5.1 Palabra de Seguridad: Se establece la palabra "_________" como palabra de seguridad que, al ser pronunciada por El Esclavo, detiene inmediatamente cualquier actividad.
@@ -138,6 +141,7 @@ CLÁUSULA IX: DISPOSICIONES GENERALES
 9.3 Las partes reconocen que mantienen su autonomía legal y pueden acudir a las autoridades en caso de emergencia.
 9.4 Cualquier modificación al presente contrato deberá realizarse por escrito y firmada por ambas partes.
 9.5 En caso de disputa sobre la interpretación del contrato, ambas partes buscarán resolverla mediante diálogo directo o mediación.
+9.6 El cumplimiento de las normas de la plataforma será velado por el Staff, compuesto por Administradoras y Moderadoras, cuyas atribuciones se describen en los Términos y Consentimiento.
 
 CLÁUSULA X: DECLARACIÓN FINAL
 Ambas partes declaran haber leído, comprendido y aceptado libremente todas las cláusulas del presente contrato. Reconocen que esta dinámica se basa en el consentimiento informado, el respeto mutuo y la confianza recíproca.`;
@@ -206,6 +210,7 @@ function contractHTML(c, isDom, activeTransfer, fromDom, toDom) {
         ${activeTransfer.note ? `<p class="small"><b>Condiciones especiales:</b><br>${escapeHtml(activeTransfer.note)}</p>` : ''}
         <p class="small"><b>Firmado por:</b> ${activeTransfer.signed_at ? escapeHtml(new Date(activeTransfer.signed_at).toLocaleString()) : 'pendiente'}</p>
         ${!activeTransfer.signed_at && isDom ? `<button onclick="signAnexo('${activeTransfer.id}')">Firmar anexo de cesión</button>` : ''}
+        ${!activeTransfer.signed_at && isDom ? `<button class="danger" onclick="rejectTransfer('${activeTransfer.id}')">Rechazar cesión (retorna el sumiso a su Dominante de origen)</button>` : ''}
       </div>
     `;
   }
@@ -255,7 +260,6 @@ async function renderDominant() {
       html += contractHTML(c, true, activeTransfer);
     }
 
-    // NUEVO: Botón de Liberar (Romper vínculo)
     html += `
       <div style="margin-top:18px; border-top:1px solid var(--line); padding-top:14px;">
         <button class="danger" onclick="releaseSubmissive('${sub.id}')">Liberar sumiso (Romper vínculo)</button>
@@ -374,6 +378,14 @@ async function signAnexo(transferId) {
   const j = await r.json();
   if (!r.ok) return alert(j.error || 'Error al firmar el anexo.');
   alert('Anexo firmado. Cesión activa.');
+  window.location.reload();
+}
+
+async function rejectTransfer(transferId) {
+  if (!confirm('¿Rechazar esta cesión? El sumiso retornará automáticamente a su Dominante de origen.')) return;
+  const { error } = await db.from('transfers').update({ status: 'rechazada' }).eq('id', transferId);
+  if (error) return alert(error.message);
+  alert('Cesión rechazada. El sumiso retorna a su Dominante de origen.');
   window.location.reload();
 }
 
