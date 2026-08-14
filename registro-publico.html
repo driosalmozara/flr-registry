@@ -53,6 +53,14 @@ let currentUser = null;
 let myProfile = null;
 let idByName = {};
 let profilesById = {};
+  let chastityMap = {};
+
+function chastityBadge(uid){
+  const since = chastityMap[uid];
+  if (!since) return '';
+  const d = Math.floor(Math.max(0, Date.now() - new Date(since)) / 864e5);
+  return `<p class="small" style="color:#a78bfa;">🔒 Castidad: ${d} día${d === 1 ? '' : 's'}</p>`;
+}
 
 function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -148,10 +156,12 @@ async function requestSubmissive(subId) {
     myProfile = profile;
   }
 
-  const [doms, subs] = await Promise.all([
+    const [doms, subs, chas] = await Promise.all([
     db.rpc('public_dominants'),
-    db.rpc('public_registry')
+    db.rpc('public_registry'),
+    db.rpc('active_chastity')
   ]);
+  (chas.data || []).forEach(c => { chastityMap[c.submissive_id] = c.since; });
 
   const domsBox = document.getElementById('doms');
   const listBox = document.getElementById('list');
@@ -202,6 +212,7 @@ async function requestSubmissive(subId) {
             <div style="flex:1;min-width:200px;">
               <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
               <p class="free">● Sumiso sin Dueña — disponible</p>
+              ${chastityBadge(uid)}
               ${socialMeta(prof)}
               ${isOwn ? ownBadge() : (galleryButton(uid) + requestSubButton(uid) + messageButton(uid))}            </div>
           </div>
@@ -215,6 +226,7 @@ async function requestSubmissive(subId) {
             <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
             <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
+            ${chastityBadge(uid)}
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
             ${socialMeta(prof)}
             ${isOwn ? ownBadge() : (galleryButton(uid) + messageButton(uid))}          </div>
