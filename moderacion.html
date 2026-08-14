@@ -42,7 +42,7 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let me = null;
+let me = null, isAdm = false;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -52,8 +52,9 @@ async function init(){
   if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2>'; return; }
   me = session.user.id;
 
-  const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
+    const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
   if (!adm && !mod) { content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no forma parte del Staff.</p>'; return; }
+  isAdm = !!adm;
 
   await render();
 }
@@ -66,8 +67,8 @@ async function render(){
     db.from('relationships').select('submissive_id').eq('status', 'confirmed')
   ]);
 
-  const owned = new Set((r.data || []).map(x => x.submissive_id));
-  const libres = (p.data || []).filter(x => !owned.has(x.id));
+    const owned = new Set((r.data || []).map(x => x.submissive_id));
+  const libres = isAdm ? (p.data || []) : (p.data || []).filter(x => !owned.has(x.id));
 
   let html = `
     <div class="card">
@@ -95,8 +96,7 @@ async function render(){
         <div style="margin-top:10px;">
           <button class="secondary" onclick="setFlag('${s.id}','chat_muted',${!s.chat_muted})">${s.chat_muted ? '🔊 Devolver voz en chat' : '🔇 Silenciar en chat'}</button>
           <button class="secondary" onclick="setFlag('${s.id}','pm_banned',${!s.pm_banned})">${s.pm_banned ? '✉️ Permitir privados' : '🚫 Prohibir privados'}</button>
-          <button class="danger" onclick="removeUser('${s.id}')">❌ Eliminar de la aplicación</button>
-        </div>
+          ${!owned.has(s.id) ? `<button class="danger" onclick="removeUser('${s.id}')">❌ Eliminar de la aplicación</button>` : '<p class="small">👑 Sumiso con dueña: la eliminación corresponde al Panel de Administración.</p>'}        </div>
       </div>
     `;
   });
