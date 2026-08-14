@@ -5,567 +5,282 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Disciplina — Supremacía Femenina</title>
 <style>
-:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d;--burgundy:#6e1f2a;--burgundy-light:#9e3a48}
-*{box-sizing:border-box}
-body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d;--burg:#9e3a48;--violet:#7c3aed;--violet-l:#a78bfa}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
 header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-h1,h2,h3{color:var(--gold)}
-main{max-width:1100px;margin:0 auto;padding:20px}
+h1,h2,h3{color:var(--gold)}main{max-width:1100px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-.item{border-radius:12px;padding:14px;margin:10px 0;transition:.25s}
-.item.punishment{border:2px solid var(--burgundy-light);background:linear-gradient(135deg,rgba(110,31,42,.12),rgba(110,31,42,.04))}
-.item.reward{border:2px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.04))}
-.item.muzzle{border:2px solid #dc2626;background:linear-gradient(135deg,rgba(220,38,38,.15),rgba(220,38,38,.05))}
-.item.acknowledged{opacity:.7}
-.item.fulfilled{opacity:.5}
+.item{border-radius:12px;padding:14px;margin:10px 0}
+.item.punishment{border:2px solid var(--burg);background:rgba(110,31,42,.08)}
+.item.reward{border:2px solid var(--gold);background:rgba(212,175,55,.06)}
+.item.muzzle{border:2px solid #dc2626;background:rgba(220,38,38,.08)}
+.item.chastity{border:2px solid var(--violet);background:rgba(124,58,237,.08)}
+.item.fulfilled{opacity:.55}
 .small{color:#a1a1aa;font-size:13px}
 input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 button.danger{background:#7f1d1d;color:#fff}
-button.muzzle-btn{background:#dc2626;color:#fff;border:none;padding:10px 16px;font-weight:700}
-button.muzzle-btn.lift{background:#059669}
+button.special{color:#fff;border:none;padding:10px 16px;font-weight:700}
+button.special.red{background:#dc2626}button.special.green{background:#059669}button.special.violet{background:var(--violet)}
 button.quick{background:rgba(212,175,55,.15);color:var(--gold);border:1px solid rgba(212,175,55,.4);padding:6px 10px;font-size:12px;margin:4px 4px 4px 0}
-button.quick:hover{background:rgba(212,175,55,.25)}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-.balance{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-.balance-card{background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
-.balance-card .label{color:#a1a1aa;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-.balance-card .value{font-size:24px;font-weight:700}
-.balance-card.punishments .value{color:var(--burgundy-light)}
-.balance-card.rewards .value{color:var(--gold)}
-.balance-card.streak .value{color:#4ade80}
-.muzzle-status{background:rgba(220,38,38,.15);border:2px solid #dc2626;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center}
-.muzzle-status h4{margin:0 0 8px;color:#dc2626;font-size:18px}
-.muzzle-status p{margin:0;color:#fca5a5;font-size:13px}
-.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.balance{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.balance-card{background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.balance-card .label{color:#a1a1aa;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.balance-card .value{font-size:22px;font-weight:700}
+.balance-card.punishments .value{color:var(--burg)}.balance-card.rewards .value{color:var(--gold)}.balance-card.streak .value{color:#4ade80}
+.statusbox{border-radius:10px;padding:14px;margin-bottom:16px;text-align:center}
+.statusbox h4{margin:0 0 6px;font-size:18px}
+.statusbox p{margin:0 0 6px;font-size:13px}
+.statusbox.red{background:rgba(220,38,38,.15);border:2px solid #dc2626}.statusbox.red h4{color:#dc2626}.statusbox.red p{color:#fca5a5}
+.statusbox.violet{background:rgba(124,58,237,.14);border:2px solid var(--violet)}.statusbox.violet h4{color:var(--violet-l)}.statusbox.violet p{color:#ddd6fe}
+.statusbox .big{font-size:22px;font-weight:800;margin:6px 0 10px}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .filter-btn{background:transparent;color:#a1a1aa;border:1px solid var(--line);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px}
 .filter-btn.active{background:var(--gold);color:#000;border-color:var(--gold)}
-.entry-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.entry-header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .entry-header h4{margin:0 0 6px;font-size:16px}
-.entry-icon{font-size:20px;margin-right:6px}
-.entry-meta{color:#a1a1aa;font-size:12px;margin-top:8px}
-.status-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.entry-meta{color:#a1a1aa;font-size:12px;margin-top:6px}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase}
 .status-badge.pending{background:rgba(212,175,55,.2);color:var(--gold);border:1px solid var(--gold)}
 .status-badge.acknowledged{background:rgba(74,222,128,.2);color:#4ade80;border:1px solid #4ade80}
 .status-badge.fulfilled{background:rgba(161,161,170,.2);color:#a1a1aa;border:1px solid #a1a1aa}
-.catalog{margin:16px 0;padding:14px;background:#0b0b12;border:1px solid var(--line);border-radius:10px}
-.catalog h4{margin:0 0 10px;font-size:14px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.08em}
+.catalog{margin:14px 0;padding:12px;background:#0b0b12;border:1px solid var(--line);border-radius:10px}
+.catalog h4{margin:0 0 8px;font-size:13px;color:#a1a1aa;text-transform:uppercase}
 </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
-<header>
-  <h1 style="margin:0;">♛ Disciplina</h1>
-  <div><a class="navlink" href="index.html">Inicio</a></div>
-</header>
-<main>
-  <div id="content" class="card">Cargando...</div>
-</main>
+<header><h1 style="margin:0;">♛ Disciplina</h1><div><a class="navlink" href="index.html">Inicio</a></div></header>
+<main><div id="content" class="card">Cargando...</div></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let me=null,currentFilter='all';
 
-let me = null;
-let currentFilter = 'all';
-
-const QUICK_CATALOG = {
-  punishment: [
-    { title: 'Desobediencia leve', severity: 2, category: 'conducta' },
-    { title: 'Incumplimiento de tarea', severity: 3, category: 'tareas' },
-    { title: 'Falta de respeto', severity: 4, category: 'conducta' },
-    { title: 'Mentira', severity: 3, category: 'honestidad' },
-    { title: 'Retraso injustificado', severity: 2, category: 'puntualidad' }
-  ],
-  reward: [
-    { title: 'Obediencia ejemplar', severity: 3, category: 'conducta' },
-    { title: 'Tarea completada con excelencia', severity: 2, category: 'tareas' },
-    { title: 'Actitud devota', severity: 3, category: 'conducta' },
-    { title: 'Iniciativa propia', severity: 2, category: 'proactividad' },
-    { title: 'Lealtad demostrada', severity: 4, category: 'lealtad' }
-  ]
+const QUICK_CATALOG={
+ punishment:[
+  {title:'Desobediencia leve',severity:2,category:'conducta'},
+  {title:'Incumplimiento de tarea',severity:3,category:'tareas'},
+  {title:'Falta de respeto',severity:4,category:'conducta'},
+  {title:'Mentira',severity:3,category:'honestidad'},
+  {title:'Retraso injustificado',severity:2,category:'puntualidad'}],
+ reward:[
+  {title:'Obediencia ejemplar',severity:3,category:'conducta'},
+  {title:'Tarea completada con excelencia',severity:2,category:'tareas'},
+  {title:'Actitud devota',severity:3,category:'conducta'},
+  {title:'Iniciativa propia',severity:2,category:'proactividad'},
+  {title:'Lealtad demostrada',severity:4,category:'lealtad'}]
 };
 
-function escapeHtml(v){
-  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function escapeHtml(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function entryIcon(t){if(t==='muzzle')return '🔇';if(t==='chastity')return '🔒';return t==='reward'?'🏅':'⚖';}
+function statusLabel(s){if(s==='acknowledged')return 'Aceptado';if(s==='fulfilled')return 'Cumplido';return 'Pendiente';}
 
-function entryIcon(type){
-  if (type === 'muzzle') return '🔇';
-  return type === 'reward' ? '🏅' : '⚖';
-}
-
-function entryLabel(type){
-  if (type === 'muzzle') return 'Mordaza';
-  return type === 'reward' ? 'Recompensa' : 'Castigo';
-}
-
-function statusLabel(status){
-  if (status === 'acknowledged') return 'Aceptado';
-  if (status === 'fulfilled') return 'Cumplido';
-  return 'Pendiente';
-}
-
-async function init() {
-  const content = document.getElementById('content');
-  const { data: { session } } = await db.auth.getSession();
-
-  if (!session) {
-    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
-  const { data: profile } = await db
-    .from('profiles')
-    .select('id, role')
-    .eq('id', session.user.id)
-    .maybeSingle();
-
-  if (!profile) {
-    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
-  me = profile;
-
-  if (me.role === 'dominant') await renderDominant();
-  else await renderSubmissive();
-}
-
-function calculateBalance(entries) {
-  const punishments = entries.filter(e => e.entry_type === 'punishment' || e.entry_type === 'muzzle');
-  const rewards = entries.filter(e => e.entry_type === 'reward');
-  
-  const punishmentScore = punishments.reduce((sum, e) => sum + (e.severity || 0), 0);
-  const rewardScore = rewards.reduce((sum, e) => sum + (e.severity || 0), 0);
-
-  const sortedPunishments = punishments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  let streak = 0;
-  if (sortedPunishments.length === 0) {
-    const oldest = entries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
-    if (oldest) {
-      const daysSince = Math.floor((new Date() - new Date(oldest.created_at)) / (1000 * 60 * 60 * 24));
-      streak = daysSince;
-    }
-  } else {
-    const lastPunishment = sortedPunishments[0];
-    const daysSince = Math.floor((new Date() - new Date(lastPunishment.created_at)) / (1000 * 60 * 60 * 24));
-    streak = daysSince;
-  }
-
-  return {
-    punishments: punishments.length,
-    rewards: rewards.length,
-    streak
-  };
-}
-
-function renderBalance(balance) {
-  return `
-    <div class="balance">
-      <div class="balance-card punishments">
-        <div class="label">Castigos</div>
-        <div class="value">${balance.punishments}</div>
-      </div>
-      <div class="balance-card rewards">
-        <div class="label">Recompensas</div>
-        <div class="value">${balance.rewards}</div>
-      </div>
-      <div class="balance-card streak">
-        <div class="label">Racha sin castigos</div>
-        <div class="value">${balance.streak} días</div>
-      </div>
-    </div>
-  `;
-}
-
-function renderFilters() {
-  return `
-    <div class="filters">
-      <button class="filter-btn ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">Todo</button>
-      <button class="filter-btn ${currentFilter === 'punishment' ? 'active' : ''}" onclick="setFilter('punishment')">Solo castigos</button>
-      <button class="filter-btn ${currentFilter === 'reward' ? 'active' : ''}" onclick="setFilter('reward')">Solo recompensas</button>
-    </div>
-  `;
-}
-
-function setFilter(filter) {
-  currentFilter = filter;
-  if (me.role === 'dominant') renderDominant();
-  else renderSubmissive();
-}
-
-function filterEntries(entries) {
-  if (currentFilter === 'all') return entries;
-  return entries.filter(e => e.entry_type === currentFilter || (currentFilter === 'punishment' && e.entry_type === 'muzzle'));
-}
-
-function renderCatalog(relId, type) {
-  const items = QUICK_CATALOG[type] || [];
-  return `
-    <div class="catalog">
-      <h4>Catálogo rápido — ${type === 'punishment' ? 'Castigos comunes' : 'Recompensas comunes'}</h4>
-      ${items.map((item, i) => `
-        <button class="quick" onclick="quickAdd('${relId}', '${type}', ${i})">
-          ${entryIcon(type)} ${escapeHtml(item.title)} (Nivel ${item.severity})
-        </button>
-      `).join('')}
-    </div>
-  `;
-}
-
-async function quickAdd(relId, type, index) {
-  const item = QUICK_CATALOG[type][index];
-  if (!item) return;
-
-  const { error } = await db.from('discipline_entries').insert({
-    relationship_id: relId,
-    entry_type: type,
-    title: item.title,
-    description: '',
-    severity: item.severity,
-    category: item.category,
-    status: 'pending',
-    visible_to_submissive: true,
-    created_by: me.id
-  });
-
-  if (error) return alert(error.message);
-
-  await createNotification(relId, type, item.title);
-
-  window.location.reload();
-}
-
-async function createNotification(relId, type, title) {
-  const { data: rel } = await db
-    .from('relationships')
-    .select('submissive_id, profiles!relationships_dominant_id_fkey(display_name)')
-    .eq('id', relId)
-    .maybeSingle();
-
-  if (!rel) return;
-
-  let notifType, notifTitle, notifBody;
-  
-  if (type === 'muzzle') {
-    notifType = 'discipline_muzzle';
-    notifTitle = '🔇 Has sido amordazado';
-    notifBody = `${rel.profiles?.display_name || 'Tu Dominante'} te ha impuesto el castigo de mordaza. No podrás enviar mensajes privados ni participar en el chat hasta que lo levante.`;
-  } else {
-    notifType = type === 'reward' ? 'discipline_reward' : 'discipline_punishment';
-    notifTitle = type === 'reward' ? '🏅 Nueva recompensa' : '⚖ Nuevo castigo';
-    notifBody = `${rel.profiles?.display_name || 'Tu Dominante'} te asignó: ${title}`;
-  }
-
-  await db.from('notifications').insert({
-    user_id: rel.submissive_id,
-    type: notifType,
-    title: notifTitle,
-    body: notifBody,
-    link: 'disciplina.html'
+function updateChastityCounters(){
+  document.querySelectorAll('[data-chastity-start]').forEach(el=>{
+    const start=new Date(el.getAttribute('data-chastity-start'));
+    const endA=el.getAttribute('data-chastity-end');
+    const end=endA?new Date(endA):new Date();
+    const ms=Math.max(0,end-start);
+    const d=Math.floor(ms/864e5),h=Math.floor((ms%864e5)/36e5);
+    el.textContent=(endA?'Duró ':'Lleva ')+d+' días y '+h+' horas';
   });
 }
+setInterval(updateChastityCounters,60000);
 
-async function applyMuzzle(relId) {
-  if (!confirm('¿Aplicar el castigo de MORDAZA?\n\nEl sumiso no podrá enviar mensajes privados a otras Dominantes ni participar en el chat hasta que levantes el castigo.')) return;
+async function init(){
+  const content=document.getElementById('content');
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){content.innerHTML='<h2>Inicia sesión primero</h2>';return;}
+  const {data:profile}=await db.from('profiles').select('id,role').eq('id',session.user.id).maybeSingle();
+  if(!profile){content.innerHTML='<h2>Completa tu perfil primero</h2>';return;}
+  me=profile;
+  if(me.role==='dominant')await renderDominant();else await renderSubmissive();
+}
 
-  // Crear entrada de disciplina
-  const { data: entry, error: entryError } = await db.from('discipline_entries').insert({
-    relationship_id: relId,
-    entry_type: 'muzzle',
-    title: 'Mordaza',
-    description: 'Castigo de silencio. El sumiso no puede comunicarse con otras Dominantes ni participar en el chat.',
-    severity: 5,
-    category: 'silencio',
-    status: 'pending',
-    visible_to_submissive: true,
-    created_by: me.id
-  }).select().single();
+function calculateBalance(entries){
+  const pun=entries.filter(e=>e.entry_type!=='reward');
+  const rew=entries.filter(e=>e.entry_type==='reward');
+  const last=pun.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+  const streak=last?Math.floor((new Date()-new Date(last.created_at))/864e5):0;
+  return{punishments:pun.length,rewards:rew.length,streak};
+}
+function renderBalance(b){return `<div class="balance">
+ <div class="balance-card punishments"><div class="label">Castigos</div><div class="value">${b.punishments}</div></div>
+ <div class="balance-card rewards"><div class="label">Recompensas</div><div class="value">${b.rewards}</div></div>
+ <div class="balance-card streak"><div class="label">Racha sin castigos</div><div class="value">${b.streak} días</div></div></div>`;}
+function renderFilters(){return `<div class="filters">
+ <button class="filter-btn ${currentFilter==='all'?'active':''}" onclick="setFilter('all')">Todo</button>
+ <button class="filter-btn ${currentFilter==='punishment'?'active':''}" onclick="setFilter('punishment')">Solo castigos</button>
+ <button class="filter-btn ${currentFilter==='reward'?'active':''}" onclick="setFilter('reward')">Solo recompensas</button></div>`;}
+function setFilter(f){currentFilter=f;if(me.role==='dominant')renderDominant();else renderSubmissive();}
+function filterEntries(list){if(currentFilter==='all')return list;
+ if(currentFilter==='reward')return list.filter(e=>e.entry_type==='reward');
+ return list.filter(e=>e.entry_type!=='reward');}
+function renderCatalog(relId,type){const items=QUICK_CATALOG[type]||[];
+ return `<div class="catalog"><h4>Catálogo rápido — ${type==='punishment'?'Castigos':'Recompensas'}</h4>
+ ${items.map((it,i)=>`<button class="quick" onclick="quickAdd('${relId}','${type}',${i})">${entryIcon(type)} ${escapeHtml(it.title)} (Nivel ${it.severity})</button>`).join('')}</div>`;}
+function toggleCatalog(relId){document.getElementById('catalog_'+relId).innerHTML=renderCatalog(relId,document.getElementById('type_'+relId).value);}
 
-  if (entryError) return alert(entryError.message);
-
-  // Actualizar la relación
-  const { error: relError } = await db.from('relationships').update({
-    is_muzzled: true,
-    muzzled_at: new Date().toISOString(),
-    muzzled_by_entry_id: entry.id
-  }).eq('id', relId);
-
-  if (relError) return alert(relError.message);
-
-  await createNotification(relId, 'muzzle', 'Mordaza');
-
-  alert('Mordaza aplicada. El sumiso está ahora silenciado.');
+async function quickAdd(relId,type,i){
+  const it=QUICK_CATALOG[type][i];if(!it)return;
+  const {error}=await db.from('discipline_entries').insert({relationship_id:relId,entry_type:type,title:it.title,description:'',severity:it.severity,category:it.category,status:'pending',visible_to_submissive:true,created_by:me.id});
+  if(error)return alert(error.message);
+  await createNotification(relId,type,it.title);
   window.location.reload();
 }
 
-async function liftMuzzle(relId) {
-  if (!confirm('¿Levantar el castigo de mordaza?')) return;
+async function createNotification(relId,type,title){
+  const {data:rel}=await db.from('relationships').select('submissive_id,profiles!relationships_dominant_id_fkey(display_name)').eq('id',relId).maybeSingle();
+  if(!rel)return;
+  let t,ti,bo;
+  if(type==='muzzle'){t='discipline_muzzle';ti='🔇 Has sido amordazado';bo=`${rel.profiles?.display_name||'Tu Dominante'} te impuso mordaza.`;}
+  else if(type==='chastity'){t='discipline_chastity';ti='🔒 Has sido puesto en castidad';bo=`${rel.profiles?.display_name||'Tu Dominante'} te impuso castidad. El contador ha comenzado.`;}
+  else{t=type==='reward'?'discipline_reward':'discipline_punishment';ti=type==='reward'?'🏅 Nueva recompensa':'⚖ Nuevo castigo';bo=`${rel.profiles?.display_name||'Tu Dominante'} te asignó: ${title}`;}
+  await db.from('notifications').insert({user_id:rel.submissive_id,type:t,title:ti,body:bo,link:'disciplina.html'});
+}
 
-  const { error: relError } = await db.from('relationships').update({
-    is_muzzled: false,
-    muzzled_at: null,
-    muzzled_by_entry_id: null
-  }).eq('id', relId);
-
-  if (relError) return alert(relError.message);
-
-  // Marcar la entrada como cumplida
-  const { data: rel } = await db.from('relationships').select('muzzled_by_entry_id').eq('id', relId).maybeSingle();
-  if (rel && rel.muzzled_by_entry_id) {
-    await db.from('discipline_entries').update({ status: 'fulfilled' }).eq('id', rel.muzzled_by_entry_id);
-  }
-
-  alert('Mordaza levantada. El sumiso puede volver a comunicarse.');
+async function applyMuzzle(relId){
+  if(!confirm('¿Aplicar MORDAZA? El sumiso quedará silenciado hasta que la levantes.'))return;
+  const {data:entry,error}=await db.from('discipline_entries').insert({relationship_id:relId,entry_type:'muzzle',title:'Mordaza',description:'Castigo de silencio.',severity:5,category:'silencio',status:'pending',visible_to_submissive:true,created_by:me.id}).select().single();
+  if(error)return alert(error.message);
+  await db.from('relationships').update({is_muzzled:true,muzzled_at:new Date().toISOString(),muzzled_by_entry_id:entry.id}).eq('id',relId);
+  await createNotification(relId,'muzzle','Mordaza');
+  window.location.reload();
+}
+async function liftMuzzle(relId){
+  if(!confirm('¿Levantar la mordaza?'))return;
+  await db.from('relationships').update({is_muzzled:false,muzzled_at:null,muzzled_by_entry_id:null}).eq('id',relId);
+  const {data:rel}=await db.from('relationships').select('muzzled_by_entry_id').eq('id',relId).maybeSingle();
+  if(rel&&rel.muzzled_by_entry_id)await db.from('discipline_entries').update({status:'fulfilled',lifted_at:new Date().toISOString()}).eq('id',rel.muzzled_by_entry_id);
   window.location.reload();
 }
 
-async function renderDominant() {
-  const content = document.getElementById('content');
+async function applyChastity(relId){
+  if(!confirm('¿Aplicar CASTIDAD?\n\nEl contador de días comenzará ahora y solo tú podrás levantarlo.'))return;
+  const {error}=await db.from('discipline_entries').insert({relationship_id:relId,entry_type:'chastity',title:'Castidad',description:'Castigo de castidad. El contador corre hasta que la Dominante lo levante.',severity:5,category:'castidad',status:'pending',visible_to_submissive:true,created_by:me.id});
+  if(error)return alert(error.message);
+  await createNotification(relId,'chastity','Castidad');
+  window.location.reload();
+}
+async function liftChastity(relId){
+  if(!confirm('¿Levantar la castidad? El contador se detendrá y quedará registrado cuánto duró.'))return;
+  const {data:active}=await db.from('discipline_entries').select('id').eq('relationship_id',relId).eq('entry_type','chastity').eq('status','pending').maybeSingle();
+  if(!active)return alert('No hay castidad activa.');
+  await db.from('discipline_entries').update({status:'fulfilled',lifted_at:new Date().toISOString()}).eq('id',active.id);
+  const {data:rel}=await db.from('relationships').select('submissive_id').eq('id',relId).maybeSingle();
+  if(rel)await db.from('notifications').insert({user_id:rel.submissive_id,type:'discipline_chastity_lift',title:'🔓 Castidad levantada',body:'Tu Dominante ha levantado tu castidad.',link:'disciplina.html'});
+  window.location.reload();
+}
 
-  const { data: subs, error } = await db
-    .from('relationships')
-    .select('id, is_muzzled, muzzled_at, profiles!relationships_submissive_id_fkey(display_name)')
-    .eq('dominant_id', me.id)
-    .eq('status', 'confirmed');
-
-  if (error) { content.innerHTML = '<p class="small">Error: ' + escapeHtml(error.message) + '</p>'; return; }
-
-  if (!subs || subs.length === 0) {
-    content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">Cuando confirmes un sumiso podrás registrar castigos y recompensas.</p>';
-    return;
-  }
-
-  const ids = subs.map(s => s.id);
-
-  const { data: entries } = await db
-    .from('discipline_entries')
-    .select('*')
-    .in('relationship_id', ids)
-    .order('created_at', { ascending: false });
-
-  let html = '';
-
-  subs.forEach(sub => {
-    const allEntries = (entries || []).filter(e => e.relationship_id === sub.id);
-    const balance = calculateBalance(allEntries);
-    const filtered = filterEntries(allEntries);
-    const isMuzzled = sub.is_muzzled;
-
-    html += `
-      <div class="card">
-        <h3>⛓ ${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3>
-        
-        ${isMuzzled ? `
-          <div class="muzzle-status">
-            <h4>🔇 AMORDAZADO</h4>
-            <p>Desde: ${new Date(sub.muzzled_at).toLocaleString()}</p>
-            <button class="muzzle-btn lift" onclick="liftMuzzle('${sub.id}')">✓ Levantar mordaza</button>
-          </div>
-        ` : ''}
-
-        ${renderBalance(balance)}
-        ${renderFilters()}
-
-        <select id="type_${sub.id}" onchange="toggleCatalog('${sub.id}')">
-          <option value="punishment">⚖ Castigo</option>
-          <option value="reward">🏅 Recompensa</option>
-        </select>
-        
-        <div id="catalog_${sub.id}">${renderCatalog(sub.id, 'punishment')}</div>
-
-        <input id="title_${sub.id}" placeholder="Título personalizado (opcional si usaste catálogo)" />
-        <textarea id="desc_${sub.id}" rows="2" placeholder="Descripción / razón (opcional)"></textarea>
-        <select id="sev_${sub.id}">
-          <option value="1">Nivel 1 — suave</option>
-          <option value="2">Nivel 2</option>
-          <option value="3" selected>Nivel 3 — medio</option>
-          <option value="4">Nivel 4</option>
-          <option value="5">Nivel 5 — severo</option>
-        </select>
-        <button onclick="addEntry('${sub.id}')">Agregar entrada</button>
-        
-        ${!isMuzzled ? `<button class="muzzle-btn" onclick="applyMuzzle('${sub.id}')">🔇 Aplicar mordaza</button>` : ''}
-
-        <div style="margin-top:20px;">
-          ${filtered.map(e => renderEntry(e, true)).join('') || '<p class="small">Sin registros todavía.</p>'}
-        </div>
-      </div>
-    `;
+async function renderDominant(){
+  const content=document.getElementById('content');
+  const {data:subs,error}=await db.from('relationships').select('id,is_muzzled,muzzled_at,profiles!relationships_submissive_id_fkey(display_name)').eq('dominant_id',me.id).eq('status','confirmed');
+  if(error){content.innerHTML='<p class="small">Error: '+escapeHtml(error.message)+'</p>';return;}
+  if(!subs||!subs.length){content.innerHTML='<h2>Sin sumisos confirmados</h2>';return;}
+  const {data:entries}=await db.from('discipline_entries').select('*').in('relationship_id',subs.map(s=>s.id)).order('created_at',{ascending:false});
+  let html='';
+  subs.forEach(sub=>{
+    const all=(entries||[]).filter(e=>e.relationship_id===sub.id);
+    const bal=calculateBalance(all);
+    const filtered=filterEntries(all);
+    const activeChastity=all.find(e=>e.entry_type==='chastity'&&e.status==='pending');
+    html+=`<div class="card"><h3>⛓ ${escapeHtml(sub.profiles?.display_name||'Sumiso')}</h3>`;
+    if(sub.is_muzzled)html+=`<div class="statusbox red"><h4>🔇 AMORDAZADO</h4><p>Desde: ${new Date(sub.muzzled_at).toLocaleString()}</p><button class="special green" onclick="liftMuzzle('${sub.id}')">✓ Levantar mordaza</button></div>`;
+    if(activeChastity)html+=`<div class="statusbox violet"><h4>🔒 CASTIDAD</h4><p>Aplicada: ${new Date(activeChastity.created_at).toLocaleString()}</p><p class="big" data-chastity-start="${activeChastity.created_at}"></p><button class="special green" onclick="liftChastity('${sub.id}')">✓ Levantar castidad</button></div>`;
+    html+=renderBalance(bal)+renderFilters();
+    html+=`<select id="type_${sub.id}" onchange="toggleCatalog('${sub.id}')"><option value="punishment">⚖ Castigo</option><option value="reward">🏅 Recompensa</option></select>
+    <div id="catalog_${sub.id}">${renderCatalog(sub.id,'punishment')}</div>
+    <input id="title_${sub.id}" placeholder="Título personalizado"/>
+    <textarea id="desc_${sub.id}" rows="2" placeholder="Descripción / razón"></textarea>
+    <select id="sev_${sub.id}"><option value="1">Nivel 1</option><option value="2">Nivel 2</option><option value="3" selected>Nivel 3</option><option value="4">Nivel 4</option><option value="5">Nivel 5</option></select>
+    <button onclick="addEntry('${sub.id}')">Agregar entrada</button>
+    ${!sub.is_muzzled?`<button class="special red" onclick="applyMuzzle('${sub.id}')">🔇 Aplicar mordaza</button>`:''}
+    ${!activeChastity?`<button class="special violet" onclick="applyChastity('${sub.id}')">🔒 Aplicar castidad</button>`:''}
+    <div style="margin-top:16px;">${filtered.map(e=>renderEntry(e,true)).join('')||'<p class="small">Sin registros.</p>'}</div></div>`;
   });
-
-  content.innerHTML = html;
+  content.innerHTML=html;
+  updateChastityCounters();
 }
 
-function toggleCatalog(relId) {
-  const type = document.getElementById('type_' + relId).value;
-  document.getElementById('catalog_' + relId).innerHTML = renderCatalog(relId, type);
+async function renderSubmissive(){
+  const content=document.getElementById('content');
+  const {data:rel}=await db.from('relationships').select('id,is_muzzled,muzzled_at,profiles!relationships_dominant_id_fkey(display_name)').eq('submissive_id',me.id).eq('status','confirmed').maybeSingle();
+  if(!rel){content.innerHTML='<h2>Sin Dominante confirmada</h2>';return;}
+  const {data:entries}=await db.from('discipline_entries').select('*').eq('relationship_id',rel.id).eq('visible_to_submissive',true).order('created_at',{ascending:false});
+  const all=entries||[];
+  const activeChastity=all.find(e=>e.entry_type==='chastity'&&e.status==='pending');
+  let html=`<div class="card"><h3>Tu historial con ♛ ${escapeHtml(rel.profiles?.display_name||'Dominante')}</h3>`;
+  if(rel.is_muzzled)html+=`<div class="statusbox red"><h4>🔇 ESTÁS AMORDAZADO</h4><p>Desde: ${new Date(rel.muzzled_at).toLocaleString()}</p></div>`;
+  if(activeChastity)html+=`<div class="statusbox violet"><h4>🔒 ESTÁS EN CASTIDAD</h4><p>Desde: ${new Date(activeChastity.created_at).toLocaleString()}</p><p class="big" data-chastity-start="${activeChastity.created_at}"></p></div>`;
+  html+=renderBalance(calculateBalance(all))+renderFilters();
+  html+=`<div style="margin-top:16px;">${filterEntries(all).map(e=>renderEntry(e,false)).join('')||'<p class="small">Sin registros.</p>'}</div></div>`;
+  content.innerHTML=html;
+  updateChastityCounters();
 }
 
-async function renderSubmissive() {
-  const content = document.getElementById('content');
-
-  const { data: rel } = await db
-    .from('relationships')
-    .select('id, is_muzzled, muzzled_at, profiles!relationships_dominant_id_fkey(display_name)')
-    .eq('submissive_id', me.id)
-    .eq('status', 'confirmed')
-    .maybeSingle();
-
-  if (!rel) {
-    content.innerHTML = '<h2>Sin Dominante confirmada</h2><p class="small">Cuando pertenezcas a una Dominante verás aquí tu historial.</p>';
-    return;
+function renderEntry(e,isDominant){
+  const canAck=!isDominant&&e.status==='pending'&&e.entry_type!=='muzzle'&&e.entry_type!=='chastity';
+  const canFul=isDominant&&(e.status==='pending'||e.status==='acknowledged')&&e.entry_type!=='muzzle'&&e.entry_type!=='chastity';
+  let extra='';
+  if(e.entry_type==='chastity'){
+    extra=e.status==='pending'
+      ?`<p class="small" style="color:#a78bfa;" data-chastity-start="${e.created_at}"></p>`
+      :`<p class="small" style="color:#a78bfa;" data-chastity-start="${e.created_at}" data-chastity-end="${e.lifted_at||e.updated_at||e.created_at}"></p>`;
   }
-
-  const { data: entries } = await db
-    .from('discipline_entries')
-    .select('*')
-    .eq('relationship_id', rel.id)
-    .eq('visible_to_submissive', true)
-    .order('created_at', { ascending: false });
-
-  const allEntries = entries || [];
-  const balance = calculateBalance(allEntries);
-  const filtered = filterEntries(allEntries);
-  const isMuzzled = rel.is_muzzled;
-
-  let html = `
-    <div class="card">
-      <h3>Tu historial con ♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</h3>
-      
-      ${isMuzzled ? `
-        <div class="muzzle-status">
-          <h4>🔇 ESTÁS AMORDAZADO</h4>
-          <p>Desde: ${new Date(rel.muzzled_at).toLocaleString()}</p>
-          <p>No puedes enviar mensajes privados a otras Dominantes ni participar en el chat.</p>
-        </div>
-      ` : ''}
-
-      ${renderBalance(balance)}
-      ${renderFilters()}
-
-      <div style="margin-top:20px;">
-        ${filtered.map(e => renderEntry(e, false)).join('') || '<p class="small">Sin registros todavía.</p>'}
-      </div>
-    </div>
-  `;
-
-  content.innerHTML = html;
+  return `<div class="item ${e.entry_type} ${e.status}">
+   <div class="entry-header"><div style="flex:1;min-width:200px;">
+     <h4><span>${entryIcon(e.entry_type)}</span> ${escapeHtml(e.title)}</h4>
+     ${e.description?`<p class="small">${escapeHtml(e.description)}</p>`:''}
+     ${extra}
+     <div class="entry-meta">Nivel ${e.severity} · ${new Date(e.created_at).toLocaleString()}${e.category?' · '+escapeHtml(e.category):''}</div>
+   </div><div><span class="status-badge ${e.status}">${statusLabel(e.status)}</span></div></div>
+   <div style="margin-top:10px;">
+     ${canAck?`<button onclick="acknowledgeEntry('${e.id}')">✓ Acepto</button>`:''}
+     ${canFul?`<button class="secondary" onclick="fulfillEntry('${e.id}')">✓ Marcar cumplido</button>`:''}
+     ${isDominant&&e.entry_type!=='muzzle'&&e.entry_type!=='chastity'?`<button class="danger" onclick="deleteEntry('${e.id}')">Eliminar</button>`:''}
+   </div></div>`;
 }
 
-function renderEntry(e, isDominant) {
-  const canAcknowledge = !isDominant && e.status === 'pending';
-  const canFulfill = isDominant && (e.status === 'pending' || e.status === 'acknowledged');
-  const isMuzzle = e.entry_type === 'muzzle';
-
-  return `
-    <div class="item ${e.entry_type} ${e.status}">
-      <div class="entry-header">
-        <div style="flex:1;min-width:200px;">
-          <h4>
-            <span class="entry-icon">${entryIcon(e.entry_type)}</span>
-            ${escapeHtml(e.title)}
-          </h4>
-          ${e.description ? `<p class="small" style="margin:6px 0;">${escapeHtml(e.description)}</p>` : ''}
-          <div class="entry-meta">
-            Nivel ${e.severity} · ${new Date(e.created_at).toLocaleString()}
-            ${e.category ? ` · ${escapeHtml(e.category)}` : ''}
-          </div>
-        </div>
-        <div>
-          <span class="status-badge ${e.status}">${statusLabel(e.status)}</span>
-          ${e.acknowledged_at ? `<div class="small" style="margin-top:6px;">Aceptado: ${new Date(e.acknowledged_at).toLocaleString()}</div>` : ''}
-        </div>
-      </div>
-      
-      <div style="margin-top:12px;">
-        ${canAcknowledge && !isMuzzle ? `<button onclick="acknowledgeEntry('${e.id}')">✓ Acepto</button>` : ''}
-        ${canFulfill && !isMuzzle ? `<button class="secondary" onclick="fulfillEntry('${e.id}')">✓ Marcar cumplido</button>` : ''}
-        ${isDominant && !isMuzzle ? `<button class="danger" onclick="deleteEntry('${e.id}')">Eliminar</button>` : ''}
-      </div>
-    </div>
-  `;
-}
-
-async function addEntry(relId) {
-  const entry_type = document.getElementById('type_' + relId).value;
-  const title = document.getElementById('title_' + relId).value.trim();
-  const description = document.getElementById('desc_' + relId).value.trim();
-  const severity = Number(document.getElementById('sev_' + relId).value);
-
-  if (!title) return alert('Escribe un título o usa el catálogo rápido.');
-
-  const { error } = await db.from('discipline_entries').insert({
-    relationship_id: relId,
-    entry_type,
-    title,
-    description,
-    severity,
-    status: 'pending',
-    visible_to_submissive: true,
-    created_by: me.id
-  });
-
-  if (error) return alert(error.message);
-
-  await createNotification(relId, entry_type, title);
-
+async function addEntry(relId){
+  const type=document.getElementById('type_'+relId).value;
+  const title=document.getElementById('title_'+relId).value.trim();
+  const desc=document.getElementById('desc_'+relId).value.trim();
+  const sev=Number(document.getElementById('sev_'+relId).value);
+  if(!title)return alert('Escribe un título o usa el catálogo.');
+  const {error}=await db.from('discipline_entries').insert({relationship_id:relId,entry_type:type,title,description:desc,severity:sev,status:'pending',visible_to_submissive:true,created_by:me.id});
+  if(error)return alert(error.message);
+  await createNotification(relId,type,title);
   window.location.reload();
 }
-
-async function acknowledgeEntry(id) {
-  const { error } = await db
-    .from('discipline_entries')
-    .update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) return alert(error.message);
-
+async function acknowledgeEntry(id){
+  const {error}=await db.from('discipline_entries').update({status:'acknowledged',acknowledged_at:new Date().toISOString()}).eq('id',id);
+  if(error)return alert(error.message);
   window.location.reload();
 }
-
-async function fulfillEntry(id) {
-  const { error } = await db
-    .from('discipline_entries')
-    .update({ status: 'fulfilled' })
-    .eq('id', id);
-
-  if (error) return alert(error.message);
-
+async function fulfillEntry(id){
+  const {error}=await db.from('discipline_entries').update({status:'fulfilled',lifted_at:new Date().toISOString()}).eq('id',id);
+  if(error)return alert(error.message);
   window.location.reload();
 }
-
-async function deleteEntry(id) {
-  if (!confirm('¿Eliminar este registro?')) return;
-
-  const { error } = await db.from('discipline_entries').delete().eq('id', id);
-
-  if (error) return alert(error.message);
-
+async function deleteEntry(id){
+  if(!confirm('¿Eliminar este registro?'))return;
+  const {error}=await db.from('discipline_entries').delete().eq('id',id);
+  if(error)return alert(error.message);
   window.location.reload();
 }
-
 init();
 </script>
-  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
-}
+function googleTranslateElementInit(){new google.translate.TranslateElement({pageLanguage:'es',layout:google.translate.TranslateElement.InlineLayout.SIMPLE,autoDisplay:false},'google_translate_element');}
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-<style>
-.goog-te-banner-frame{display:none!important}
-body{top:0!important}
-#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
-</style>
+<style>.goog-te-banner-frame{display:none!important}body{top:0!important}#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}</style>
 </body>
 </html>
