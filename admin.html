@@ -14,7 +14,7 @@ main{max-width:950px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
-input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px;margin:4px 0 8px}
+input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px;margin:4px 0 8px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.danger{background:#7f1d1d;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
@@ -26,6 +26,16 @@ label.small{display:block}
 .rel-header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .rel-person{display:flex;align-items:center;gap:8px}
 .rel-arrow{color:var(--gold);font-size:20px;font-weight:700}
+/* ── Plegables elegantes ── */
+details{border:1px solid var(--line);border-radius:14px;margin:0 0 16px;background:var(--panel);overflow:hidden}
+summary{cursor:pointer;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+  color:var(--gold);font-weight:600;list-style:none;font-size:15px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▾';transition:.25s;color:var(--gold)}
+details[open] summary::after{transform:rotate(180deg)}
+details[open] summary{border-bottom:1px solid var(--line)}
+details .body{padding:14px 18px}
+.count{background:var(--gold);color:#000;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;margin-left:8px}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -41,10 +51,11 @@ label.small{display:block}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx8poTLx';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null;
+let users = [], admins = [], mods = [], rels = [], records = [], cards = [];
 
 function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -55,6 +66,9 @@ function avatarHTML(url, fallback, small) {
   if (url) return `<img class="${sizeClass}" src="${esc(url)}" />`;
   return `<div class="${sizeClass} empty">${fallback}</div>`;
 }
+
+const userOf = id => users.find(x => x.id === id) || {};
+const nameOf = id => userOf(id).display_name || '?';
 
 async function init() {
   const content = document.getElementById('content');
@@ -89,20 +103,17 @@ async function render() {
     db.from('cards').select('*')
   ]);
 
-  const users = u.data || [];
-  const admins = (a.data || []).map(x => x.user_id);
-    const mods = (m.data || []).map(x => x.user_id);
-  const rels = r.data || [];
-  const records = rec.data || [];
-  const cards = c.data || [];
+  users = u.data || [];
+  admins = (a.data || []).map(x => x.user_id);
+  mods = (m.data || []).map(x => x.user_id);
+  rels = r.data || [];
+  records = rec.data || [];
+  cards = c.data || [];
 
-  const userOf = id => users.find(x => x.id === id) || {};
-  const nameOf = id => userOf(id).display_name || '?';
+  let html = '<h2 style="margin-top:0;">♛ Panel de Administración</h2>';
 
-  let html = '';
-
-  // ===== SUPERUSUARIOS =====
-  html += '<div class="card"><h2>Administradores</h2>';
+  // ===== ADMINISTRADORES =====
+  html += `<details><summary>👑 Administradores <span class="count">${admins.length}</span></summary><div class="body">`;
 
   users.filter(x => admins.includes(x.id)).forEach(x => {
     html += `<div class="item"><div class="rowitem">`;
@@ -113,19 +124,205 @@ async function render() {
   });
 
   const candidates = users.filter(x => x.role === 'dominant' && !admins.includes(x.id));
-
   if (candidates.length > 0) {
     html += `
+      <label class="small">Nombrar nueva Administradora</label>
       <select id="newadmin">
         ${candidates.map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
       </select>
-            <button onclick="makeAdmin()">Dar privilegios de Administrador</button>
+      <button onclick="makeAdmin()">Dar privilegios</button>
+    `;
+  }
+  html += '</div></details>';
+
+  // ===== MODERADORAS =====
+  html += `<details><summary>🛡 Moderadoras <span class="count">${mods.length}</span></summary><div class="body">`;
+  html += '<p class="small">Pueden silenciar en el chat, prohibir privados y eliminar sumisos sin dueña.</p>';
+
+  users.filter(x => mods.includes(x.id)).forEach(x => {
+    html += `<div class="item"><div class="rowitem">`;
+    html += avatarHTML(x.avatar_url, '🛡');
+    html += `<div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Moderadora</span></div>`;
+    html += `<button class="danger" onclick="removeMod('${x.id}')">Quitar</button>`;
+    html += `</div></div>`;
+  });
+
+  const modCandidates = users.filter(x => !mods.includes(x.id) && !admins.includes(x.id));
+  if (modCandidates.length > 0) {
+    html += `
+      <label class="small">Nombrar nueva Moderadora</label>
+      <select id="newmod">
+        ${modCandidates.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+      </select>
+      <button onclick="makeMod()">Nombrar Moderadora</button>
+    `;
+  }
+  html += '</div></details>';
+
+  // ===== MIEMBROS =====
+  html += `
+    <details><summary>👥 Miembros <span class="count">${users.length}</span></summary><div class="body">
+      <label class="small">Elegir miembro para gestionar</label>
+      <select id="member_pick" onchange="renderMemberCard()">
+        <option value="">— Seleccionar —</option>
+        ${users.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}${admins.includes(x.id) ? ' — ADMIN' : ''}</option>`).join('')}
+      </select>
+      <div id="member_card"></div>
+    </div></details>
+  `;
+
+  // ===== RELACIONES Y REGISTROS =====
+  html += `
+    <details><summary>🔗 Relaciones y registros <span class="count">${rels.length}</span></summary><div class="body">
+      <label class="small">Elegir relación para gestionar</label>
+      <select id="rel_pick" onchange="renderRelCard()">
+        <option value="">— Seleccionar —</option>
+        ${rels.map(rel => `<option value="${rel.id}">${esc(nameOf(rel.dominant_id))} → ${esc(nameOf(rel.submissive_id))} · ${esc(rel.status)}</option>`).join('')}
+      </select>
+      <div id="rel_card"></div>
+    </div></details>
+  `;
+
+  // ===== CARNETS =====
+  html += `
+    <details><summary>🪪 Carnets <span class="count">${cards.length}</span></summary><div class="body">
+      <label class="small">Elegir carnet</label>
+      <select id="card_pick" onchange="renderCardCard()">
+        <option value="">— Seleccionar —</option>
+        ${cards.map(c => `<option value="${c.id}">${esc(c.card_number)} · ${esc(c.verification_code || '')}${c.revoked ? ' · REVOCADO' : ''}</option>`).join('')}
+      </select>
+      <div id="card_card"></div>
+    </div></details>
+  `;
+
+  content.innerHTML = html;
+}
+
+// ===== TARJETAS DINÁMICAS =====
+
+function renderMemberCard(){
+  const id = document.getElementById('member_pick').value;
+  const box = document.getElementById('member_card');
+  if (!id) { box.innerHTML = ''; return; }
+  const x = userOf(id);
+  const isAdmin = admins.includes(x.id);
+
+  box.innerHTML = `
+    <div class="item">
+      <div class="rowitem" style="margin-bottom:10px;">
+        ${avatarHTML(x.avatar_url, x.role === 'dominant' ? '♛' : '⛓')}
+        <div style="flex:1;min-width:200px;">
+          <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
+          <div class="small">${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— ADMIN' : ''}</div>
+          <div class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</div>
+        </div>
+      </div>
+      <label class="small">Nombre público</label>
+      <input id="name_${x.id}" value="${esc(x.display_name)}" />
+      <label class="small">Bio</label>
+      <input id="bio_${x.id}" value="${esc(x.bio || '')}" />
+      <button onclick="saveProfile('${x.id}')">Guardar perfil</button>
+      ${!isAdmin ? `<button class="danger" onclick="deleteUser('${x.id}')">Eliminar miembro</button> <button onclick="impersonate('${x.id}')">👁 Entrar como este miembro</button>` : ''}
+    </div>
+  `;
+}
+
+function renderRelCard(){
+  const id = document.getElementById('rel_pick').value;
+  const box = document.getElementById('rel_card');
+  if (!id) { box.innerHTML = ''; return; }
+  const rel = rels.find(r => r.id === id);
+  const record = records.find(q => q.relationship_id === rel.id);
+  const card = record ? cards.find(q => q.record_id === record.id) : null;
+  const dom = userOf(rel.dominant_id);
+  const sub = userOf(rel.submissive_id);
+
+  let h = `
+    <div class="item">
+      <div class="rel-header">
+        <div class="rel-person">
+          ${avatarHTML(dom.avatar_url, '♛', true)}
+          <div><b>${esc(nameOf(rel.dominant_id))}</b><div class="small">Dominante</div></div>
+        </div>
+        <div class="rel-arrow">→</div>
+        <div class="rel-person">
+          ${avatarHTML(sub.avatar_url, '⛓', true)}
+          <div><b>${esc(nameOf(rel.submissive_id))}</b><div class="small">Sumiso</div></div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="small" style="background:rgba(212,175,55,.15);padding:4px 10px;border-radius:8px;border:1px solid var(--gold);">${esc(rel.status)}</span>
+        </div>
+      </div>
+      <div style="margin:8px 0;">
+  `;
+
+  if (rel.status === 'pending') {
+    h += `<button onclick="setRel('${rel.id}','confirmed')">Confirmar</button>
+          <button class="danger" onclick="setRel('${rel.id}','rejected')">Rechazar</button>`;
+  }
+  if (rel.status === 'confirmed') {
+    h += `<button class="danger" onclick="setRel('${rel.id}','released')">Liberar</button>`;
+  }
+  h += '</div>';
+
+  if (record) {
+    h += `
+      <label class="small">Nombre de sumiso</label>
+      <input id="sname_${record.relationship_id}" value="${esc(record.slave_name || '')}" />
+      <label class="small">Nivel</label>
+      <select id="slevel_${record.relationship_id}">
+        ${['inicial','entrenamiento','avanzado','total'].map(l => `<option value="${l}" ${record.obedience_level === l ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
+      <label class="small">Notas</label>
+      <input id="snotes_${record.relationship_id}" value="${esc(record.notes || '')}" />
+      <label class="small"><input type="checkbox" id="spublic_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.is_public ? 'checked' : ''}>Registro público</label>
+      <label class="small"><input type="checkbox" id="savatar_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>Avatar público</label>
+      <div style="margin-top:8px;">
+        <button onclick="saveRecord('${record.relationship_id}')">Guardar registro</button>
+        <button onclick="issueCard('${record.id}')">Emitir carnet</button>
+        ${card ? `<span class="small">Carnet: ${esc(card.card_number)} · ${esc(card.verification_code || '')}</span>` : ''}
+      </div>
     `;
   }
 
-  html += '</div>';
+  h += '</div>';
+  box.innerHTML = h;
+}
 
-  async function makeMod() {
+function renderCardCard(){
+  const id = document.getElementById('card_pick').value;
+  const box = document.getElementById('card_card');
+  if (!id) { box.innerHTML = ''; return; }
+  const c = cards.find(x => x.id === id);
+
+  box.innerHTML = `
+    <div class="item">
+      <b>${esc(c.card_number)}</b>
+      <span class="small">— código ${esc(c.verification_code || '')}</span>
+      ${c.revoked ? ' ❌ REVOCADO' : ' ✅'}
+      ${!c.revoked ? `<button class="danger" onclick="revokeCard('${c.id}')">Revocar</button>` : ''}
+    </div>
+  `;
+}
+
+// ===== ACCIONES =====
+
+async function makeAdmin() {
+  const id = document.getElementById('newadmin').value;
+  const { error } = await db.from('app_admins').insert({ user_id: id });
+  if (error) return alert(error.message);
+  alert('Ahora es superusuario.');
+  window.location.reload();
+}
+
+async function removeAdmin(id) {
+  if (!confirm('¿Quitar privilegios de superusuario?')) return;
+  const { error } = await db.from('app_admins').delete().eq('user_id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function makeMod() {
   const id = document.getElementById('newmod').value;
   const { error } = await db.from('app_moderators').insert({ user_id: id });
   if (error) return alert(error.message);
@@ -140,184 +337,26 @@ async function removeMod(id) {
   window.location.reload();
 }
 
-  // ===== MIEMBROS =====
-  html += '<div class="card"><h2>Miembros</h2>';
-
-  users.forEach(x => {
-    const isAdmin = admins.includes(x.id);
-    const fallback = x.role === 'dominant' ? '♛' : '⛓';
-
-    html += `
-      <div class="item">
-        <div class="rowitem" style="margin-bottom:10px;">
-          ${avatarHTML(x.avatar_url, fallback)}
-          <div style="flex:1;min-width:200px;">
-            <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b>
-            <div class="small">${x.role} — ${esc(String(x.age || ''))} años ${isAdmin ? '— ADMIN' : ''}</div>
-            <div class="small">Alta: ${esc(new Date(x.created_at).toLocaleDateString())}</div>
-          </div>
-        </div>
-
-        <label class="small">Nombre público</label>
-        <input id="name_${x.id}" value="${esc(x.display_name)}" />
-        <label class="small">Bio</label>
-        <input id="bio_${x.id}" value="${esc(x.bio || '')}" />
-        <button onclick="saveProfile('${x.id}')">Guardar perfil</button>
-                ${!isAdmin ? `<button class="danger" onclick="deleteUser('${x.id}')">Eliminar miembro</button> <button onclick="impersonate('${x.id}')">👁 Entrar como este miembro</button>` : ''}
-      </div>
-    `;
-  });
-
-  html += '</div>';
-
-  // ===== RELACIONES Y REGISTROS =====
-  html += '<div class="card"><h2>Relaciones y registros</h2>';
-
-  if (rels.length === 0) html += '<p class="small">Sin relaciones.</p>';
-
-  rels.forEach(rel => {
-    const record = records.find(q => q.relationship_id === rel.id);
-    const card = record ? cards.find(q => q.record_id === record.id) : null;
-    const dom = userOf(rel.dominant_id);
-    const sub = userOf(rel.submissive_id);
-
-    html += `
-      <div class="item">
-        <div class="rel-header">
-          <div class="rel-person">
-            ${avatarHTML(dom.avatar_url, '♛', true)}
-            <div>
-              <b>${esc(nameOf(rel.dominant_id))}</b>
-              <div class="small">Dominante</div>
-            </div>
-          </div>
-          <div class="rel-arrow">→</div>
-          <div class="rel-person">
-            ${avatarHTML(sub.avatar_url, '⛓', true)}
-            <div>
-              <b>${esc(nameOf(rel.submissive_id))}</b>
-              <div class="small">Sumiso</div>
-            </div>
-          </div>
-          <div style="margin-left:auto;">
-            <span class="small" style="background:rgba(212,175,55,.15);padding:4px 10px;border-radius:8px;border:1px solid var(--gold);">${esc(rel.status)}</span>
-          </div>
-        </div>
-
-        <div style="margin:8px 0;">
-    `;
-
-    if (rel.status === 'pending') {
-      html += `<button onclick="setRel('${rel.id}','confirmed')">Confirmar</button>
-               <button class="danger" onclick="setRel('${rel.id}','rejected')">Rechazar</button>`;
-    }
-
-    if (rel.status === 'confirmed') {
-      html += `<button class="danger" onclick="setRel('${rel.id}','released')">Liberar</button>`;
-    }
-
-    html += '</div>';
-
-    if (record) {
-      html += `
-        <label class="small">Nombre de sumiso</label>
-        <input id="sname_${record.relationship_id}" value="${esc(record.slave_name || '')}" />
-        <label class="small">Nivel</label>
-        <select id="slevel_${record.relationship_id}">
-          ${['inicial','entrenamiento','avanzado','total'].map(l => `<option value="${l}" ${record.obedience_level === l ? 'selected' : ''}>${l}</option>`).join('')}
-        </select>
-        <label class="small">Notas</label>
-        <input id="snotes_${record.relationship_id}" value="${esc(record.notes || '')}" />
-        <label class="small"><input type="checkbox" id="spublic_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.is_public ? 'checked' : ''}>Registro público</label>
-        <label class="small"><input type="checkbox" id="savatar_${record.relationship_id}" style="width:auto;margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>Avatar público</label>
-        <div style="margin-top:8px;">
-          <button onclick="saveRecord('${record.relationship_id}')">Guardar registro</button>
-          <button onclick="issueCard('${record.id}')">Emitir carnet</button>
-          ${card ? `<span class="small">Carnet: ${esc(card.card_number)} · ${esc(card.verification_code || '')}</span>` : ''}
-        </div>
-      `;
-    }
-
-    html += '</div>';
-  });
-
-  html += '</div>';
-
-  // ===== CARNETS =====
-  html += '<div class="card"><h2>Carnets</h2>';
-
-  if (cards.length === 0) html += '<p class="small">Sin carnets.</p>';
-
-  cards.forEach(c => {
-    html += `
-      <div class="item">
-        <b>${esc(c.card_number)}</b>
-        <span class="small">— código ${esc(c.verification_code || '')}</span>
-        ${c.revoked ? ' ❌ REVOCADO' : ' ✅'}
-        ${!c.revoked ? `<button class="danger" onclick="revokeCard('${c.id}')">Revocar</button>` : ''}
-      </div>
-    `;
-  });
-
-  html += '</div>';
-
-  content.innerHTML = html;
-}
-
-// ===== ACCIONES =====
-
-async function makeAdmin() {
-  const id = document.getElementById('newadmin').value;
-
-  const { error } = await db.from('app_admins').insert({ user_id: id });
-
-  if (error) return alert(error.message);
-
-  alert('Ahora es superusuario.');
-  window.location.reload();
-}
-
-async function removeAdmin(id) {
-  if (!confirm('¿Quitar privilegios de superusuario?')) return;
-
-  const { error } = await db.from('app_admins').delete().eq('user_id', id);
-
-  if (error) return alert(error.message);
-
-  window.location.reload();
-}
-
 async function deleteUser(id) {
   if (!confirm('¿Eliminar este miembro DEFINITIVAMENTE? Se borrará su cuenta, perfil, relaciones y registros.')) return;
-
-  const { data, error } = await db.functions.invoke('admin-delete-user', {
-    body: { user_id: id }
-  });
-
+  const { data, error } = await db.functions.invoke('admin-delete-user', { body: { user_id: id } });
   if (error) return alert(error.message);
-
   if (data && data.ok) alert('Miembro eliminado.');
   else alert('Error: ' + JSON.stringify(data));
-
   window.location.reload();
 }
 
 async function setRel(id, status) {
   const { error } = await db.from('relationships').update({ status }).eq('id', id);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
 async function saveProfile(id) {
   const display_name = document.getElementById('name_' + id).value.trim();
   const bio = document.getElementById('bio_' + id).value.trim();
-
   const { error } = await db.from('profiles').update({ display_name, bio }).eq('id', id);
-
   if (error) return alert(error.message);
-
   alert('Perfil actualizado.');
 }
 
@@ -327,37 +366,28 @@ async function saveRecord(relId) {
   const notes = document.getElementById('snotes_' + relId).value;
   const is_public = document.getElementById('spublic_' + relId).checked;
   const show_avatar = document.getElementById('savatar_' + relId).checked;
-
-  const { error } = await db
-    .from('submissive_records')
+  const { error } = await db.from('submissive_records')
     .update({ slave_name, obedience_level, notes, is_public, show_avatar })
     .eq('relationship_id', relId);
-
   if (error) return alert(error.message);
-
   alert('Registro guardado.');
 }
 
 async function issueCard(recordId) {
   const { data, error } = await db.from('cards').insert({ record_id: recordId }).select().single();
-
   if (error) return alert(error.message);
-
   alert('Carnet emitido.\nNúmero: ' + data.card_number + '\nCódigo: ' + (data.verification_code || ''));
   window.location.reload();
 }
 
 async function revokeCard(id) {
   if (!confirm('¿Revocar este carnet?')) return;
-
   const { error } = await db.from('cards').update({ revoked: true }).eq('id', id);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
-  async function impersonate(id) {
+async function impersonate(id) {
   if (!confirm('Entrarás a la cuenta de este miembro con control total, como si fuera él. ¿Continuar?')) return;
 
   const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
@@ -370,7 +400,7 @@ async function revokeCard(id) {
 
   let res;
   try {
-        res = await fetch('/api/impersonate', {
+    res = await fetch('/api/impersonate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -395,6 +425,7 @@ async function revokeCard(id) {
 
   window.location.href = data.link;
 }
+
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
