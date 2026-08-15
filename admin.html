@@ -379,8 +379,16 @@ async function removeMod(id) {
 async function rejectDominant(id) {
   if (!confirm('¿Rechazar y ELIMINAR esta cuenta? La persona deberá volver a registrarse.')) return;
   if (!confirm('Segunda confirmación: la cuenta será borrada de forma definitiva.')) return;
-  const { error } = await db.rpc('staff_decide_user', { target_id: id, approve: false });
-  if (error) return alert(error.message);
+
+  const { data: { session } } = await db.auth.getSession();
+  const res = await fetch('/api/staff-delete-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+    body: JSON.stringify({ user_id: id })
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) return alert('Error: ' + (j.error || res.status));
+
   alert('Cuenta rechazada y eliminada.');
   window.location.reload();
 }
