@@ -232,8 +232,20 @@
     async function loadProfileAndRender() {
       const { data, error } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
       if (error) { alert(error.message); show('auth'); return; }
-      currentProfile = data;
+           currentProfile = data;
       if (!currentProfile) { show('profile-setup'); return; }
+
+      if (!currentProfile.approved) {
+        document.getElementById('dashboard').innerHTML = `
+          <div class="card" style="text-align:center;">
+            <h2>⏳ Cuenta pendiente de aprobación</h2>
+            <p class="small">Tu registro como <b>${currentProfile.role === 'dominant' ? 'Dominante' : 'miembro'}</b> ha sido recibido y está en revisión por el Staff.</p>
+            <p class="small">Recibirás una notificación cuando sea aprobada. Mientras tanto, puedes cerrar sesión.</p>
+            <button class="secondary" onclick="logout()" style="margin-top:14px;">Cerrar sesión</button>
+          </div>`;
+        show('app');
+        return;
+      }
 
       document.getElementById('welcome').textContent = currentProfile.display_name;
       document.getElementById('role-badge').textContent =
@@ -331,13 +343,19 @@
       if (!data.user) return alert('Revisa tu correo para confirmar la cuenta.');
       if (!data.session) return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
 
-            const { error: profileError } = await db.from('profiles').insert({
-        id: data.user.id, role, display_name, age, country,
-        lang: document.getElementById('reg-lang').value,
-        social_links: social_links || null, social_links_public
+                const { data: regResult, error: profileError } = await db.rpc('register_profile', {
+        p_id: data.user.id, p_role: role, p_display_name, p_age, p_country,
+        p_social_links: social_links || null, p_social_links_public
       });
       if (profileError) return alert(profileError.message);
-      window.location.reload();
+
+      if (role === 'dominant') {
+        await db.auth.signOut();
+        alert('👑 Registro recibido.\n\nTu cuenta como Dominante quedará pendiente hasta que el Staff la apruebe. Recibirás una notificación cuando esté activa.');
+        window.location.href = 'index.html';
+      } else {
+        window.location.reload();
+      }
     }
 
     async function createProfile() {
