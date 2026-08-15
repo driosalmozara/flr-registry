@@ -80,9 +80,13 @@
 
         <div class="col card">
           <h2>Crear cuenta</h2>
-          <select id="reg-role">
+                   <select id="reg-role" onchange="roleGenderSync('reg')">
             <option value="submissive">⛓ Sumiso</option>
             <option value="dominant">♛ Dominante</option>
+          </select>
+          <select id="reg-gender">
+            <option value="hombre">Hombre</option>
+            <option value="mujer">Mujer</option>
           </select>
           <input id="reg-display" placeholder="Nombre público" />
           <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
@@ -131,9 +135,13 @@
 
     <section id="profile-setup" class="hidden card">
       <h2>Completa tu perfil</h2>
-      <select id="setup-role">
+           <select id="setup-role" onchange="roleGenderSync('setup')">
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
+      </select>
+      <select id="setup-gender">
+        <option value="hombre">Hombre</option>
+        <option value="mujer">Mujer</option>
       </select>
       <input id="setup-display" placeholder="Nombre público" />
       <input id="setup-age" type="number" min="18" placeholder="Edad (18+)" />
@@ -321,6 +329,18 @@
       window.location.reload();
     }
 
+        function roleGenderSync(prefix) {
+      const role = document.getElementById(prefix + '-role').value;
+      const g = document.getElementById(prefix + '-gender');
+      if (!g) return;
+      if (role === 'dominant') {
+        g.value = 'mujer';
+        g.disabled = true;
+      } else {
+        g.disabled = false;
+        if (!g.value) g.value = 'hombre';
+      }
+    }
     async function register() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('reg-role').value;
@@ -345,13 +365,14 @@
 
                 const { data: regResult, error: profileError } = await db.rpc('register_profile', {
         p_id: data.user.id, p_role: role, p_display_name, p_age, p_country,
-        p_social_links: social_links || null, p_social_links_public
+        p_social_links: social_links || null, p_social_links_public,
+        p_gender: document.getElementById('reg-gender').value
       });
       if (profileError) return alert(profileError.message);
 
       if (role === 'dominant') {
         await db.auth.signOut();
-        alert('👑 Registro recibido.\n\nTu cuenta como Dominante quedará pendiente hasta que el Staff la apruebe. Recibirás una notificación cuando esté activa.');
+        alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
         window.location.href = 'index.html';
       } else {
         window.location.reload();
@@ -365,8 +386,7 @@
       const age = Number(document.getElementById('setup-age').value);
       const country = document.getElementById('setup-country').value;
       if (!display_name || !age || age < 18) return alert('Completa nombre y edad 18+.');
-      const { error } = await db.from('profiles').insert({ id: currentUser.id, role, display_name, age, country, lang: document.getElementById('setup-lang').value });      if (error) return alert(error.message);
-      window.location.reload();
+      const { error } = await db.from('profiles').insert({ id: currentUser.id, role, display_name, age, country, lang: document.getElementById('setup-lang').value, gender: document.getElementById('setup-gender').value });      window.location.reload();
     }
 
     async function deleteMyAccount() {
@@ -711,6 +731,8 @@
       window.location.reload();
     }
 
+        roleGenderSync('reg');
+    roleGenderSync('setup');
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
