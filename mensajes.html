@@ -147,6 +147,15 @@ async function load() {
 }
 
   function isArchived(c){ return c.member_a === me ? !!c.archived_a : !!c.archived_b; }
+  async function deleteConversation(id){
+  if (!confirm('¿ELIMINAR esta conversación?\n\nSe borrarán TODOS los mensajes, para AMBOS miembros.')) return;
+  if (!confirm('Segunda confirmación: esta acción NO puede deshacerse.')) return;
+  const { error } = await db.rpc('delete_conversation', { conv_id: id });
+  if (error) return alert(error.message);
+  if (currentThread === id) currentThread = null;
+  alert('Conversación eliminada.');
+  await load();
+}
 
 async function setArchived(id, on){
   const c = allConvs.find(x => x.id === id);
@@ -272,8 +281,11 @@ async function render() {
       <div class="body">
         ${archived.length ? archived.map(c => `
           <div class="item">
-            <button class="wide" onclick="openThread('${c.id}')">🗄 ${esc(nameOf(otherOf(c)))}</button>
-            <button style="margin-top:8px;" onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>
+                        <button class="wide" onclick="openThread('${c.id}')">🗄 ${esc(nameOf(otherOf(c)))}</button>
+            <div style="margin-top:8px;">
+              <button onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>
+              <button class="danger" onclick="deleteConversation('${c.id}')">❌ Eliminar</button>
+            </div>
           </div>`).join('') : '<p class="small">No tienes conversaciones archivadas.</p>'}
       </div>
     </details>
