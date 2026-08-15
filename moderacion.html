@@ -14,6 +14,7 @@ main{max-width:900px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
+select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:6px 0 12px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 button.danger{background:#7f1d1d;color:#fff}
@@ -43,6 +44,8 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null, isAdm = false;
+let modList = [];
+let modOwned = new Set();
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -52,7 +55,7 @@ async function init(){
   if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2>'; return; }
   me = session.user.id;
 
-    const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
+  const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
   if (!adm && !mod) { content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no forma parte del Staff.</p>'; return; }
   isAdm = !!adm;
 
@@ -67,47 +70,63 @@ async function render(){
     db.from('relationships').select('submissive_id').eq('status', 'confirmed')
   ]);
 
-    const owned = new Set((r.data || []).map(x => x.submissive_id));
-  const libres = isAdm ? (p.data || []) : (p.data || []).filter(x => !owned.has(x.id));
+  modOwned = new Set((r.data || []).map(x => x.submissive_id));
+  modList = isAdm ? (p.data || []) : (p.data || []).filter(x => !modOwned.has(x.id));
 
   let html = `
     <div class="card">
-      <h2>🛡 Sumisos sin dueña</h2>
-      <p class="small">Facultades del Staff: silenciar en el chat, prohibir mensajes privados o eliminar la cuenta.
-      Los sumisos con dueña quedan fuera de tu jurisdicción: pertenecen a su Dominante.</p>
+      <h2>🛡 ${isAdm ? 'Moderación total (Administradora)' : 'Moderación de sumisos sin dueña'}</h2>
+      <p class="small">Elige un miembro del desplegable para silenciarlo en el chat, prohibirle los mensajes privados o eliminarlo de la aplicación.</p>
+    </div>
+    <div class="card">
+      <label class="small">Elegir miembro</label>
+      <select id="mod_pick" onchange="renderModCard()">
+        <option value="">— Seleccionar —</option>
+        ${modList.map(s => `<option value="${s.id}">⛓ ${esc(s.display_name)}${modOwned.has(s.id) ? ' · con dueña' : ' · sin dueña'}</option>`).join('')}
+      </select>
+      <div id="mod_card"></div>
     </div>
   `;
 
-  if (libres.length === 0) html += '<div class="card"><p class="small">No hay sumisos sin dueña registrados.</p></div>';
+  content.innerHTML = html;
+}
 
-  libres.forEach(s => {
-    html += `
-      <div class="item">
-        <div class="rowitem">
-          ${s.avatar_url ? `<img class="ava" src="${esc(s.avatar_url)}"/>` : '<div class="ava empty">⛓</div>'}
-          <div style="flex:1;min-width:200px;">
-            <h3 style="margin:0;">${esc(s.display_name)}</h3>
-            <div style="margin-top:6px;">
-              <span class="flag ${s.chat_muted ? 'on' : 'off'}">${s.chat_muted ? '🔇 Silenciado en chat' : '🔊 Chat libre'}</span>
-              <span class="flag ${s.pm_banned ? 'on' : 'off'}">${s.pm_banned ? '🚫 Privados prohibidos' : '✉️ Privados permitidos'}</span>
-            </div>
+function renderModCard(){
+  const id = document.getElementById('mod_pick').value;
+  const box = document.getElementById('mod_card');
+  if (!id) { box.innerHTML = ''; return; }
+  const s = modList.find(x => x.id === id);
+  if (!s) { box.innerHTML = ''; return; }
+  const owned = modOwned.has(s.id);
+
+  box.innerHTML = `
+    <div class="item">
+      <div class="rowitem">
+        ${s.avatar_url ? `<img class="ava" src="${esc(s.avatar_url)}"/>` : '<div class="ava empty">⛓</div>'}
+        <div style="flex:1;min-width:200px;">
+          <h3 style="margin:0;">${esc(s.display_name)}</h3>
+          <div class="small">Alta: ${esc(new Date(s.created_at).toLocaleDateString())} · ${owned ? '👑 Con dueña' : '● Sin dueña'}</div>
+          <div style="margin-top:8px;">
+            <span class="flag ${s.chat_muted ? 'on' : 'off'}">${s.chat_muted ? '🔇 Silenciado en chat' : '🔊 Chat libre'}</span>
+            <span class="flag ${s.pm_banned ? 'on' : 'off'}">${s.pm_banned ? '🚫 Privados prohibidos' : '✉️ Privados permitidos'}</span>
           </div>
         </div>
-        <div style="margin-top:10px;">
-          <button class="secondary" onclick="setFlag('${s.id}','chat_muted',${!s.chat_muted})">${s.chat_muted ? '🔊 Devolver voz en chat' : '🔇 Silenciar en chat'}</button>
-          <button class="secondary" onclick="setFlag('${s.id}','pm_banned',${!s.pm_banned})">${s.pm_banned ? '✉️ Permitir privados' : '🚫 Prohibir privados'}</button>
-          ${!owned.has(s.id) ? `<button class="danger" onclick="removeUser('${s.id}')">❌ Eliminar de la aplicación</button>` : '<p class="small">👑 Sumiso con dueña: la eliminación corresponde al Panel de Administración.</p>'}        </div>
       </div>
-    `;
-  });
-
-  content.innerHTML = html;
+      <div style="margin-top:12px;">
+        <button class="secondary" onclick="setFlag('${s.id}','chat_muted',${!s.chat_muted})">${s.chat_muted ? '🔊 Devolver voz en chat' : '🔇 Silenciar en chat'}</button>
+        <button class="secondary" onclick="setFlag('${s.id}','pm_banned',${!s.pm_banned})">${s.pm_banned ? '✉️ Permitir privados' : '🚫 Prohibir privados'}</button>
+        ${!owned ? `<button class="danger" onclick="removeUser('${s.id}')">❌ Eliminar de la aplicación</button>` : '<p class="small" style="margin-top:8px;">👑 Sumiso con dueña: la eliminación corresponde al Panel de Administración.</p>'}
+      </div>
+    </div>
+  `;
 }
 
 async function setFlag(id, flag, on){
   const { error } = await db.rpc('mod_set_flag', { target_id: id, flag, on_val: on });
   if (error) return alert(error.message);
-  window.location.reload();
+  await render();
+  document.getElementById('mod_pick').value = id;
+  renderModCard();
 }
 
 async function removeUser(id){
