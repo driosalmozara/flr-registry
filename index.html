@@ -462,7 +462,7 @@
             Mostrar mi país y redes en el registro público
           </label>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-        </div>
+          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>        </div>
       `;
 
       dashboard.insertAdjacentHTML('afterbegin', profileCard);
