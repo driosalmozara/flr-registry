@@ -63,6 +63,9 @@ let me = null;
 let myProfile = null;
 let isSuper = false;
 let isMod = false;
+let isChatMod = false;
+let ownedSet = new Set();
+let chatModIds = new Set();
 let mutes = [];
 let people = [];
 let presenceChannel = null;
@@ -114,6 +117,8 @@ async function init() {
 
   const { data: modFlag } = await db.rpc('am_i_moderator');
   isMod = !!modFlag;
+    const { data: chatModFlag } = await db.rpc('am_i_chatmod');
+  isChatMod = !!chatModFlag;
 
   await renderPage();
 
@@ -139,11 +144,15 @@ async function init() {
 async function renderPage() {
   const content = document.getElementById('content');
 
-  const [p, sn, an] = await Promise.all([
+    const [p, sn, an, ow, cmods] = await Promise.all([
     db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
-    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false })
+    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
+    db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
+    db.from('app_chat_mods').select('user_id')
   ]);
+  ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
+  chatModIds = new Set((cmods.data || []).map(x => x.user_id));
 
   people = p.data || [];
   people = (p.data || []).map(person => ({
@@ -243,14 +252,14 @@ function renderParticipants() {
     const online = onlineIds.has(p.id);
     const isMuzzled = p.is_muzzled || false;
 
-    // Determinar si puedo silenciar a este usuario
-    const canMute = (isSuper || isMod) && p.id !== me && p.role === 'submissive';
+        // Determinar si puedo silenciar a este usuario
+    const owned = ownedSet.has(p.id);
+    const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
 
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO POR SU DUEÑA)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
-        </span>
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}        </span>
         ${canMute ? `
           <button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>
         ` : ''}
