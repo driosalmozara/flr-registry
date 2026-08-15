@@ -25,6 +25,15 @@
     .ava { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex: none; background: #0b0b12; }
     .ava.empty { display: flex; align-items: center; justify-content: center; background: #161625; color: var(--gold); font-size: 22px; }
     .rowitem { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+        #tour-offer{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99989}
+    #tour-spot{position:absolute;border:2px solid var(--gold);border-radius:12px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 30px rgba(212,175,55,.5);
+      transition:all .4s ease;z-index:99990;pointer-events:none}
+    #tour-tip{position:fixed;z-index:99991;max-width:340px;background:var(--panel);
+      border:1px solid var(--gold);border-radius:14px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+    #tour-tip h4{color:var(--gold);margin:0 0 8px}
+    #tour-tip p{color:#d4d4d8;font-size:13px;line-height:1.6;margin:0 0 12px}
+    #tour-tip .tbtns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -271,6 +280,8 @@
       else await renderSubmissive();
 
       await renderMyProfile();
+
+      if (!currentProfile.tour_done) offerTour();
     }
 
     function togglePass(id, showPass) {
@@ -421,7 +432,7 @@
       ).join('');
 
       const profileCard = `
-        <div class="card">
+               <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
           <label class="small">Nombre público</label>
@@ -747,6 +758,101 @@
 
         roleGenderSync('reg');
     roleGenderSync('setup');
+        // ══ TOUR GUIADO ══
+    let tourSteps = [], tourIdx = 0;
+
+    function buildTourSteps() {
+      const dom = currentProfile.role === 'dominant';
+      return [
+        { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Supremacía Femenina: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
+        { sel: 'a[href="registro-publico.html"]', t: 'Registro público', x: 'El salón principal: verás Dominantes y sumisos registrados, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },
+        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
+        { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
+        { sel: 'a[href="chat.html"]', t: 'Chat', x: 'El canal público #supremacia. El botón brilla en dorado cuando hay mensajes sin leer.' },
+        { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
+        { sel: 'a[href="notificaciones.html"]', t: 'Notificaciones', x: 'Todo lo que te ocurre: solicitudes, disciplina, cesiones, subastas, aprobaciones del Staff.' },
+        { sel: 'a[href="avatar.html"]', t: 'Mi avatar', x: 'Cambia tu fotografía de perfil.' },
+        { sel: 'a[href="disciplina.html"]', t: 'Disciplina', x: 'Recompensas, castigos, mordaza y castidad con contador de días en vivo.' },
+        { sel: 'a[href="contrato.html"]', t: 'Contrato', x: 'El contrato simbólico entre Dominante y sumiso, con anexos de cesión y descarga en PDF.' },
+        { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
+        { sel: 'a[href="subastas.html"]', t: 'Subastas', x: 'Las Dominantes pueden subastar a sus sumisos; las demás pujan con coronas ♛.' },
+        { sel: 'a[href="cesiones.html"]', t: 'Cesiones', x: 'Cede o recibe sumisos entre Dominantes, de forma temporal o indefinida.' },
+        { sel: 'a[href="mi-galeria.html"]', t: 'Mi Galería', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el registro público.' },
+        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
+        { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes y su visibilidad.' },
+        { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Aquí gestionas solicitudes, sumisos, país y redes, marcas de subasta y carnets.' : 'Aquí ves tu estado, tu Dominante, tu registro, carnet y las solicitudes recibidas.' },
+        { sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' }
+      ].filter(s => document.querySelector(s.sel));
+    }
+
+    function offerTour() {
+      const ov = document.createElement('div');
+      ov.id = 'tour-offer';
+      ov.innerHTML = `
+        <div id="tour-tip" style="left:50%;top:40%;transform:translate(-50%,-50%);">
+          <h4>♛ Bienvenida a la casa</h4>
+          <p>¿Deseas un recorrido guiado para conocer los botones y funciones de la plataforma?</p>
+          <div class="tbtns">
+            <button class="secondary" id="tour-no">Ahora no</button>
+            <button id="tour-yes">🎬 Comenzar tour</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      document.getElementById('tour-yes').onclick = function(){ ov.remove(); startTour(); };
+      document.getElementById('tour-no').onclick = function(){ ov.remove(); endTour(false); };
+    }
+
+    function startTour() {
+      tourSteps = buildTourSteps();
+      tourIdx = 0;
+      const spot = document.createElement('div'); spot.id = 'tour-spot';
+      const tip = document.createElement('div'); tip.id = 'tour-tip';
+      document.body.appendChild(spot);
+      document.body.appendChild(tip);
+      showStep();
+    }
+
+    function showStep() {
+      const s = tourSteps[tourIdx];
+      const el = document.querySelector(s.sel);
+      if (!el) { nextStep(); return; }
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setTimeout(function(){
+        const r = el.getBoundingClientRect();
+        const pad = 6;
+        const spot = document.getElementById('tour-spot');
+        spot.style.left = (r.left + window.scrollX - pad) + 'px';
+        spot.style.top = (r.top + window.scrollY - pad) + 'px';
+        spot.style.width = (r.width + pad * 2) + 'px';
+        spot.style.height = (r.height + pad * 2) + 'px';
+
+        const tip = document.getElementById('tour-tip');
+        tip.style.transform = 'none';
+        tip.innerHTML = `
+          <h4>${s.t}</h4>
+          <p>${s.x}</p>
+          <div class="tbtns">
+            <button class="secondary" onclick="endTour(true)">Finalizar</button>
+            ${tourIdx > 0 ? '<button class="secondary" onclick="prevStep()">Atrás</button>' : ''}
+            <button onclick="nextStep()">${tourIdx === tourSteps.length - 1 ? 'Terminar' : 'Siguiente'}</button>
+          </div>
+          <p class="small" style="margin:8px 0 0;">Paso ${tourIdx + 1} de ${tourSteps.length}</p>`;
+        let top = r.bottom + 14;
+        if (top + 240 > window.innerHeight) top = Math.max(10, r.top - 250);
+        let left = Math.min(Math.max(10, r.left), window.innerWidth - 360);
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+      }, 350);
+    }
+
+    function nextStep() { if (tourIdx < tourSteps.length - 1) { tourIdx++; showStep(); } else endTour(true); }
+    function prevStep() { if (tourIdx > 0) { tourIdx--; showStep(); } }
+
+    async function endTour() {
+      const s = document.getElementById('tour-spot'); if (s) s.remove();
+      const t = document.getElementById('tour-tip'); if (t) t.remove();
+      try { await db.from('profiles').update({ tour_done: true }).eq('id', currentUser.id); } catch(e) {}
+    }
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
