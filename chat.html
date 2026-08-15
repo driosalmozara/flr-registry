@@ -17,8 +17,8 @@ main{max-width:1000px;margin:0 auto;padding:20px}
 input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
 button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
+button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-
 #irc{display:flex;gap:12px;height:65vh}
 #side{width:230px;flex:none;overflow-y:auto;margin:0}
 #main{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -29,18 +29,11 @@ button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;paddin
 #msg{flex:1;margin:0}
 .prow{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:8px}
 .prow:hover{background:#161625}
-@media (max-width:600px){
-  #irc{flex-direction:column;height:auto}
-  #side{width:100%;max-height:160px}
-  #msgs{height:300px}
-}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;box-shadow:0 0 6px #22c55e}
-
-/* ── Desplegable compacto de apodos ── */
 .nick-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
 .nick-row label{display:block;font-size:12px;color:#a1a1aa;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
 .nick-row input,.nick-row select{margin:0}
-@media (max-width:600px){.nick-row{grid-template-columns:1fr}}
+@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -59,24 +52,13 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let me = null;
-let myProfile = null;
-let isSuper = false;
-let isMod = false;
-let isChatMod = false;
-let ownedSet = new Set();
-let chatModIds = new Set();
-let mutes = [];
-let people = [];
-let presenceChannel = null;
-let onlineIds = new Set();
-let selfNicks = [];
-let assignedNicks = [];
-let currentTargets = [];
+let me = null, myProfile = null;
+let isSuper = false, isMod = false, isChatMod = false;
+let people = [], presenceChannel = null, onlineIds = new Set();
+let selfNicks = [], assignedNicks = [], currentTargets = [];
+let ownedSet = new Set(), chatModIds = new Set();
 
-function esc(v){
-  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function colorFor(name) {
   let h = 0;
@@ -96,41 +78,30 @@ function nameFor(id, fallback) {
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
-
-  if (!session) {
-    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
 
   const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
   myProfile = profile;
+  if (!myProfile) { content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
 
-  if (!myProfile) {
-    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
-  const { data: superFlag } = await db.rpc('am_i_superadmin');
-  isSuper = !!superFlag;
-
-  const { data: modFlag } = await db.rpc('am_i_moderator');
-  isMod = !!modFlag;
-    const { data: chatModFlag } = await db.rpc('am_i_chatmod');
-  isChatMod = !!chatModFlag;
+  const [sf, mf, cf] = await Promise.all([
+    db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'), db.rpc('am_i_chatmod')
+  ]);
+  isSuper = !!sf; isMod = !!mf; isChatMod = !!cf;
 
   await renderPage();
 
   db.channel('flr-chat')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadMessages())
     .subscribe();
-    db.channel('flr-chat-media')
+
+  db.channel('flr-chat-media')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_media_pending' }, () => { if (isSuper || isMod || isChatMod) renderPage(); })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_media_pending' }, () => { if (isSuper || isMod || isChatMod) renderPage(); })
     .subscribe();
-    presenceChannel = db.channel('flr-presencia', { config: { presence: { key: me } } });
 
+  presenceChannel = db.channel('flr-presencia', { config: { presence: { key: me } } });
   presenceChannel
     .on('presence', { event: 'sync' }, () => {
       const state = presenceChannel.presenceState();
@@ -139,32 +110,29 @@ async function init() {
       renderParticipants();
     })
     .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await presenceChannel.track({ user_id: me });
-      }
+      if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
     });
 }
 
 async function renderPage() {
   const content = document.getElementById('content');
 
-    const [p, sn, an, ow, cmods] = await Promise.all([
+  const [p, sn, an, ow, cmods] = await Promise.all([
     db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
     db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
     db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
     db.from('app_chat_mods').select('user_id')
   ]);
-  ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
-  chatModIds = new Set((cmods.data || []).map(x => x.user_id));
 
-  people = p.data || [];
   people = (p.data || []).map(person => ({
     ...person,
     is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
   }));
   selfNicks = sn.data || [];
   assignedNicks = an.data || [];
+  ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
+  chatModIds = new Set((cmods.data || []).map(x => x.user_id));
 
   const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
   const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -179,28 +147,21 @@ async function renderPage() {
     </div>
   `;
 
-  // ── Panel compacto con desplegable ──
   if (isSuper || myProfile.role === 'dominant') {
     let targets = [];
-
     if (isSuper) {
       targets = people.filter(x => x.id !== me);
     } else {
-      const { data: subs } = await db
-        .from('relationships')
+      const { data: subs } = await db.from('relationships')
         .select('profiles!relationships_submissive_id_fkey(id, display_name, role)')
-        .eq('dominant_id', me)
-        .eq('status', 'confirmed');
+        .eq('dominant_id', me).eq('status', 'confirmed');
       targets = (subs || []).map(s => s.profiles).filter(Boolean);
     }
-
     currentTargets = targets;
-
     if (targets.length > 0) {
       html += `
         <div class="card">
           <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
-          <p class="small">Elige un miembro, escribe el apodo y asigna. Sin scroll.</p>
           <div class="nick-row">
             <div>
               <label for="assign_target">Miembro</label>
@@ -213,16 +174,14 @@ async function renderPage() {
               <label for="assign_nick">Nuevo apodo</label>
               <input id="assign_nick" placeholder="Escribe el apodo" />
             </div>
-            <div>
-              <button onclick="assignNickFromSelect()">Asignar</button>
-            </div>
+            <div><button onclick="assignNickFromSelect()">Asignar</button></div>
           </div>
         </div>
       `;
     }
   }
 
-    if (isSuper || isMod || isChatMod) {
+  if (isSuper || isMod || isChatMod) {
     const { data: pend } = await db.from('chat_media_pending').select('*').eq('status', 'pending').order('created_at', { ascending: true });
     const list = pend || [];
     if (list.length) {
@@ -259,7 +218,6 @@ async function renderPage() {
   `;
 
   content.innerHTML = html;
-
   renderParticipants();
   renderInputRow();
   await loadMessages();
@@ -268,28 +226,22 @@ async function renderPage() {
 function renderParticipants() {
   const box = document.getElementById('plist');
   const title = document.getElementById('ptitle');
-
-  if (title) {
-    title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
-  }
+  if (title) title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
 
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
     const chatMuted = p.chat_muted || false;
     const online = onlineIds.has(p.id);
     const isMuzzled = p.is_muzzled || false;
-
-        // Determinar si puedo silenciar a este usuario
     const owned = ownedSet.has(p.id);
     const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
 
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}        </span>
-        ${canMute ? `
-          <button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>
-        ` : ''}
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
+        </span>
+        ${canMute ? `<button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
       </div>
     `;
   }).join('');
@@ -298,52 +250,57 @@ function renderParticipants() {
 async function renderInputRow() {
   const row = document.getElementById('inputrow');
 
-  // Verificar si estoy silenciado por moderación
   const { data: myProfileData } = await db.from('profiles').select('chat_muted').eq('id', me).maybeSingle();
   if (myProfileData && myProfileData.chat_muted) {
     row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Has sido silenciado por el Staff. No puedes participar en el chat.</p>';
     return;
   }
 
-  // Verificar si estoy amordazado
-  const { data: myRel } = await db
-    .from('relationships')
-    .select('is_muzzled')
-    .eq('submissive_id', me)
-    .eq('status', 'confirmed')
-    .maybeSingle();
-
+  const { data: myRel } = await db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
   if (myRel && myRel.is_muzzled) {
     row.innerHTML = '<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. No puedes participar en el chat.</p>';
     return;
   }
 
   row.innerHTML = `
-      row.innerHTML = `
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
-    <button class="mini" style="color:var(--gold);border-color:var(--gold);" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
+    <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
     <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
     <button onclick="sendMsg()">Enviar</button>
   `;
+}
+
+async function attachChat(input){
+  const file = input.files[0]; if (!file) return;
+  const path = me + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+  const { error } = await db.storage.from('chat-media').upload(path, file);
+  if (error) return alert(error.message);
+  const url = db.storage.from('chat-media').getPublicUrl(path).data.publicUrl;
+  const { error: e2 } = await db.from('chat_media_pending').insert({
+    user_id: me, url, type: file.type.startsWith('video') ? 'video' : 'image'
+  });
+  if (e2) return alert(e2.message);
+  alert('📎 Archivo enviado a revisión.\nUn Moderador de chat, Moderadora o Administradora deberá aprobarlo antes de publicarse.');
+  input.value = '';
+}
+
+async function mediaDecide(id, approve){
+  const { error } = await db.rpc('chat_media_decide', { pending_id: id, approve });
+  if (error) return alert(error.message);
+  await renderPage();
 }
 
 async function loadMessages() {
   const box = document.getElementById('msgs');
   if (!box) return;
 
-  const { data } = await db
-    .from('chat_messages_public')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
-
+  const { data } = await db.from('chat_messages_public').select('*').order('created_at', { ascending: false }).limit(200);
   const list = (data || []).reverse();
 
   box.innerHTML = list.map(m => {
     const t = new Date(m.created_at);
     const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-
-        let att = '';
+    let att = '';
     if (m.attachment_url) {
       att = m.attachment_type === 'video'
         ? `<div><video src="${esc(m.attachment_url)}" controls style="max-width:260px;border-radius:8px;display:block;margin:4px 0;"></video></div>`
@@ -363,37 +320,12 @@ async function loadMessages() {
   box.scrollTop = box.scrollHeight;
 }
 
-  async function attachChat(input){
-  const file = input.files[0]; if (!file) return;
-  const path = me + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-  const { error } = await db.storage.from('chat-media').upload(path, file);
-  if (error) return alert(error.message);
-  const url = db.storage.from('chat-media').getPublicUrl(path).data.publicUrl;
-  const { error: e2 } = await db.from('chat_media_pending').insert({
-    user_id: me, url, type: file.type.startsWith('video') ? 'video' : 'image'
-  });
-  if (e2) return alert(e2.message);
-  alert('📎 Archivo enviado a revisión.\nUn Moderador de chat, Moderadora o Administradora deberá aprobarlo antes de publicarse.');
-  input.value = '';
-}
-
-async function mediaDecide(id, approve){
-  const { error } = await db.rpc('chat_media_decide', { pending_id: id, approve });
-  if (error) return alert(error.message);
-  await renderPage();
-  await loadMessages();
-}
-
 async function sendMsg() {
   const input = document.getElementById('msg');
   const body = input.value.trim();
-
   if (!body) return;
-
   const { error } = await db.from('chat_messages').insert({ user_id: me, body });
-
   if (error) return alert(error.message);
-
   input.value = '';
   await loadMessages();
 }
@@ -412,52 +344,19 @@ async function chatMuteToggle(id, shouldMute) {
 
 async function setSelfNick() {
   const nickname = document.getElementById('self_nick').value.trim();
-
   if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
-
-  const { error } = await db
-    .from('chat_self_nicknames')
-    .upsert({ user_id: me, nickname }, { onConflict: 'user_id' });
-
+  const { error } = await db.from('chat_self_nicknames').upsert({ user_id: me, nickname }, { onConflict: 'user_id' });
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
-// ── Asignar apodo desde el desplegable ──
 async function assignNickFromSelect() {
   const targetId = document.getElementById('assign_target').value;
   const nickname = document.getElementById('assign_nick').value.trim();
-
   if (!targetId) return alert('Selecciona un miembro.');
   if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
-
-  const { error } = await db.from('chat_assigned_nicknames').insert({
-    target_user_id: targetId,
-    nickname,
-    assigned_by: me
-  });
-
+  const { error } = await db.from('chat_assigned_nicknames').insert({ target_user_id: targetId, nickname, assigned_by: me });
   if (error) return alert(error.message);
-
-  alert('Apodo asignado.');
-  window.location.reload();
-}
-
-// Se conserva por compatibilidad, aunque ya no se usa desde la UI
-async function assignNick(targetId) {
-  const nickname = document.getElementById('assign_' + targetId).value.trim();
-
-  if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
-
-  const { error } = await db.from('chat_assigned_nicknames').insert({
-    target_user_id: targetId,
-    nickname,
-    assigned_by: me
-  });
-
-  if (error) return alert(error.message);
-
   alert('Apodo asignado.');
   window.location.reload();
 }
@@ -467,11 +366,7 @@ init();
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
 }
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
