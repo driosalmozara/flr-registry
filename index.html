@@ -428,6 +428,13 @@
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
           <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
+                  <label class="small">Género</label>
+          ${currentProfile.role === 'dominant'
+            ? `<select id="profile-gender" disabled><option value="mujer" selected>Mujer</option></select>`
+            : `<select id="profile-gender" ${isLocked ? 'disabled' : ''}>
+                <option value="hombre" ${currentProfile.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
+                <option value="mujer" ${currentProfile.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
+              </select>`}
                    <label class="small">Idioma preferido</label>
           <select id="profile-lang" ${isLocked ? 'disabled' : ''}>
             ${[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']].map(l => `<option value="${l[0]}" ${currentProfile.lang === l[0] ? 'selected' : ''}>${l[1]}</option>`).join('')}
@@ -459,8 +466,9 @@
       if (!display_name) return alert('Escribe tu nombre público.');
       if (!country) return alert('Selecciona un país.');
             const lang = document.getElementById('profile-lang').value;
+      const gender = currentProfile.role === 'dominant' ? 'mujer' : document.getElementById('profile-gender').value;
       const { error } = await db.from('profiles')
-        .update({ display_name, bio, country, lang, social_links: social_links || null, social_links_public })
+        .update({ display_name, bio, country, lang, gender, social_links: social_links || null, social_links_public })
         .eq('id', currentUser.id);
       if (error) return alert(error.message);
       alert('Perfil actualizado.');
@@ -477,7 +485,7 @@
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -556,6 +564,11 @@
               Mostrar su avatar en el registro público
             </label>`;
 
+                        html += `<label class="small" style="margin-top:10px;">Género</label>`;
+            html += `<select id="pgender_${sub.submissive_id}">
+              <option value="hombre" ${sub.profiles?.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
+              <option value="mujer" ${sub.profiles?.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
+            </select>`;
             html += `<label class="small" style="margin-top:10px;">🌎 País de residencia</label>`;
             html += `<select id="pcountry_${sub.submissive_id}">
               <option value="">Seleccionar...</option>
@@ -614,8 +627,9 @@
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
+            const gender = document.getElementById('pgender_' + submissiveId).value;
       const { error } = await db.from('profiles')
-        .update({ country, social_links: social_links || null, social_links_public })
+        .update({ country, gender, social_links: social_links || null, social_links_public })
         .eq('id', submissiveId);
       if (error) return alert(error.message);
       alert('País y redes del sumiso actualizados.');
