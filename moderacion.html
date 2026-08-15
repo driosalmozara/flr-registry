@@ -65,9 +65,11 @@ async function init(){
 async function render(){
   const content = document.getElementById('content');
 
-  const [p, r] = await Promise.all([
+    const [p, r, cm, allp] = await Promise.all([
     db.from('profiles').select('id, display_name, avatar_url, pm_banned, chat_muted, created_at').eq('role', 'submissive').order('created_at', { ascending: false }),
-    db.from('relationships').select('submissive_id').eq('status', 'confirmed')
+    db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
+    db.from('app_chat_mods').select('user_id'),
+    db.from('profiles').select('id, display_name, role').order('display_name').limit(500)
   ]);
 
   modOwned = new Set((r.data || []).map(x => x.submissive_id));
@@ -88,6 +90,31 @@ async function render(){
     </div>
   `;
 
+    // 🎙 Moderadores de chat
+  const chatModIds = (cm.data || []).map(x => x.user_id);
+  const allUsers = allp.data || [];
+  html += `
+    <div class="card">
+      <h2>🎙 Moderadores de chat</h2>
+      <p class="small">Organizan la sala de chat y pueden silenciar sumisos sin dueña. No forman parte de la Administración; Moderadoras y Administradoras tienen autoridad sobre ellos y pueden nombrarlos o destituirlos.</p>
+  `;
+  allUsers.filter(x => chatModIds.includes(x.id)).forEach(x => {
+    html += `<div class="item"><div class="rowitem">
+      <div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Moderador de chat</span></div>
+      <button class="danger" onclick="removeChatMod('${x.id}')">Quitar</button>
+    </div></div>`;
+  });
+  const cand = allUsers.filter(x => !chatModIds.includes(x.id));
+  if (cand.length) {
+    html += `
+      <label class="small">Nombrar nuevo Moderador de chat</label>
+      <select id="newchatmod">
+        ${cand.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+      </select>
+      <button onclick="makeChatMod()">Nombrar</button>
+    `;
+  }
+  html += '</div>';
   content.innerHTML = html;
 }
 
@@ -127,6 +154,21 @@ async function setFlag(id, flag, on){
   await render();
   document.getElementById('mod_pick').value = id;
   renderModCard();
+}
+
+  async function makeChatMod(){
+  const id = document.getElementById('newchatmod').value;
+  const { error } = await db.from('app_chat_mods').insert({ user_id: id });
+  if (error) return alert(error.message);
+  alert('Moderador de chat nombrado.');
+  window.location.reload();
+}
+
+async function removeChatMod(id){
+  if (!confirm('¿Quitar el privilegio de Moderador de chat?')) return;
+  const { error } = await db.from('app_chat_mods').delete().eq('user_id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
 }
 
 async function removeUser(id){
