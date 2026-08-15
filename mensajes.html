@@ -207,13 +207,14 @@ async function render() {
 
   if (threads.length === 0) html += '<p class="small">Sin conversaciones todavía.</p>';
 
-  threads.forEach(c => {
+    threads.forEach(c => {
     const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
     html += `
       <div class="item">
         <button class="wide" onclick="openThread('${c.id}')">
           ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
         </button>
+        ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
       </div>
     `;
   });
@@ -308,8 +309,7 @@ async function openThread(id) {
         <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
         <button onclick="sendPrivate('${id}')">Enviar</button>
       ` : muzzledBlocked ? `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
-      : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>`
-      : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
+      : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>${c.status === 'rejected' ? `<button onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}`      : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
     </div>
   `;
 }
@@ -369,8 +369,7 @@ async function autoOpenFromLink() {
     (c.member_b === startId && c.member_a === me)
   );
 
-  if (existing) {
-    if (existing.status === 'rejected') return alert('Esta conversación fue rechazada.');
+    if (existing) {
     await openThread(existing.id);
     return;
   }
@@ -379,8 +378,16 @@ async function autoOpenFromLink() {
 }
 
 async function decide(id, status) {
+  const prev = allConvs.find(c => c.id === id);
   const { error } = await db.from('conversations').update({ status }).eq('id', id);
   if (error) return alert(error.message);
+  if (status === 'accepted' && prev && prev.status === 'rejected') {
+    const other = prev.member_a === me ? prev.member_b : prev.member_a;
+    await db.from('notifications').insert({
+      user_id: other, type: 'private_message', title: '💬 Conversación reabierta',
+      body: `${nameOf(me)} ha reabierto la conversación. Ya pueden escribirse.`, link: 'mensajes.html'
+    });
+  }
   await load();
 }
 
