@@ -21,6 +21,8 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 button.danger{background:#7f1d1d;color:#fff}
 button.wide{width:100%;text-align:left;background:transparent;color:#fff;border:1px solid var(--line);transition:.25s}
 button.wide:hover{border-color:var(--gold)}
+  button.wide.unread{border-color:var(--gold);animation:unreadPulse 2.2s ease-in-out infinite}
+@keyframes unreadPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95),0 0 30px rgba(212,175,55,.4)}}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 label{display:flex;gap:10px;align-items:center;margin:10px 0}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
@@ -63,6 +65,7 @@ let mySubs = [];
 let mySettings = null;
 let currentThread = null;
 let staffIds = new Set();
+  let unreadIds = new Set();
 
 function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -102,8 +105,13 @@ async function init() {
     return;
   }
 
-  await load();
+    await load();
   await autoOpenFromLink();
+
+  db.channel('msg-unread-' + me)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(){ refreshUnread(); })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'private_messages' }, function(){ refreshUnread(); })
+    .subscribe();
 }
 
 async function load() {
@@ -130,11 +138,26 @@ async function load() {
   allConvs = c.data || [];
   mySettings = s.data;
   mySubs = subs.data || [];
-  myConvs = allConvs.filter(involvesMe);
+    myConvs = allConvs.filter(involvesMe);
 
+  await refreshUnread();
   await render();
 
   if (currentThread) await openThread(currentThread);
+}
+
+  async function refreshUnread(){
+  if (!myConvs.length) { unreadIds = new Set(); return; }
+  const ids = myConvs.map(c => c.id);
+  const { data: un } = await db.from('private_messages')
+    .select('conversation_id')
+    .in('conversation_id', ids)
+    .neq('sender_id', me)
+    .eq('read', false);
+  unreadIds = new Set((un || []).map(m => m.conversation_id));
+  document.querySelectorAll('button.wide[data-conv]').forEach(b => {
+    b.classList.toggle('unread', unreadIds.has(b.getAttribute('data-conv')));
+  });
 }
 
 async function render() {
@@ -221,8 +244,9 @@ async function render() {
     const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
     html += `
       <div class="item">
-        <button class="wide" onclick="openThread('${c.id}')">
+                <button class="wide ${unreadIds.has(c.id) ? 'unread' : ''}" data-conv="${c.id}" onclick="openThread('${c.id}')">
           ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
+          ${unreadIds.has(c.id) ? ' <span style="color:var(--gold);font-weight:700;">●</span>' : ''}
         </button>
         ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
         ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}      </div>
@@ -285,6 +309,7 @@ async function openThread(id) {
       .neq('sender_id', me)
       .eq('read', false);
   }
+    await refreshUnread();
 
   const { data: supInfo } = await db
     .from('relationships')
