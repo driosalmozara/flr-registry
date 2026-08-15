@@ -146,6 +146,17 @@ async function load() {
   if (currentThread) await openThread(currentThread);
 }
 
+  function isArchived(c){ return c.member_a === me ? !!c.archived_a : !!c.archived_b; }
+
+async function setArchived(id, on){
+  const c = allConvs.find(x => x.id === id);
+  if (!c) return;
+  const field = c.member_a === me ? 'archived_a' : 'archived_b';
+  const { error } = await db.from('conversations').update({ [field]: on }).eq('id', id);
+  if (error) return alert(error.message);
+  await load();
+}
+
   async function refreshUnread(){
   if (!myConvs.length) { unreadIds = new Set(); return; }
   const ids = myConvs.map(c => c.id);
@@ -236,8 +247,8 @@ async function render() {
   // 💬 Conversaciones
   html += '<div class="card"><h3 style="margin-top:0;">💬 Conversaciones</h3>';
 
-  const threads = myConvs.filter(c => c.status !== 'pending' || c.initiated_by === me);
-
+  const threads = myConvs.filter(c => (c.status !== 'pending' || c.initiated_by === me) && !isArchived(c));
+  const archived = myConvs.filter(c => isArchived(c));
   if (threads.length === 0) html += '<p class="small">Sin conversaciones todavía.</p>';
 
     threads.forEach(c => {
@@ -249,11 +260,24 @@ async function render() {
           ${unreadIds.has(c.id) ? ' <span style="color:var(--gold);font-weight:700;">●</span>' : ''}
         </button>
         ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
-        ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}      </div>
+        ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}
+                ${c.status === 'accepted' ? `<button class="secondary" style="margin-top:8px;" onclick="setArchived('${c.id}',true)">🗄 Archivar</button>` : ''}</div>
     `;
   });
 
   html += '</div>';
+  html += `
+    <details>
+      <summary>🗄 Conversaciones archivadas <span class="count">${archived.length}</span></summary>
+      <div class="body">
+        ${archived.length ? archived.map(c => `
+          <div class="item">
+            <button class="wide" onclick="openThread('${c.id}')">🗄 ${esc(nameOf(otherOf(c)))}</button>
+            <button style="margin-top:8px;" onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>
+          </div>`).join('') : '<p class="small">No tienes conversaciones archivadas.</p>'}
+      </div>
+    </details>
+  `;
 
   // 👁 Supervisadas — plegable con contador
   if (myProfile.role === 'dominant') {
@@ -294,6 +318,7 @@ async function openThread(id) {
 
   const box = document.getElementById('threadbox');
   const iAmMember = involvesMe(c);
+    const iArchived = isArchived(c);
 
   const { data: msgs } = await db
     .from('private_messages')
@@ -340,11 +365,14 @@ async function openThread(id) {
           </div>
         `).join('') || '<p class="small">Sin mensajes todavía.</p>'}
       </div>
-            ${canSend ? `
+                  ${canSend ? (iArchived ? `
+        <p class="small">🗄 Conversación archivada. Puedes leerla; para escribir, desarchívala.</p>
+        <button onclick="setArchived('${id}',false)">📤 Desarchivar para escribir</button>
+      ` : `
         <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
         <button onclick="sendPrivate('${id}')">Enviar</button>
-        ${myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" onclick="decide('${id}','rejected')">🚫 Rechazar mensajes</button>` : ''}
-      ` : muzzledBlocked ? `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
+                   ${myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" onclick="decide('${id}','rejected')">🚫     
+                     `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
       : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>${c.status === 'rejected' ? `<button onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}`      : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
     </div>
   `;
