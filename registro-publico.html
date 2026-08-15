@@ -94,6 +94,12 @@ function requestSubButton(subId) {
   return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
 }
 
+  function genderTag(profile) {
+  if (!profile || !profile.gender) return '';
+  return profile.gender === 'mujer'
+    ? ' <span class="small" style="color:#d4af37;">♀ Mujer</span>'
+    : ' <span class="small" style="color:#8ab4f8;">♂ Hombre</span>';
+}
 function socialMeta(profile) {
   if (!profile || !profile.social_links_public) return '';
   const parts = [];
@@ -139,8 +145,7 @@ async function requestSubmissive(subId) {
   // Cargar todos los perfiles para mostrar país/redes cuando sea público
   const { data: allProfiles } = await db
     .from('profiles')
-    .select('id, display_name, country, social_links, social_links_public')
-    .limit(500);
+    .select('id, display_name, country, social_links, social_links_public, gender')    .limit(500);
   
   (allProfiles || []).forEach(p => {
     idByName[p.display_name] = p.id;
@@ -210,8 +215,7 @@ async function requestSubmissive(subId) {
           <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
             ${avatarHTML(r.avatar_url, '⛓')}
             <div style="flex:1;min-width:200px;">
-              <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}</h3>
-              <p class="free">● Sumiso sin Dueña — disponible</p>
+              <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}${genderTag(prof)}</h3>              <p class="free">● Sumiso sin Dueña — disponible</p>
               ${chastityBadge(uid)}
               ${socialMeta(prof)}
               ${isOwn ? ownBadge() : (galleryButton(uid) + requestSubButton(uid) + messageButton(uid))}            </div>
@@ -223,8 +227,7 @@ async function requestSubmissive(subId) {
         <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
           ${avatarHTML(r.avatar_url, '⛓')}
           <div style="flex:1;min-width:200px;">
-            <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}</h3>
-            <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
+            <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}${genderTag(prof)}</h3>            <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
             <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
             ${chastityBadge(uid)}
             <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
