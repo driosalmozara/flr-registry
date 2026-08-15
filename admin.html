@@ -135,6 +135,38 @@ async function render() {
   }
   html += '</div></details>';
 
+    // ===== DOMINANTES PENDIENTES =====
+  const pendingDoms = users.filter(x => x.role === 'dominant' && !x.approved);
+  html += `<details ${pendingDoms.length ? 'open' : ''}><summary>👑 Dominantes pendientes <span class="count">${pendingDoms.length}</span></summary><div class="body">`;
+  html += '<p class="small">Cuentas de Dominantes que esperan aprobación del Staff para activarse.</p>';
+
+  if (pendingDoms.length === 0) {
+    html += '<p class="small">No hay Dominantes esperando aprobación.</p>';
+  } else {
+    pendingDoms.forEach(x => {
+      html += `
+        <div class="item">
+          <div class="rowitem">
+            ${avatarHTML(x.avatar_url, '♛')}
+            <div style="flex:1;min-width:200px;">
+              <b>♛ ${esc(x.display_name)}</b>
+              <div class="small">Edad: ${esc(String(x.age || ''))} · País: ${esc(x.country || '?')}</div>
+              <div class="small">Registro: ${esc(new Date(x.created_at).toLocaleString())}</div>
+              ${x.bio ? `<div class="small" style="margin-top:4px;font-style:italic;">"${esc(x.bio)}"</div>` : ''}
+              ${x.social_links ? `<div class="small">📱 ${esc(x.social_links)}</div>` : ''}
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <button onclick="approveDominant('${x.id}')">✓ Aprobar</button>
+            <button class="danger" onclick="rejectDominant('${x.id}')">✕ Rechazar</button>
+            <button class="secondary" onclick="impersonate('${x.id}')">👁 Ver como miembro</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+  html += '</div></details>';
+
   // ===== MODERADORAS =====
   html += `<details><summary>🛡 Moderadoras <span class="count">${mods.length}</span></summary><div class="body">`;
   html += '<p class="small">Pueden silenciar en el chat, prohibir privados y eliminar sumisos sin dueña.</p>';
@@ -334,6 +366,22 @@ async function removeMod(id) {
   if (!confirm('¿Quitar facultades de moderación?')) return;
   const { error } = await db.from('app_moderators').delete().eq('user_id', id);
   if (error) return alert(error.message);
+  window.location.reload();
+}
+  async function approveDominant(id) {
+  if (!confirm('¿Aprobar esta cuenta como Dominante?')) return;
+  const { error } = await db.rpc('staff_decide_user', { target_id: id, approve: true });
+  if (error) return alert(error.message);
+  alert('Dominante aprobada. Se le envió una notificación.');
+  window.location.reload();
+}
+
+async function rejectDominant(id) {
+  if (!confirm('¿Rechazar y ELIMINAR esta cuenta? La persona deberá volver a registrarse.')) return;
+  if (!confirm('Segunda confirmación: la cuenta será borrada de forma definitiva.')) return;
+  const { error } = await db.rpc('staff_decide_user', { target_id: id, approve: false });
+  if (error) return alert(error.message);
+  alert('Cuenta rechazada y eliminada.');
   window.location.reload();
 }
 
