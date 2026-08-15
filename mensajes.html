@@ -62,6 +62,7 @@ let myConvs = [];
 let mySubs = [];
 let mySettings = null;
 let currentThread = null;
+let staffIds = new Set();
 
 function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -106,7 +107,7 @@ async function init() {
 }
 
 async function load() {
-  const [u, c, s, subs] = await Promise.all([
+    const [u, c, s, subs, adm, mod] = await Promise.all([
     db.from('profiles').select('id, display_name, role').order('display_name').limit(500),
     db.from('conversations').select('*').order('created_at', { ascending: false }),
     db.from('messaging_settings').select('*').eq('user_id', me).maybeSingle(),
@@ -115,7 +116,14 @@ async function load() {
           .select('id, messaging_mode, submissive_id, profiles!relationships_submissive_id_fkey(display_name)')
           .eq('dominant_id', me)
           .eq('status', 'confirmed')
-      : Promise.resolve({ data: [] })
+      : Promise.resolve({ data: [] }),
+    db.from('app_admins').select('user_id'),
+    db.from('app_moderators').select('user_id')
+  ]);
+
+  staffIds = new Set([
+    ...(adm.data || []).map(x => x.user_id),
+    ...(mod.data || []).map(x => x.user_id)
   ]);
 
   users = u.data || [];
@@ -192,8 +200,10 @@ async function render() {
         <div class="item">
           <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
           ${first && first[0] ? `<p class="small">“${esc(first[0].body)}”</p>` : ''}
-          <button onclick="decide('${c.id}','accepted')">Aceptar</button>
-          <button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>
+                   <button onclick="decide('${c.id}','accepted')">Aceptar</button>
+          ${staffIds.has(c.initiated_by)
+            ? '<span class="small">🛡 Miembro del Staff: no puede rechazarse</span>'
+            : `<button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>`}
         </div>
       `;
     }
@@ -215,7 +225,7 @@ async function render() {
           ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
         </button>
         ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
-      </div>
+        ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}      </div>
     `;
   });
 
@@ -305,9 +315,10 @@ async function openThread(id) {
           </div>
         `).join('') || '<p class="small">Sin mensajes todavía.</p>'}
       </div>
-      ${canSend ? `
+            ${canSend ? `
         <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
         <button onclick="sendPrivate('${id}')">Enviar</button>
+        ${myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" onclick="decide('${id}','rejected')">🚫 Rechazar mensajes</button>` : ''}
       ` : muzzledBlocked ? `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
       : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>${c.status === 'rejected' ? `<button onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}`      : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
     </div>
@@ -381,11 +392,18 @@ async function decide(id, status) {
   const prev = allConvs.find(c => c.id === id);
   const { error } = await db.from('conversations').update({ status }).eq('id', id);
   if (error) return alert(error.message);
-  if (status === 'accepted' && prev && prev.status === 'rejected') {
+    if (status === 'accepted' && prev && prev.status === 'rejected') {
     const other = prev.member_a === me ? prev.member_b : prev.member_a;
     await db.from('notifications').insert({
       user_id: other, type: 'private_message', title: '💬 Conversación reabierta',
       body: `${nameOf(me)} ha reabierto la conversación. Ya pueden escribirse.`, link: 'mensajes.html'
+    });
+  }
+  if (status === 'rejected' && prev && prev.status === 'accepted') {
+    const other = prev.member_a === me ? prev.member_b : prev.member_a;
+    await db.from('notifications').insert({
+      user_id: other, type: 'private_message', title: '🚫 Conversación rechazada',
+      body: `${nameOf(me)} ha rechazado la conversación.`, link: 'mensajes.html'
     });
   }
   await load();
