@@ -19,25 +19,33 @@ main{max-width:900px;margin:0 auto;padding:20px}
 select,input,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.danger{background:#7f1d1d;color:#fff}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 button.wide{width:100%;text-align:left;background:transparent;color:#fff;border:1px solid var(--line);transition:.25s}
 button.wide:hover{border-color:var(--gold)}
-  button.wide.unread{border-color:var(--gold);animation:unreadPulse 2.2s ease-in-out infinite}
+button.wide.unread{border-color:var(--gold);animation:unreadPulse 2.2s ease-in-out infinite}
 @keyframes unreadPulse{0%,100%{box-shadow:0 0 8px rgba(212,175,55,.55)}50%{box-shadow:0 0 20px rgba(212,175,55,.95),0 0 30px rgba(212,175,55,.4)}}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 label{display:flex;gap:10px;align-items:center;margin:10px 0}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
-/* ── Desplegables elegantes ── */
 details{border:1px solid var(--line);border-radius:14px;margin:0 0 16px;background:var(--panel);overflow:hidden}
-summary{cursor:pointer;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
-  color:var(--gold);font-weight:600;list-style:none;font-size:15px;letter-spacing:.02em}
+summary{cursor:pointer;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;color:var(--gold);font-weight:600;list-style:none;font-size:15px}
 summary::-webkit-details-marker{display:none}
-summary::after{content:'▾';transition:.25s;color:var(--gold);font-size:14px}
+summary::after{content:'▾';transition:.25s;color:var(--gold)}
 details[open] summary::after{transform:rotate(180deg)}
 details[open] summary{border-bottom:1px solid var(--line)}
 details .body{padding:14px 18px}
 .count{background:var(--gold);color:#000;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;margin-left:8px}
 .newrow{display:flex;gap:10px;flex-wrap:wrap}
 .newrow select{flex:1;margin:0;min-width:200px}
+/* ── Hilo estilo IRC ── */
+.pm-pane{height:46vh;overflow-y:auto;background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:Consolas,Menlo,monospace;font-size:13px}
+.pm-line{margin:3px 0;word-wrap:break-word}
+.pm-time{color:#71717a}
+.pm-att img{max-width:230px;max-height:230px;border-radius:10px;border:1px solid var(--line);display:block;margin:6px 0;cursor:pointer}
+.pm-att video{max-width:270px;border-radius:10px;border:1px solid var(--line);display:block;margin:6px 0}
+.pm-inputrow{display:flex;gap:8px;margin-top:8px;align-items:center}
+.pm-inputrow input[type=text]{flex:1;margin:0}
+.attach-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:8px 11px;cursor:pointer}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -56,104 +64,334 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let me = null;
-let myProfile = null;
-let users = [];
-let allConvs = [];
-let myConvs = [];
-let mySubs = [];
-let mySettings = null;
-let currentThread = null;
-let staffIds = new Set();
-  let unreadIds = new Set();
+let me = null, myProfile = null, users = [], allConvs = [], myConvs = [], mySubs = [], mySettings = null;
+let currentThread = null, staffIds = new Set(), unreadIds = new Set(), pendingAttach = null;
 
-function esc(v){
-  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function nameOf(id){ return (users.find(x => x.id === id) || {}).display_name || '?'; }
 function involvesMe(c){ return c.member_a === me || c.member_b === me; }
 function otherOf(c){ return c.member_a === me ? c.member_b : c.member_a; }
+function isArchived(c){ return c.member_a === me ? !!c.archived_a : !!c.archived_b; }
+function isDeleted(c){ return c.member_a === me ? !!c.deleted_a : !!c.deleted_b; }
 
 async function myMuzzle() {
   if (!myProfile || myProfile.role !== 'submissive') return null;
-  const { data } = await db
-    .from('relationships')
-    .select('is_muzzled, dominant_id')
-    .eq('submissive_id', me)
-    .eq('status', 'confirmed')
-    .maybeSingle();
+  const { data } = await db.from('relationships').select('is_muzzled, dominant_id')
+    .eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
   return data || null;
 }
 
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
-
-  if (!session) {
-    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
-
-    const { data: profile } = await db.from('profiles').select('id, role, pm_banned').eq('id', me).maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role, pm_banned').eq('id', me).maybeSingle();
   myProfile = profile;
+  if (!myProfile) { content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
 
-  if (!myProfile) {
-    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
-    return;
-  }
-
-    await load();
+  await load();
   await autoOpenFromLink();
 
-  db.channel('msg-unread-' + me)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(){ refreshUnread(); })
+  db.channel('pm-live-' + me)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, function(p){
+      refreshUnread();
+      if (currentThread && p.new && p.new.conversation_id === currentThread) loadPMs();
+    })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'private_messages' }, function(){ refreshUnread(); })
     .subscribe();
 }
 
 async function load() {
-    const [u, c, s, subs, adm, mod] = await Promise.all([
+  const [u, c, s, subs, adm, mod] = await Promise.all([
     db.from('profiles').select('id, display_name, role').order('display_name').limit(500),
     db.from('conversations').select('*').order('created_at', { ascending: false }),
     db.from('messaging_settings').select('*').eq('user_id', me).maybeSingle(),
     myProfile.role === 'dominant'
       ? db.from('relationships')
           .select('id, messaging_mode, submissive_id, profiles!relationships_submissive_id_fkey(display_name)')
-          .eq('dominant_id', me)
-          .eq('status', 'confirmed')
+          .eq('dominant_id', me).eq('status', 'confirmed')
       : Promise.resolve({ data: [] }),
     db.from('app_admins').select('user_id'),
     db.from('app_moderators').select('user_id')
-  ]);
-
-  staffIds = new Set([
-    ...(adm.data || []).map(x => x.user_id),
-    ...(mod.data || []).map(x => x.user_id)
   ]);
 
   users = u.data || [];
   allConvs = c.data || [];
   mySettings = s.data;
   mySubs = subs.data || [];
-    myConvs = allConvs.filter(involvesMe);
+  staffIds = new Set([...(adm.data || []).map(x => x.user_id), ...(mod.data || []).map(x => x.user_id)]);
+  myConvs = allConvs.filter(x => involvesMe(x) && !isDeleted(x));
 
   await refreshUnread();
   await render();
-
   if (currentThread) await openThread(currentThread);
 }
 
-  function isArchived(c){ return c.member_a === me ? !!c.archived_a : !!c.archived_b; }
-  async function deleteConversation(id){
-  if (!confirm('¿ELIMINAR esta conversación?\n\nSe borrarán TODOS los mensajes, para AMBOS miembros.')) return;
-  if (!confirm('Segunda confirmación: esta acción NO puede deshacerse.')) return;
-  const { error } = await db.rpc('delete_conversation', { conv_id: id });
+async function refreshUnread(){
+  if (!myConvs.length) { unreadIds = new Set(); return; }
+  const ids = myConvs.map(c => c.id);
+  const { data: un } = await db.from('private_messages')
+    .select('conversation_id').in('conversation_id', ids).neq('sender_id', me).eq('read', false);
+  unreadIds = new Set((un || []).map(m => m.conversation_id));
+  document.querySelectorAll('button.wide[data-conv]').forEach(b => {
+    b.classList.toggle('unread', unreadIds.has(b.getAttribute('data-conv')));
+  });
+}
+
+async function render() {
+  const content = document.getElementById('content');
+  let html = '<h2 style="margin-top:0;">♛ Mensajes privados</h2>';
+
+  if (myProfile.role === 'dominant') {
+    const open = mySettings ? mySettings.messaging_open : true;
+    html += `
+      <details>
+        <summary>⚙ Mi mensajería y supervisión</summary>
+        <div class="body">
+          <label><input type="checkbox" id="mopen" ${open ? 'checked' : ''} /> Mensajería abierta (permitir que otros miembros te escriban)</label>
+          <button onclick="saveMessaging()">Guardar</button>
+          <h3 style="margin-top:16px;">👁 Supervisión de tus sumisos</h3>
+          <p class="small">Privada: no ves sus conversaciones. Supervisada: ves todas.</p>
+          ${mySubs.map(s => `
+            <label><input type="checkbox" onchange="saveMode('${s.id}', this.checked)" ${s.messaging_mode === 'supervised' ? 'checked' : ''} />
+            Supervisar a ⛓ ${esc(s.profiles?.display_name || 'Sumiso')}</label>
+          `).join('') || '<p class="small">No tienes sumisos confirmados.</p>'}
+        </div>
+      </details>`;
+  }
+
+  html += `
+    <div class="card">
+      <div class="newrow">
+        <select id="target">
+          ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+        </select>
+        <button onclick="startConversation()">💬 Abrir conversación</button>
+      </div>
+      <p class="small" style="margin:8px 0 0;">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud.</p>
+    </div>`;
+
+  const requests = myConvs.filter(c => c.status === 'pending' && c.initiated_by !== me);
+  if (requests.length > 0) {
+    html += `<details open><summary>📨 Solicitudes de mensaje <span class="count">${requests.length}</span></summary><div class="body">`;
+    for (const c of requests) {
+      const { data: first } = await db.from('private_messages').select('body').eq('conversation_id', c.id).order('created_at', { ascending: true }).limit(1);
+      html += `
+        <div class="item">
+          <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
+          ${first && first[0] ? `<p class="small">“${esc(first[0].body)}”</p>` : ''}
+          <button onclick="decide('${c.id}','accepted')">Aceptar</button>
+          ${staffIds.has(c.initiated_by) ? '<span class="small">🛡 Miembro del Staff: no puede rechazarse</span>' : `<button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>`}
+        </div>`;
+    }
+    html += '</div></details>';
+  }
+
+  html += '<div class="card"><h3 style="margin-top:0;">💬 Conversaciones</h3>';
+  const threads = myConvs.filter(c => (c.status !== 'pending' || c.initiated_by === me) && !isArchived(c));
+  if (threads.length === 0) html += '<p class="small">Sin conversaciones activas.</p>';
+  threads.forEach(c => {
+    const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
+    html += `
+      <div class="item">
+        <button class="wide ${unreadIds.has(c.id) ? 'unread' : ''}" data-conv="${c.id}" onclick="openThread('${c.id}')">
+          ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
+          ${unreadIds.has(c.id) ? ' <span style="color:var(--gold);font-weight:700;">●</span>' : ''}
+        </button>
+        ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
+        ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}
+        ${c.status === 'accepted' ? `<button class="secondary" style="margin-top:8px;" onclick="setArchived('${c.id}',true)">🗄 Archivar</button>` : ''}
+      </div>`;
+  });
+  html += '</div>';
+
+  const archived = myConvs.filter(c => isArchived(c));
+  html += `
+    <details><summary>🗄 Conversaciones archivadas <span class="count">${archived.length}</span></summary><div class="body">
+      ${archived.length ? archived.map(c => `
+        <div class="item">
+          <button class="wide" onclick="openThread('${c.id}')">🗄 ${esc(nameOf(otherOf(c)))}</button>
+          <div style="margin-top:8px;">
+            <button onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>
+            <button class="danger" onclick="deleteForMe('${c.id}')">❌ Eliminar para mí</button>
+            <button class="danger" onclick="deleteForBoth('${c.id}')">☠ Eliminar para ambos</button>
+          </div>
+        </div>`).join('') : '<p class="small">No tienes conversaciones archivadas.</p>'}
+    </div></details>`;
+
+  if (myProfile.role === 'dominant') {
+    const subIds = mySubs.map(s => s.submissive_id);
+    const supervised = allConvs.filter(c => !involvesMe(c) && (subIds.includes(c.member_a) || subIds.includes(c.member_b)) && !isDeleted(c));
+    if (supervised.length > 0) {
+      html += `<details><summary>👁 Conversaciones supervisadas <span class="count">${supervised.length}</span></summary><div class="body">`;
+      supervised.forEach(c => {
+        const subId = subIds.includes(c.member_a) ? c.member_a : c.member_b;
+        const otherId = subId === c.member_a ? c.member_b : c.member_a;
+        html += `<div class="item"><button class="wide" onclick="openThread('${c.id}')">👁 ${esc(nameOf(subId))} ↔ ${esc(nameOf(otherId))}</button></div>`;
+      });
+      html += '</div></details>';
+    }
+  }
+
+  html += '<div id="threadbox"></div>';
+  content.innerHTML = html;
+}
+
+async function openThread(id) {
+  currentThread = id;
+  const c = allConvs.find(x => x.id === id);
+  if (!c) return;
+  const box = document.getElementById('threadbox');
+  const iAmMember = involvesMe(c);
+  const iArchived = isArchived(c);
+
+  const { data: supInfo } = await db.from('relationships')
+    .select('messaging_mode, submissive_id, profiles!relationships_dominant_id_fkey(display_name)')
+    .in('submissive_id', [c.member_a, c.member_b]).eq('status', 'confirmed').eq('messaging_mode', 'supervised');
+  const supNote = (supInfo || []).map(s => `<div class="warn">👁 Supervisada por ♛ ${esc(s.profiles?.display_name || 'una Dominante')}.</div>`).join('');
+
+  const mz = iAmMember ? await myMuzzle() : null;
+  const muzzledBlocked = !!(mz && mz.is_muzzled && otherOf(c) !== mz.dominant_id);
+  const canSend = iAmMember && !muzzledBlocked && (c.status === 'accepted' || (c.status === 'pending' && c.initiated_by === me));
+
+  box.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <h3 style="margin:0;">${iAmMember ? '💬' : '👁'} ${esc(nameOf(c.member_a))} ↔ ${esc(nameOf(c.member_b))}</h3>
+        <div>
+          ${c.status === 'rejected' ? `<button onclick="decide('${c.id}','accepted')">♻ Reabrir</button>` : ''}
+          ${c.status === 'accepted' && !iArchived ? `<button class="secondary" onclick="setArchived('${c.id}',true)">🗄 Archivar</button>` : ''}
+          ${iArchived ? `<button onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>` : ''}
+          ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" onclick="decide('${c.id}','rejected')">🚫 Rechazar</button>` : ''}
+        </div>
+      </div>
+      ${supNote}
+      <div id="pmsgs" class="pm-pane"></div>
+      ${iArchived ? `<p class="small" style="margin-top:8px;">🗄 Conversación archivada: puedes leerla; para escribir, desarchívala.</p>`
+        : canSend ? `
+        <div id="attach_chip" class="small" style="margin:8px 0 0;"></div>
+        <div class="pm-inputrow">
+          <input type="file" id="mfile" accept="image/*,video/*" style="display:none" onchange="attachFile(this)"/>
+          <button class="attach-btn" title="Adjuntar foto o video" onclick="document.getElementById('mfile').click()">📎</button>
+          <input type="text" id="mbody" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendPrivate('${c.id}')"/>
+          <button onclick="sendPrivate('${c.id}')">Enviar</button>
+        </div>`
+        : muzzledBlocked ? `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
+        : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>`
+        : '<p class="small">Modo supervisión (solo lectura).</p>'}
+    </div>`;
+  await loadPMs();
+}
+
+function pmLine(m){
+  const t = new Date(m.created_at);
+  const hh = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+  const who = m.sender_id === me ? 'Tú' : nameOf(m.sender_id);
+  const col = m.sender_id === me ? 'var(--gold)' : '#8ab4f8';
+  let att = '';
+  if (m.attachment_url) {
+    att = m.attachment_type === 'video'
+      ? `<div class="pm-att"><video src="${esc(m.attachment_url)}" controls></video></div>`
+      : `<div class="pm-att"><img src="${esc(m.attachment_url)}" onclick="window.open(this.src)"/></div>`;
+  }
+  return `<div class="pm-line"><span class="pm-time">[${hh}]</span> <b style="color:${col}">&lt;${esc(who)}&gt;</b> ${esc(m.body || '')}${att}</div>`;
+}
+
+async function loadPMs(){
+  const pane = document.getElementById('pmsgs');
+  if (!pane || !currentThread) return;
+  const { data } = await db.from('private_messages').select('*').eq('conversation_id', currentThread).order('created_at', { ascending: true });
+  pane.innerHTML = (data || []).map(pmLine).join('') || '<p class="small">Sin mensajes todavía.</p>';
+  pane.scrollTop = pane.scrollHeight;
+  const c = allConvs.find(x => x.id === currentThread);
+  if (c && involvesMe(c)) {
+    await db.from('private_messages').update({ read: true }).eq('conversation_id', currentThread).neq('sender_id', me).eq('read', false);
+  }
+  await refreshUnread();
+}
+
+async function attachFile(input){
+  const file = input.files[0]; if (!file) return;
+  const path = me + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+  const { error } = await db.storage.from('privados').upload(path, file);
   if (error) return alert(error.message);
-  if (currentThread === id) currentThread = null;
-  alert('Conversación eliminada.');
+  const url = db.storage.from('privados').getPublicUrl(path).data.publicUrl;
+  pendingAttach = { url, type: file.type.startsWith('video') ? 'video' : 'image' };
+  document.getElementById('attach_chip').innerHTML = (pendingAttach.type === 'video' ? '🎥' : '🖼') + ' Adjunto listo para enviar · <button class="attach-btn" onclick="clearAttach()">✕ Quitar</button>';
+}
+
+function clearAttach(){
+  pendingAttach = null;
+  const chip = document.getElementById('attach_chip'); if (chip) chip.innerHTML = '';
+  const f = document.getElementById('mfile'); if (f) f.value = '';
+}
+
+async function sendPrivate(id) {
+  if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
+  const body = document.getElementById('mbody').value.trim();
+  if (!body && !pendingAttach) return;
+
+  const mz = await myMuzzle();
+  if (mz && mz.is_muzzled) {
+    const conv = allConvs.find(c => c.id === id);
+    if (conv && otherOf(conv) !== mz.dominant_id) return alert('🔇 Estás amordazado por tu Dominante. Solo puedes enviar mensajes a tu Dueña.');
+  }
+
+  const { error } = await db.from('private_messages').insert({
+    conversation_id: id, sender_id: me, body,
+    attachment_url: pendingAttach ? pendingAttach.url : null,
+    attachment_type: pendingAttach ? pendingAttach.type : null
+  });
+  if (error) return alert(error.message);
+
+  document.getElementById('mbody').value = '';
+  clearAttach();
+  await loadPMs();
+}
+
+async function startConversation() {
+  const target = document.getElementById('target').value;
+  if (!target) return;
+  await startConversationWith(target);
+}
+
+async function startConversationWith(target) {
+  if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
+  const mz = await myMuzzle();
+  if (mz && mz.is_muzzled && target !== mz.dominant_id) return alert('🔇 Estás amordazado por tu Dominante.');
+
+  const existing = myConvs.find(c => (c.member_a === target && c.member_b === me) || (c.member_b === target && c.member_a === me));
+  if (existing) { await openThread(existing.id); return; }
+
+  const { data: set } = await db.from('messaging_settings').select('messaging_open').eq('user_id', target).maybeSingle();
+  if (set && set.messaging_open === false) return alert('Este miembro tiene la mensajería cerrada.');
+
+  const { data, error } = await db.from('conversations').insert({ member_a: me, member_b: target, initiated_by: me }).select().single();
+  if (error) return alert(error.message);
+  await load();
+  await openThread(data.id);
+}
+
+async function autoOpenFromLink() {
+  const startId = new URLSearchParams(window.location.search).get('start');
+  if (!startId || startId === me) return;
+  const existing = myConvs.find(c => (c.member_a === startId && c.member_b === me) || (c.member_b === startId && c.member_a === me));
+  if (existing) { await openThread(existing.id); return; }
+  await startConversationWith(startId);
+}
+
+async function decide(id, status) {
+  const prev = allConvs.find(c => c.id === id);
+  const { error } = await db.from('conversations').update({ status }).eq('id', id);
+  if (error) return alert(error.message);
+  const other = prev ? (prev.member_a === me ? prev.member_b : prev.member_a) : null;
+  if (other && status === 'accepted' && prev.status === 'rejected') {
+    await db.from('notifications').insert({ user_id: other, type: 'private_message', title: '💬 Conversación reabierta', body: `${nameOf(me)} ha reabierto la conversación.`, link: 'mensajes.html' });
+  }
+  if (other && status === 'rejected' && prev.status === 'accepted') {
+    await db.from('notifications').insert({ user_id: other, type: 'private_message', title: '🚫 Conversación rechazada', body: `${nameOf(me)} ha rechazado la conversación.`, link: 'mensajes.html' });
+  }
   await load();
 }
 
@@ -166,353 +404,40 @@ async function setArchived(id, on){
   await load();
 }
 
-  async function refreshUnread(){
-  if (!myConvs.length) { unreadIds = new Set(); return; }
-  const ids = myConvs.map(c => c.id);
-  const { data: un } = await db.from('private_messages')
-    .select('conversation_id')
-    .in('conversation_id', ids)
-    .neq('sender_id', me)
-    .eq('read', false);
-  unreadIds = new Set((un || []).map(m => m.conversation_id));
-  document.querySelectorAll('button.wide[data-conv]').forEach(b => {
-    b.classList.toggle('unread', unreadIds.has(b.getAttribute('data-conv')));
-  });
-}
-
-async function render() {
-  const content = document.getElementById('content');
-  let html = '<h2 style="margin-top:0;">♛ Mensajes privados</h2>';
-
-  // ⚙ Configuración (Dominantes) — plegable
-  if (myProfile.role === 'dominant') {
-    const open = mySettings ? mySettings.messaging_open : true;
-    html += `
-      <details>
-        <summary>⚙ Mi mensajería y supervisión</summary>
-        <div class="body">
-          <label>
-            <input type="checkbox" id="mopen" ${open ? 'checked' : ''} />
-            Mensajería abierta (permitir que otros miembros te escriban)
-          </label>
-          <button onclick="saveMessaging()">Guardar</button>
-          <h3 style="margin-top:16px;">👁 Supervisión de tus sumisos</h3>
-          <p class="small">Privada: no ves sus conversaciones. Supervisada: ves todas.</p>
-          ${mySubs.map(s => `
-            <label>
-              <input type="checkbox" onchange="saveMode('${s.id}', this.checked)" ${s.messaging_mode === 'supervised' ? 'checked' : ''} />
-              Supervisar a ⛓ ${esc(s.profiles?.display_name || 'Sumiso')}
-            </label>
-          `).join('') || '<p class="small">No tienes sumisos confirmados.</p>'}
-        </div>
-      </details>
-    `;
-  }
-
-  // Nueva conversación — línea compacta
-  html += `
-    <div class="card">
-      <div class="newrow">
-        <select id="target">
-          ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
-        </select>
-        <button onclick="startConversation()">💬 Abrir conversación</button>
-      </div>
-      <p class="small" style="margin:8px 0 0;">Si escribes a una Dominante con mensajería abierta, tu mensaje llegará como solicitud.</p>
-    </div>
-  `;
-
-  // 📨 Solicitudes — plegable con contador
-  const requests = myConvs.filter(c => c.status === 'pending' && c.initiated_by !== me);
-
-  if (requests.length > 0) {
-    html += `
-      <details open>
-        <summary>📨 Solicitudes de mensaje <span class="count">${requests.length}</span></summary>
-        <div class="body">
-    `;
-    for (const c of requests) {
-      const { data: first } = await db
-        .from('private_messages')
-        .select('body')
-        .eq('conversation_id', c.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      html += `
-        <div class="item">
-          <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
-          ${first && first[0] ? `<p class="small">“${esc(first[0].body)}”</p>` : ''}
-                   <button onclick="decide('${c.id}','accepted')">Aceptar</button>
-          ${staffIds.has(c.initiated_by)
-            ? '<span class="small">🛡 Miembro del Staff: no puede rechazarse</span>'
-            : `<button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>`}
-        </div>
-      `;
-    }
-    html += '</div></details>';
-  }
-
-  // 💬 Conversaciones
-  html += '<div class="card"><h3 style="margin-top:0;">💬 Conversaciones</h3>';
-
-  const threads = myConvs.filter(c => (c.status !== 'pending' || c.initiated_by === me) && !isArchived(c));
-  const archived = myConvs.filter(c => isArchived(c));
-  if (threads.length === 0) html += '<p class="small">Sin conversaciones todavía.</p>';
-
-    threads.forEach(c => {
-    const st = c.status === 'pending' ? '— ⏳ esperando aceptación' : c.status === 'rejected' ? '— ❌ rechazada' : '';
-    html += `
-      <div class="item">
-                <button class="wide ${unreadIds.has(c.id) ? 'unread' : ''}" data-conv="${c.id}" onclick="openThread('${c.id}')">
-          ${c.status === 'accepted' ? '💬' : '📨'} ${esc(nameOf(otherOf(c)))} <span class="small">${st}</span>
-          ${unreadIds.has(c.id) ? ' <span style="color:var(--gold);font-weight:700;">●</span>' : ''}
-        </button>
-        ${c.status === 'rejected' ? `<button style="margin-top:8px;" onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}
-        ${c.status === 'accepted' && myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" style="margin-top:8px;" onclick="decide('${c.id}','rejected')">🚫 Rechazar mensajes</button>` : ''}
-                ${c.status === 'accepted' ? `<button class="secondary" style="margin-top:8px;" onclick="setArchived('${c.id}',true)">🗄 Archivar</button>` : ''}</div>
-    `;
-  });
-
-  html += '</div>';
-  html += `
-    <details>
-      <summary>🗄 Conversaciones archivadas <span class="count">${archived.length}</span></summary>
-      <div class="body">
-        ${archived.length ? archived.map(c => `
-          <div class="item">
-                        <button class="wide" onclick="openThread('${c.id}')">🗄 ${esc(nameOf(otherOf(c)))}</button>
-            <div style="margin-top:8px;">
-              <button onclick="setArchived('${c.id}',false)">📤 Desarchivar</button>
-              <button class="danger" onclick="deleteConversation('${c.id}')">❌ Eliminar</button>
-            </div>
-          </div>`).join('') : '<p class="small">No tienes conversaciones archivadas.</p>'}
-      </div>
-    </details>
-  `;
-
-  // 👁 Supervisadas — plegable con contador
-  if (myProfile.role === 'dominant') {
-    const subIds = mySubs.map(s => s.submissive_id);
-    const supervised = allConvs.filter(c =>
-      !involvesMe(c) &&
-      (subIds.includes(c.member_a) || subIds.includes(c.member_b))
-    );
-
-    if (supervised.length > 0) {
-      html += `
-        <details>
-          <summary>👁 Conversaciones supervisadas <span class="count">${supervised.length}</span></summary>
-          <div class="body">
-      `;
-      supervised.forEach(c => {
-        const subId = subIds.includes(c.member_a) ? c.member_a : c.member_b;
-        const otherId = subId === c.member_a ? c.member_b : c.member_a;
-        html += `
-          <div class="item">
-            <button class="wide" onclick="openThread('${c.id}')">👁 ${esc(nameOf(subId))} ↔ ${esc(nameOf(otherId))}</button>
-          </div>
-        `;
-      });
-      html += '</div></details>';
-    }
-  }
-
-  html += '<div id="threadbox"></div>';
-
-  content.innerHTML = html;
-}
-
-async function openThread(id) {
-  currentThread = id;
+async function deleteForMe(id){
+  if (!confirm('¿Eliminar esta conversación SOLO PARA TI?\n\nEl otro miembro conservará su copia.')) return;
   const c = allConvs.find(x => x.id === id);
   if (!c) return;
-
-  const box = document.getElementById('threadbox');
-  const iAmMember = involvesMe(c);
-    const iArchived = isArchived(c);
-
-  const { data: msgs } = await db
-    .from('private_messages')
-    .select('*')
-    .eq('conversation_id', id)
-    .order('created_at', { ascending: true });
-
-  if (iAmMember) {
-    await db
-      .from('private_messages')
-      .update({ read: true })
-      .eq('conversation_id', id)
-      .neq('sender_id', me)
-      .eq('read', false);
-  }
-    await refreshUnread();
-
-  const { data: supInfo } = await db
-    .from('relationships')
-    .select('messaging_mode, submissive_id, profiles!relationships_dominant_id_fkey(display_name)')
-    .in('submissive_id', [c.member_a, c.member_b])
-    .eq('status', 'confirmed')
-    .eq('messaging_mode', 'supervised');
-
-  const supNote = (supInfo || []).map(s =>
-    `<div class="warn">👁 Esta conversación está supervisada por ♛ ${esc(s.profiles?.display_name || 'una Dominante')}.</div>`
-  ).join('');
-
-  const mz = iAmMember ? await myMuzzle() : null;
-  const muzzledBlocked = !!(mz && mz.is_muzzled && otherOf(c) !== mz.dominant_id);
-
-  const canSend = iAmMember && !muzzledBlocked && (c.status === 'accepted' || (c.status === 'pending' && c.initiated_by === me));
-
-  box.innerHTML = `
-    <div class="card">
-      <h3>${iAmMember ? '💬' : '👁'} ${esc(nameOf(c.member_a))} ↔ ${esc(nameOf(c.member_b))}</h3>
-      ${supNote}
-      <div>
-        ${(msgs || []).map(m => `
-          <div class="item ${m.sender_id === me ? 'mine' : ''}">
-            <b>${m.sender_id === me ? 'Tú' : esc(nameOf(m.sender_id))}</b>
-            <br>${esc(m.body)}
-            <br><span class="small">${new Date(m.created_at).toLocaleString()}</span>
-          </div>
-        `).join('') || '<p class="small">Sin mensajes todavía.</p>'}
-      </div>
-                  ${canSend ? (iArchived ? `
-        <p class="small">🗄 Conversación archivada. Puedes leerla; para escribir, desarchívala.</p>
-        <button onclick="setArchived('${id}',false)">📤 Desarchivar para escribir</button>
-      ` : `
-        <textarea id="mbody" rows="3" placeholder="Escribe tu mensaje..."></textarea>
-        <button onclick="sendPrivate('${id}')">Enviar</button>
-                   ${myProfile.role === 'dominant' && !staffIds.has(otherOf(c)) ? `<button class="danger" onclick="decide('${id}','rejected')">🚫     
-                     `<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. Solo puedes escribir a tu Dueña.</p>`
-      : iAmMember ? `<p class="small">${c.status === 'pending' ? 'Esperando a que acepte tu solicitud.' : 'Conversación rechazada.'}</p>${c.status === 'rejected' ? `<button onclick="decide('${c.id}','accepted')">♻ Reabrir conversación</button>` : ''}`      : '<p class="small">Estás viendo esta conversación en modo supervisión (solo lectura).</p>'}
-    </div>
-  `;
-}
-
-async function startConversation() {
-  const target = document.getElementById('target').value;
-  if (!target) return;
-  await startConversationWith(target);
-}
-
-async function startConversationWith(target) {
-    if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
-  const mz = await myMuzzle();
-  if (mz && mz.is_muzzled && target !== mz.dominant_id) {
-    return alert('🔇 Estás amordazado por tu Dominante. No puedes iniciar conversaciones con otros miembros.');
-  }
-
-  const existing = myConvs.find(c =>
-    (c.member_a === target && c.member_b === me) ||
-    (c.member_b === target && c.member_a === me)
-  );
-
-  if (existing) {
-    if (existing.status === 'rejected') return alert('Esta conversación fue rechazada.');
-    await openThread(existing.id);
-    return;
-  }
-
-  const { data: set } = await db
-    .from('messaging_settings')
-    .select('messaging_open')
-    .eq('user_id', target)
-    .maybeSingle();
-
-  if (set && set.messaging_open === false) {
-    return alert('Este miembro tiene la mensajería cerrada.');
-  }
-
-  const { data, error } = await db
-    .from('conversations')
-    .insert({ member_a: me, member_b: target, initiated_by: me })
-    .select()
-    .single();
-
+  const field = c.member_a === me ? 'deleted_a' : 'deleted_b';
+  const otherField = c.member_a === me ? 'deleted_b' : 'deleted_a';
+  const { error } = await db.from('conversations').update({ [field]: true }).eq('id', id);
   if (error) return alert(error.message);
-
-  await load();
-  await openThread(data.id);
-}
-
-async function autoOpenFromLink() {
-  const startId = new URLSearchParams(window.location.search).get('start');
-  if (!startId || startId === me) return;
-
-  const existing = myConvs.find(c =>
-    (c.member_a === startId && c.member_b === me) ||
-    (c.member_b === startId && c.member_a === me)
-  );
-
-    if (existing) {
-    await openThread(existing.id);
-    return;
-  }
-
-  await startConversationWith(startId);
-}
-
-async function decide(id, status) {
-  const prev = allConvs.find(c => c.id === id);
-  const { error } = await db.from('conversations').update({ status }).eq('id', id);
-  if (error) return alert(error.message);
-    if (status === 'accepted' && prev && prev.status === 'rejected') {
-    const other = prev.member_a === me ? prev.member_b : prev.member_a;
-    await db.from('notifications').insert({
-      user_id: other, type: 'private_message', title: '💬 Conversación reabierta',
-      body: `${nameOf(me)} ha reabierto la conversación. Ya pueden escribirse.`, link: 'mensajes.html'
-    });
-  }
-  if (status === 'rejected' && prev && prev.status === 'accepted') {
-    const other = prev.member_a === me ? prev.member_b : prev.member_a;
-    await db.from('notifications').insert({
-      user_id: other, type: 'private_message', title: '🚫 Conversación rechazada',
-      body: `${nameOf(me)} ha rechazado la conversación.`, link: 'mensajes.html'
-    });
-  }
+  if (c[otherField]) await db.rpc('delete_conversation', { conv_id: id });
+  if (currentThread === id) currentThread = null;
+  alert('Conversación eliminada de tu bandeja.');
   await load();
 }
 
-async function sendPrivate(id) {
-    if (myProfile.pm_banned) return alert('🚫 Un moderador te ha prohibido enviar mensajes privados.');
-  const body = document.getElementById('mbody').value.trim();
-  if (!body) return;
-
-  const mz = await myMuzzle();
-  if (mz && mz.is_muzzled) {
-    const conv = allConvs.find(c => c.id === id);
-    if (conv && otherOf(conv) !== mz.dominant_id) {
-      return alert('🔇 Estás amordazado por tu Dominante. Solo puedes enviar mensajes a tu Dueña.');
-    }
-  }
-
-  const { error } = await db.from('private_messages').insert({
-    conversation_id: id,
-    sender_id: me,
-    body
-  });
-
+async function deleteForBoth(id){
+  if (!confirm('¿ELIMINAR esta conversación PARA AMBOS miembros?\n\nSe borrarán TODOS los mensajes.')) return;
+  if (!confirm('Segunda confirmación: esta acción NO puede deshacerse.')) return;
+  const { error } = await db.rpc('delete_conversation', { conv_id: id });
   if (error) return alert(error.message);
-
-  await openThread(id);
+  if (currentThread === id) currentThread = null;
+  alert('Conversación eliminada para ambos.');
+  await load();
 }
 
 async function saveMessaging() {
   const value = document.getElementById('mopen').checked;
-  const { error } = await db
-    .from('messaging_settings')
-    .upsert({ user_id: me, messaging_open: value }, { onConflict: 'user_id' });
+  const { error } = await db.from('messaging_settings').upsert({ user_id: me, messaging_open: value }, { onConflict: 'user_id' });
   if (error) return alert(error.message);
   alert('Guardado.');
   await load();
 }
 
 async function saveMode(relId, supervised) {
-  const { error } = await db
-    .from('relationships')
-    .update({ messaging_mode: supervised ? 'supervised' : 'private' })
-    .eq('id', relId);
+  const { error } = await db.from('relationships').update({ messaging_mode: supervised ? 'supervised' : 'private' }).eq('id', relId);
   if (error) return alert(error.message);
   await load();
 }
@@ -522,11 +447,7 @@ init();
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
 }
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
