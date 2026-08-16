@@ -94,12 +94,14 @@ async function init() {
 async function render() {
   const content = document.getElementById('content');
 
-  const [u, a, m, r, rec, c] = await Promise.all([
-    db.from('profiles').select('id, role, display_name, age, bio, created_at, avatar_url, approved').order('created_at', { ascending: false }),    db.from('app_admins').select('user_id'),
+  const [u, a, m, r, rec, c, mt] = await Promise.all([
+    db.from('profiles').select('id, role, display_name, age, bio, created_at, avatar_url, approved').order('created_at', { ascending: false }),
+    db.from('app_admins').select('user_id'),
     db.from('app_moderators').select('user_id'),
     db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
-    db.from('cards').select('*')
+    db.from('cards').select('*'),
+    db.from('app_settings').select('*').eq('key', 'maintenance').maybeSingle()
   ]);
 
   users = u.data || [];
@@ -110,6 +112,19 @@ async function render() {
   cards = c.data || [];
 
   let html = '<h2 style="margin-top:0;">♛ Panel de Administración</h2>';
+    // ===== MODO MANTENIMIENTO =====
+  const maintOn = !!(mt && mt.value === '1');
+  html += `
+    <details open>
+      <summary>🚧 Modo mantenimiento <span class="count">${maintOn ? 'ACTIVO' : 'APAGADO'}</span></summary>
+      <div class="body">
+        <p class="small">Al activarlo, los visitantes verán un aviso elegante: “Las Diosas están trabajando en el sitio”. Las Administradoras siguen entrando con normalidad.</p>
+        ${maintOn
+          ? '<button onclick="setMaintenance(false)">▶ Restaurar servicio</button>'
+          : '<button class="danger" onclick="setMaintenance(true)">⏸ Apagar la página (mantenimiento)</button>'}
+      </div>
+    </details>
+  `;
 
   // ===== ADMINISTRADORES =====
   html += `<details><summary>👑 Administradores <span class="count">${admins.length}</span></summary><div class="body">`;
@@ -337,6 +352,14 @@ function renderCardCard(){
 }
 
 // ===== ACCIONES =====
+
+  async function setMaintenance(on) {
+  if (on && !confirm('¿Apagar la página para los visitantes? Solo las Administradoras podrán navegar.')) return;
+  const { error } = await db.from('app_settings').upsert({ key: 'maintenance', value: on ? '1' : '0' }, { onConflict: 'key' });
+  if (error) return alert(error.message);
+  alert(on ? '🚧 Página en mantenimiento.' : '▶ Servicio restaurado.');
+  window.location.reload();
+}
 
 async function makeAdmin() {
   const id = document.getElementById('newadmin').value;
