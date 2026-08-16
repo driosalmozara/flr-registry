@@ -1,3 +1,53 @@
+/* ══ Modo mantenimiento ══ */
+(function(){
+  var gateEl = null;
+
+  function buildGate(){
+    var st = document.createElement('style');
+    st.textContent = '#maint-gate{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a1420 0%,#0b0810 70%);padding:20px;text-align:center}#maint-gate .mg-card{max-width:560px;background:rgba(13,10,14,.92);border:1px solid rgba(212,175,55,.55);border-radius:18px;padding:40px 30px;box-shadow:0 30px 90px rgba(0,0,0,.8),0 0 60px rgba(212,175,55,.12)}#maint-gate .mg-crown{font-size:56px;color:#d4af37;animation:mgPulse 2.4s ease-in-out infinite}#maint-gate h2{font-family:"Cormorant Garamond",serif;color:#d4af37;font-size:30px;margin:10px 0 6px}#maint-gate p{color:#cfc6bb;font-size:15px;line-height:1.7;margin:6px 0}@keyframes mgPulse{0%,100%{text-shadow:0 0 12px rgba(212,175,55,.4)}50%{text-shadow:0 0 34px rgba(212,175,55,.9)}}';
+    document.head.appendChild(st);
+    var d = document.createElement('div');
+    d.id = 'maint-gate';
+    d.innerHTML = '<div class="mg-card"><div class="mg-crown">♛</div><h2>Supremacía Femenina</h2><p><b style="color:#d4af37;">Las Diosas están trabajando en el sitio.</b></p><p>Volverá a estar operativo en unos minutos.</p><p style="font-size:12px;color:#8a8578;margin-top:14px;">· Contenido simbólico y consensuado entre adultos ·</p></div>';
+    document.body.appendChild(d);
+    document.body.style.overflow = 'hidden';
+    gateEl = d;
+  }
+
+  function removeGate(){
+    if (gateEl) { gateEl.remove(); gateEl = null; document.body.style.overflow = ''; }
+  }
+
+  async function check(client){
+    var s = await client.auth.getSession();
+    var isAdmin = false;
+    if (s.data && s.data.session) {
+      var r = await client.rpc('am_i_superadmin');
+      isAdmin = !!r;
+    }
+    var row = await client.from('app_settings').select('value').eq('key','maintenance').maybeSingle();
+    var on = !!(row.data && row.data.value === '1');
+
+    if (on && !isAdmin) { if (!gateEl) buildGate(); }
+    else removeGate();
+
+    var badge = document.getElementById('maint-badge');
+    if (on && isAdmin && !badge) {
+      var b = document.createElement('div');
+      b.id = 'maint-badge';
+      b.style.cssText = 'position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:99998;background:#7f1d1d;color:#fff;border:1px solid #d4af37;border-radius:999px;padding:8px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.6);';
+      b.textContent = '🚧 Modo mantenimiento activo — solo tú ves el sitio';
+      document.body.appendChild(b);
+    }
+    if (!on && badge) badge.remove();
+  }
+
+  waitForSupabase(async function(){
+    var client = getClient();
+    await check(client);
+    setInterval(function(){ check(client); }, 30000);
+  });
+})();
 /* ══ Puerta de acceso +18 ══ */
 (function(){
   if (localStorage.getItem('flr_adult_ok') === '1') return;
