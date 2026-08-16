@@ -533,3 +533,38 @@ function getClient(){
     }
   });
 })();
+/* ══ Menú móvil desplegable ══ */
+(function(){
+  function init(){
+    var header = document.querySelector('header');
+    if (!header || header.querySelector('.mob-btn')) return;
+    var nav = header.querySelector('nav') || header.querySelector('div');
+    if (!nav) return;
+
+    var st = document.createElement('style');
+    st.textContent =
+      '@media (max-width:760px){' +
+        'header{position:relative;flex-wrap:wrap}' +
+        'header .mob-btn{display:inline-flex !important}' +
+        'header nav, header div{display:none !important}' +
+        'header nav.mob-open, header div.mob-open{display:flex !important;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(13,10,14,.98);border-bottom:1px solid #2a2a3d;padding:14px 22px;gap:14px;z-index:99997;max-height:70vh;overflow-y:auto}' +
+        'header nav.mob-open a, header div.mob-open a{padding:6px 0;font-size:15px}' +
+      '}' +
+      '@media (min-width:761px){header .mob-btn{display:none !important}}';
+    document.head.appendChild(st);
+
+    var btn = document.createElement('button');
+    btn.className = 'mob-btn';
+    btn.textContent = '☰';
+    btn.setAttribute('aria-label', 'Abrir menú');
+    btn.style.cssText = 'display:none;align-items:center;justify-content:center;background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;font-size:20px;padding:6px 13px;cursor:pointer;margin-left:12px;';
+    header.appendChild(btn);
+
+    btn.onclick = function(e){ e.stopPropagation(); nav.classList.toggle('mob-open'); };
+    document.addEventListener('click', function(e){
+      if (nav.classList.contains('mob-open') && !nav.contains(e.target) && e.target !== btn) nav.classList.remove('mob-open');
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
