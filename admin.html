@@ -101,8 +101,7 @@ async function render() {
     db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
     db.from('cards').select('*'),
-    db.from('app_settings').select('*').eq('key', 'maintenance').maybeSingle()
-  ]);
+    db.from('app_settings').select('value').eq('key', 'maintenance').maybeSingle()  ]);
 
   users = u.data || [];
   admins = (a.data || []).map(x => x.user_id);
@@ -113,8 +112,7 @@ async function render() {
 
   let html = '<h2 style="margin-top:0;">♛ Panel de Administración</h2>';
     // ===== MODO MANTENIMIENTO =====
-  const maintOn = !!(mt && mt.value === '1');
-  html += `
+  const maintOn = !!(mt && ((mt.value && mt.value === '1') || (mt.data && mt.data.value === '1')));  html += `
     <details open>
       <summary>🚧 Modo mantenimiento <span class="count">${maintOn ? 'ACTIVO' : 'APAGADO'}</span></summary>
       <div class="body">
