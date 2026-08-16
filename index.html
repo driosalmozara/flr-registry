@@ -352,7 +352,7 @@
         if (!g.value) g.value = 'hombre';
       }
     }
-    async function register() {
+        async function register() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('reg-role').value;
       const display_name = document.getElementById('reg-display').value.trim();
@@ -363,6 +363,8 @@
       const consent = document.getElementById('reg-consent').checked;
       const social_links = document.getElementById('reg-social').value.trim();
       const social_links_public = document.getElementById('reg-social-public').checked;
+      const lang = document.getElementById('reg-lang').value;
+      const gender = document.getElementById('reg-gender').value;
 
       if (!display_name || !email || !password) return alert('Completa los campos obligatorios.');
       if (!country) return alert('Selecciona tu país.');
@@ -370,16 +372,16 @@
       if (!consent) return alert('Debes aceptar la declaración de mayoría de edad.');
 
       const { data, error } = await db.auth.signUp({ email, password });
-      if (error) return alert(error.message);
+      if (error) return alert('Registro: ' + error.message);
       if (!data.user) return alert('Revisa tu correo para confirmar la cuenta.');
-      if (!data.session) return alert('Cuenta creada. Si el proyecto pide confirmar correo, confirma y luego inicia sesión.');
+      if (!data.session) return alert('Cuenta creada. Si el correo de confirmación está activado, confírmalo y luego inicia sesión.');
 
-                const { data: regResult, error: profileError } = await db.rpc('register_profile', {
-        p_id: data.user.id, p_role: role, p_display_name, p_age, p_country,
-        p_social_links: social_links || null, p_social_links_public,
-        p_gender: document.getElementById('reg-gender').value
+      const { error: profileError } = await db.rpc('register_profile', {
+        p_id: data.user.id, p_role: role, p_display_name: display_name, p_age: age, p_country: country,
+        p_social_links: social_links || null, p_social_links_public: social_links_public,
+        p_lang: lang, p_gender: gender
       });
-      if (profileError) return alert(profileError.message);
+      if (profileError) return alert('Perfil: ' + profileError.message);
 
       if (role === 'dominant') {
         await db.auth.signOut();
