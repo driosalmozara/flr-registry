@@ -581,7 +581,7 @@
             html += `<textarea id="notes_${record.relationship_id}" rows="3">${escapeHtml(record.notes || '')}</textarea>`;
             html += `<label class="small">
               <input type="checkbox" id="public_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.is_public ? 'checked' : ''}>
-              Mostrar en registro público
+              Mostrar en Salón de miembros
             </label>`;
             html += `<label class="small">
               <input type="checkbox" id="avatar_${record.relationship_id}" style="width:auto; margin-right:6px;" ${record.show_avatar ? 'checked' : ''}>
