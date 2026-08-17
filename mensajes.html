@@ -70,7 +70,8 @@ details .body{padding:14px 18px}
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
-const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null, myProfile = null, users = [], allConvs = [], myConvs = [], mySubs = [], mySettings = null;
 let currentThread = null, staffIds = new Set(), unreadIds = new Set(), pendingAttach = null;
@@ -188,7 +189,7 @@ async function render() {
       html += `
         <div class="item">
           <b>${esc(nameOf(c.initiated_by))}</b> quiere escribirte.
-          ${first && first[0] ? `<p class="small">"${esc(first[0].body)}"</p>` : ''}
+          ${first && first[0] ? `<p class="small">“${esc(first[0].body)}”</p>` : ''}
           <button onclick="decide('${c.id}','accepted')">Aceptar</button>
           ${staffIds.has(c.initiated_by) ? '<span class="small">🛡 Miembro del Staff: no puede rechazarse</span>' : `<button class="danger" onclick="decide('${c.id}','rejected')">Rechazar</button>`}
         </div>`;
@@ -282,13 +283,13 @@ async function openThread(id) {
         <div class="pm-inputrow">
           <div id="emoji-panel">
             <div class="emo-cat">Caras</div>
-            <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','🥰','','😜','🤔','😏','😎','🥺','😢','😭','😡','🤯','🥳','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+            <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','🥰','😘','😜','','😏','😎','🥺','','😭','😡','🤯','','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
             <div class="emo-cat">Corazones y gestos</div>
-            <div class="emo-grid">${['❤️','🧡','','💚','💙','💜','🖤','','💔','💖','💕','💘','👑','','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+            <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕','💘','👑','⛓','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
             <div class="emo-cat">Manos</div>
-            <div class="emo-grid">${['👍','👎','👏','🙏','🤝','','✌️','','🤟','','👊','','🤛','','👋','','🙌','','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+            <div class="emo-grid">${['👍','👎','👏','🙏','🤝','','✌️','','🤟','','👊','✊','🤛','🤜','👋','💪','🙌','👐','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
             <div class="emo-cat">Objetos</div>
-            <div class="emo-grid">${['🌹','','🍾','','🎁','','🎊','','🎶','','💌','📱','💻','⚡','☕','🍫','🍓','','🗝','️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+            <div class="emo-grid">${['🌹','🍷','🍾','🎂','🎁','🎉','🎊','🎵','🎶','📷','💌','📱','💻','⚡','☕','🍫','🍓','🌙','🗝','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
           </div>
           <input type="file" id="mfile" accept="image/*,video/*" style="display:none" onchange="attachFile(this)"/>
           <button class="attach-btn" title="Adjuntar foto o video" onclick="document.getElementById('mfile').click()">📎</button>
@@ -311,8 +312,10 @@ function pmLine(m){
   const who = m.sender_id === me ? 'Tú' : nameOf(m.sender_id);
   const col = m.sender_id === me ? 'var(--gold)' : '#8ab4f8';
   let att = '';
-  const gifMatch = (m.body || '').match(/https?:\/\/\S+giphy\S+\.gif|https?:\/\/\S+tenor\S+\.gif|https?:\/\/media\d+\.giphy\.com\S+/i);
+  let bodyText = m.body || '';
+  const gifMatch = bodyText.match(/https?:\/\/\S+?giphy\S*|https?:\/\/\S+?tenor\S*|https?:\/\/\S+\.gif(?:\?\S*)?/i);
   if (gifMatch) {
+    bodyText = bodyText.replace(gifMatch[0], '').trim();
     att += `<div class="pm-att"><img src="${esc(gifMatch[0])}" style="max-width:200px;max-height:200px;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
   }
   if (m.attachment_url) {
@@ -320,7 +323,7 @@ function pmLine(m){
       ? `<div class="pm-att"><video src="${esc(m.attachment_url)}" controls></video></div>`
       : `<div class="pm-att"><img src="${esc(m.attachment_url)}" onclick="window.open(this.src)"/></div>`;
   }
-  return `<div class="pm-line"><span class="pm-time">[${hh}]</span> <b style="color:${col}">&lt;${esc(who)}&gt;</b> ${esc(m.body || '')}${att}</div>`;
+  return `<div class="pm-line"><span class="pm-time">[${hh}]</span> <b style="color:${col}">&lt;${esc(who)}&gt;</b> ${esc(bodyText)}${att}</div>`;
 }
 
 async function loadPMs(){
@@ -515,9 +518,10 @@ async function openGifPicker() {
   openModal('<p class="small">Buscando...</p>');
   try {
     const r = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`);
+    if (!r.ok) throw new Error('sin clave');
     const j = await r.json();
     const gifs = j.data || [];
-    if (!gifs.length) { openModal('<p>Sin resultados.</p><button class="secondary" onclick="closeModal()">Cerrar</button>'); return; }
+    if (!gifs.length) throw new Error('vacío');
     let html = `<h2 style="margin-top:0;">GIFs: ${esc(query)}</h2><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:60vh;overflow-y:auto;">`;
     gifs.forEach(g => {
       const url = g.images.downsized_medium?.url || g.images.original?.url;
@@ -526,7 +530,13 @@ async function openGifPicker() {
     html += '</div><p style="margin-top:14px;"><button class="secondary" onclick="closeModal()">Cancelar</button></p>';
     openModal(html);
   } catch(e) {
-    openModal('<p>Error al buscar GIFs.</p><button class="secondary" onclick="closeModal()">Cerrar</button>');
+    window.open('https://giphy.com/search/' + encodeURIComponent(query), '_blank');
+    openModal(`
+      <p class="small">El buscador automático requiere una <b>clave gratuita de GIPHY</b>.<br><br>
+      Mientras tanto: se abrió la búsqueda en otra pestaña. Copia la URL de un GIF (terminada en <b>.gif</b>) y pégala aquí:</p>
+      <input id="gif-url" placeholder="https://media.giphy.com/....gif" style="width:100%;background:#0b0b12;border:1px solid #2a2a3d;color:#fff;border-radius:10px;padding:9px 12px;margin:6px 0;"/>
+      <button onclick="pickGif(document.getElementById('gif-url').value.trim())">Insertar GIF</button>
+      <button class="secondary" onclick="closeModal()">Cancelar</button>`);
   }
 }
 
