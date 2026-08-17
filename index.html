@@ -52,8 +52,7 @@
     <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
     <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
     <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
-    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería</a>
-    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
+    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería de relación</a>    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
     <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
     <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
     <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
@@ -68,6 +67,10 @@
     <section id="loading" class="card">Cargando...</section>
 
     <section id="auth" class="hidden">
+      <div style="background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(212,175,55,.05));border:1px solid var(--gold);border-radius:14px;padding:18px;margin-bottom:20px;text-align:center;">
+        <h3 style="margin:0 0 8px;color:var(--gold);">✨ Únete a la casa</h3>
+        <p class="small" style="margin:0;">Este es el formulario para registrarte. Si solo deseas conocer a los miembros, visita el <a href="registro-publico.html" style="color:var(--gold);font-weight:600;">Salón de miembros</a>.</p>
+      </div>
       <div class="row">
         <div class="col card">
           <h2>Iniciar sesión</h2>
@@ -99,8 +102,10 @@
           </select>
           <input id="reg-display" placeholder="Nombre público" />
           <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-          <select id="reg-country">
-            <option value="">País de residencia...</option>
+      <select id="setup-country">
+        <option value="">País de residencia...</option>
+      </select>
+                <select id="setup-lang">
           </select>
                     <select id="reg-lang">
             <option value="es">Idioma: Español</option>
@@ -405,10 +410,16 @@
     async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
       if (!confirm('Esta acción NO se puede deshacer. ¿Confirmas por segunda vez?')) return;
-      const { data, error } = await db.functions.invoke('delete-my-account');
-      if (error) return alert(error.message);
-      if (data && data.ok) { alert('Tu cuenta ha sido eliminada. Gracias por participar.'); window.location.href = 'index.html'; }
-      else alert('Error: ' + JSON.stringify(data));
+      const { data: { session } } = await db.auth.getSession();
+      const r = await fetch('/api/delete-my-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token }
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return alert('Error: ' + (j.error || r.status));
+      localStorage.removeItem('flr_cred');
+      alert('Tu cuenta ha sido eliminada. Gracias por participar.');
+      window.location.href = 'index.html';
     }
 
     async function logout() {
@@ -778,8 +789,7 @@
         { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
         { sel: 'a[href="subastas.html"]', t: 'Subastas', x: 'Las Dominantes pueden subastar a sus sumisos; las demás pujan con coronas ♛.' },
         { sel: 'a[href="cesiones.html"]', t: 'Cesiones', x: 'Cede o recibe sumisos entre Dominantes, de forma temporal o indefinida.' },
-        { sel: 'a[href="mi-galeria.html"]', t: 'Mi Galería', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el registro público.' },
-        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
+        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el registro público.' },        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
         { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes y su visibilidad.' },
         { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Aquí gestionas solicitudes, sumisos, país y redes, marcas de subasta y carnets.' : 'Aquí ves tu estado, tu Dominante, tu registro, carnet y las solicitudes recibidas.' },
         { sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' }
