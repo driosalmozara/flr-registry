@@ -26,7 +26,7 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 #msgs{flex:1;overflow-y:auto;background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:Consolas,Menlo,monospace;font-size:13px}
 .line{margin:3px 0;word-wrap:break-word}
 .time{color:#71717a}
-#inputrow{display:flex;gap:8px;margin-top:8px}
+#inputrow{display:flex;gap:8px;margin-top:8px;position:relative}
 #msg{flex:1;margin:0}
 .prow{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:8px}
 .prow:hover{background:#161625}
@@ -42,8 +42,8 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 .room-tab .room-del:hover{opacity:1}
 .room-tab.new-tab{color:#4ade80;border:1px dashed rgba(74,222,128,.4)}
 .room-tab.new-tab:hover{background:rgba(74,222,128,.08);border-color:#4ade80}
-@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
-#emoji-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px;font-size:16px;line-height:1}
+#emoji-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:8px 11px;cursor:pointer;font-size:16px;line-height:1}
+#gif-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:8px 11px;cursor:pointer;font-weight:700;font-size:13px}
 #emoji-panel{position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#0b0b12;border:1px solid var(--gold);border-radius:12px;padding:10px;max-width:320px;width:90vw;max-height:260px;overflow-y:auto;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 #emoji-panel.open{display:block}
 #emoji-panel .emo-cat{font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.1em;margin:8px 0 4px;font-weight:600}
@@ -51,7 +51,8 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 #emoji-panel .emo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 #emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
 #emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
-#inputrow{position:relative}</style>
+@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
+</style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
@@ -69,14 +70,16 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const DEFAULT_ROOM_NAME = 'chat-general';
+const DEFAULT_ROOM_LABEL = 'Chat General';
+const GIPHY_KEY = 'GlVGYHkr3WSBn';
+
 let me = null, myProfile = null;
 let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [], currentTargets = [];
 let ownedSet = new Set(), chatModIds = new Set();
 let rooms = [], currentRoomId = null, chatChannel = null;
-  const DEFAULT_ROOM_NAME = 'chat-general';
-const DEFAULT_ROOM_LABEL = 'Chat General';
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -133,7 +136,7 @@ async function init() {
       renderParticipants();
     })
     .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
+      if (status === 'SUBSCRIPED' || status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
     });
 }
 
@@ -150,12 +153,14 @@ async function loadRooms(initial) {
 }
 
 function renderRoomsBar() {
-  let bar = document.getElementById('rooms-bar');
+  const bar = document.getElementById('rooms-bar');
   if (!bar) return;
   const canManage = isSuper || isMod;
   bar.innerHTML = rooms.map(r => `
     <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
-      #${r.name === DEFAULT_ROOM_NAME ? DEFAULT_ROOM_LABEL : esc(r.name)}      ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
+      ${r.is_private ? '🔒' : '#'}${r.name === DEFAULT_ROOM_NAME ? DEFAULT_ROOM_LABEL : esc(r.name)}
+      ${r.is_private && isSuper ? `<span class="room-del" style="color:#4ade80;" onclick="event.stopPropagation();manageRoomMembers('${r.id}','${esc(r.name)}')" title="Gestionar miembros">👥</span>` : ''}
+      ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
     </button>
   `).join('') + (canManage ? `<button class="room-tab new-tab" onclick="createRoom()">＋ Nueva sala</button>` : '');
 }
@@ -165,6 +170,7 @@ async function switchRoom(id) {
   currentRoomId = id;
   renderRoomsBar();
   subscribeChat();
+  await renderInputRow();
   await loadMessages();
 }
 
@@ -175,7 +181,9 @@ async function createRoom() {
   if (!clean) return alert('Nombre inválido.');
   if (rooms.find(r => r.name === clean)) return alert('Ya existe una sala con ese nombre.');
   const description = prompt('Descripción breve (opcional):') || '';
-  const { error } = await db.from('chat_rooms').insert({ name: clean, description, created_by: me });
+  let isPrivate = false;
+  if (isSuper) isPrivate = confirm('¿Hacerla SALA PRIVADA?\n\nSolo tú podrás añadir o quitar miembros. Los demás no verán esta sala.');
+  const { error } = await db.from('chat_rooms').insert({ name: clean, description, created_by: me, is_private: isPrivate });
   if (error) return alert(error.message);
   await loadRooms(false);
   const fresh = rooms.find(r => r.name === clean);
@@ -187,6 +195,42 @@ async function deleteRoom(id, name) {
   const { error } = await db.from('chat_rooms').delete().eq('id', id);
   if (error) return alert(error.message);
   await loadRooms(false);
+}
+
+async function manageRoomMembers(roomId, roomName) {
+  const { data: allUsers } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(500);
+  const { data: members } = await db.from('chat_room_members').select('user_id').eq('room_id', roomId);
+  const memberSet = new Set((members || []).map(m => m.user_id));
+
+  let html = `<h2 style="margin-top:0;">🔒 Miembros de #${esc(roomName)}</h2>
+    <p class="small">Solo los miembros listados (y administradores) pueden ver y escribir en esta sala.</p>
+    <div style="max-height:50vh;overflow-y:auto;">`;
+  (allUsers || []).forEach(u => {
+    if (u.id === me) return;
+    const isIn = memberSet.has(u.id);
+    html += `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #2a2a3d;gap:10px;">
+        <span>${u.role === 'dominant' ? '♛' : '⛓'} ${esc(u.display_name)}</span>
+        ${isIn
+          ? `<button class="danger" style="margin:0;" onclick="removeRoomMember('${roomId}','${u.id}','${esc(roomName)}')">✕ Quitar</button>`
+          : `<button style="margin:0;" onclick="addRoomMember('${roomId}','${u.id}','${esc(roomName)}')">＋ Añadir</button>`}
+      </div>`;
+  });
+  html += '</div><p style="margin-top:14px;"><button class="secondary" onclick="closeModal()">Cerrar</button></p>';
+  openModal(html);
+}
+
+async function addRoomMember(roomId, userId, roomName) {
+  const { error } = await db.from('chat_room_members').insert({ room_id: roomId, user_id: userId, added_by: me });
+  if (error) return alert(error.message);
+  await manageRoomMembers(roomId, roomName);
+}
+
+async function removeRoomMember(roomId, userId, roomName) {
+  if (!confirm('¿Quitar a este miembro de la sala?')) return;
+  const { error } = await db.from('chat_room_members').delete().eq('room_id', roomId).eq('user_id', userId);
+  if (error) return alert(error.message);
+  await manageRoomMembers(roomId, roomName);
 }
 
 function subscribeChat() {
@@ -206,17 +250,14 @@ function subscribeChat() {
 async function renderPage() {
   const content = document.getElementById('content');
 
-  const [p, sn, an, ow, cmods] = await Promise.all([
+  const [p, sn, an, ow, cmods, bans] = await Promise.all([
     db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
     db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
     db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
     db.from('app_chat_mods').select('user_id'),
-    db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by:profiles!chat_room_bans_banned_by_fkey(display_name)')
+    db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId)
   ]);
-  const bans = (arguments[5] && arguments[5].data) || [];
-  window._roomBans = bans;
-  window._myBans = bans.filter(b => b.user_id === me).map(b => b.user_id);
 
   people = (p.data || []).map(person => ({
     ...person,
@@ -226,6 +267,7 @@ async function renderPage() {
   assignedNicks = an.data || [];
   ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
   chatModIds = new Set((cmods.data || []).map(x => x.user_id));
+  window._roomBans = bans.data || [];
 
   const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
   const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -314,7 +356,7 @@ async function renderPage() {
   content.innerHTML = html;
   renderRoomsBar();
   renderParticipants();
-  renderInputRow();
+  await renderInputRow();
   await loadMessages();
 }
 
@@ -325,26 +367,24 @@ function renderParticipants() {
 
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
-      const myBan = (window._roomBans || []).find(b => b.user_id === me);
-  if (myBan) {
-    row.innerHTML = `<p class="small" style="color:#dc2626;">🚫 Tu acceso a esta sala está prohibido por ${esc(myBan.banned_by_role)}${myBan.reason ? ' · motivo: ' + esc(myBan.reason) : ''}.</p>`;
-    return;
-  }
     const chatMuted = p.chat_muted || false;
     const online = onlineIds.has(p.id);
     const isMuzzled = p.is_muzzled || false;
     const owned = ownedSet.has(p.id);
-    const isBannedHere = window._roomBans.find(b => b.user_id === p.id);
     const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
+    const isBannedHere = (window._roomBans || []).find(b => b.user_id === p.id);
     const canBan = p.id !== me && (isSuper || isMod || isChatMod);
+
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
           ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
         </span>
-        ${canMute ? `<button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
-        ${canBan && !isBannedHere ? `<button class="mini" onclick="banFromRoom('${p.id}','${esc(n)}')" title="Prohibir en esta sala">🚫</button>` : ''}
-        ${isBannedHere ? `<button class="mini" style="color:#4ade80;border-color:#4ade80;" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')" title="Levantar ban de sala (por ${esc(isBannedHere.banned_by)} · ${isBannedHere.banned_by_role})">✓ readmitir</button>` : ''}
+        <span>
+          ${canMute ? `<button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
+          ${canBan && !isBannedHere ? `<button class="mini" onclick="banFromRoom('${p.id}','${esc(n)}')" title="Prohibir en esta sala">🚫</button>` : ''}
+          ${isBannedHere ? `<button class="mini" style="color:#4ade80;border-color:#4ade80;" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')" title="Levantar ban (por ${isBannedHere.banned_by_role})">✓ readmitir</button>` : ''}
+        </span>
       </div>
     `;
   }).join('');
@@ -352,6 +392,26 @@ function renderParticipants() {
 
 async function renderInputRow() {
   const row = document.getElementById('inputrow');
+  if (!row) return;
+
+  // Bloqueo por sala privada
+  if (currentRoomId) {
+    const currentRoom = rooms.find(r => r.id === currentRoomId);
+    if (currentRoom && currentRoom.is_private) {
+      const { data: isMember } = await db.from('chat_room_members')
+        .select('user_id').eq('room_id', currentRoomId).eq('user_id', me).maybeSingle();
+      if (!isMember && !isSuper) {
+        row.innerHTML = '<p class="small" style="color:#dc2626;">🔒 Sala privada: solo miembros invitados pueden escribir.</p>';
+        return;
+      }
+    }
+  }
+
+  const myBan = (window._roomBans || []).find(b => b.user_id === me);
+  if (myBan) {
+    row.innerHTML = `<p class="small" style="color:#dc2626;">🚫 Tu acceso a esta sala está prohibido por ${esc(myBan.banned_by_role)}${myBan.reason ? ' · motivo: ' + esc(myBan.reason) : ''}.</p>`;
+    return;
+  }
 
   const { data: myProfileData } = await db.from('profiles').select('chat_muted').eq('id', me).maybeSingle();
   if (myProfileData && myProfileData.chat_muted) {
@@ -368,17 +428,18 @@ async function renderInputRow() {
   row.innerHTML = `
     <div id="emoji-panel">
       <div class="emo-cat">Caras</div>
-      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','🥰','😘','😜','🤔','😏','😎','🥺','😢','😭','😡','🤯','🥳','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','','😘','😜','🤔','😏','😎','🥺','','😭','😡','🤯','🥳','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Corazones y gestos</div>
       <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕','💘','👑','⛓','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Manos</div>
-      <div class="emo-grid">${['👍','👎','👏','🙏','🤝','👌','✌️','🤞','🤟','🤘','👊','✊','🤛','🤜','👋','💪','🙌','👐','🤲','🫶'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['👍','','👏','','🤝','','✌️','','🤟','','👊','','🤛','','👋','','🙌','','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Objetos</div>
-      <div class="emo-grid">${['🌹','🍷','🍾','🎂','🎁','🎉','🎊','🎵','🎶','📷','💌','📱','💻','⚡','☕','🍫','🍓','🌙','🗝','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['🌹','','🍾','','🎁','','🎊','','🎶','','💌','','💻','⚡','','🍫','','🌙','','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
     </div>
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
     <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
     <button id="emoji-btn" type="button" title="Emojis" onclick="toggleEmoji(event)">😀</button>
+    <button id="gif-btn" type="button" title="GIF" onclick="openGifPicker()">GIF</button>
     <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
     <button onclick="sendMsg()">Enviar</button>
   `;
@@ -408,11 +469,13 @@ async function mediaDecide(id, approve){
 async function loadMessages() {
   const box = document.getElementById('msgs');
   if (!box || !currentRoomId) return;
+
   const myBan = (window._roomBans || []).find(b => b.user_id === me);
   if (myBan) {
     box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`;
     return;
   }
+
   const { data } = await db.from('chat_messages_public')
     .select('*')
     .eq('room_id', currentRoomId)
@@ -424,6 +487,10 @@ async function loadMessages() {
     const t = new Date(m.created_at);
     const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
     let att = '';
+    const gifMatch = (m.body || '').match(/https?:\/\/\S+giphy\S+\.gif|https?:\/\/\S+tenor\S+\.gif|https?:\/\/media\d+\.giphy\.com\S+/i);
+    if (gifMatch) {
+      att += `<div><img src="${esc(gifMatch[0])}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
+    }
     if (m.attachment_url) {
       att = m.attachment_type === 'video'
         ? `<div><video src="${esc(m.attachment_url)}" controls style="max-width:260px;border-radius:8px;display:block;margin:4px 0;"></video></div>`
@@ -460,16 +527,13 @@ async function deleteMsg(id) {
 }
 
 async function chatMuteToggle(id, shouldMute) {
+  const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   if (shouldMute) {
-    const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
     const { error } = await db.from('profiles').update({
-      chat_muted: true,
-      chat_muted_by: me,
-      chat_muted_by_role: myRole
+      chat_muted: true, chat_muted_by: me, chat_muted_by_role: myRole
     }).eq('id', id);
     if (error) return alert(error.message);
   } else {
-    const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
     const { data } = await db.rpc('lift_chat_mute', { target_user_id: id, lifter_role: myRole });
     if (!data || !data.ok) return alert(data?.error || 'No se pudo levantar.');
   }
@@ -485,7 +549,6 @@ async function banFromRoom(userId, name) {
   });
   if (error) return alert(error.message);
   await renderPage();
-  await loadRooms(false);
 }
 
 async function liftRoomBan(banId, banRole) {
@@ -493,7 +556,6 @@ async function liftRoomBan(banId, banRole) {
   const { data } = await db.rpc('lift_room_ban', { ban_id: banId, lifter_role: myRole });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo readmitir.');
   await renderPage();
-  await loadRooms(false);
 }
 
 async function setSelfNick() {
@@ -515,7 +577,7 @@ async function assignNickFromSelect() {
   window.location.reload();
 }
 
-  function toggleEmoji(ev) {
+function toggleEmoji(ev) {
   if (ev) ev.stopPropagation();
   const p = document.getElementById('emoji-panel');
   if (p) p.classList.toggle('open');
@@ -538,6 +600,54 @@ function insertEmoji(e) {
   const p = document.getElementById('emoji-panel');
   if (p) p.classList.remove('open');
 }
+
+function openModal(html) {
+  let m = document.getElementById('flr-modal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'flr-modal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;';
+    m.innerHTML = '<div style="background:#161625;border:1px solid #d4af37;border-radius:14px;padding:22px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;"></div>';
+    document.body.appendChild(m);
+  }
+  m.querySelector('div').innerHTML = html;
+  m.style.display = 'flex';
+}
+
+function closeModal() {
+  const m = document.getElementById('flr-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function openGifPicker() {
+  const query = prompt('Buscar GIF:');
+  if (!query) return;
+  openModal('<p class="small">Buscando...</p>');
+  try {
+    const r = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`);
+    const j = await r.json();
+    const gifs = j.data || [];
+    if (!gifs.length) { openModal('<p>Sin resultados.</p><button class="secondary" onclick="closeModal()">Cerrar</button>'); return; }
+    let html = `<h2 style="margin-top:0;">GIFs: ${esc(query)}</h2><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:60vh;overflow-y:auto;">`;
+    gifs.forEach(g => {
+      const url = g.images.downsized_medium?.url || g.images.original?.url;
+      html += `<img src="${url}" style="width:100%;border-radius:8px;cursor:pointer;" onclick="pickGif('${url}')"/>`;
+    });
+    html += '</div><p style="margin-top:14px;"><button class="secondary" onclick="closeModal()">Cancelar</button></p>';
+    openModal(html);
+  } catch(e) {
+    openModal('<p>Error al buscar GIFs.</p><button class="secondary" onclick="closeModal()">Cerrar</button>');
+  }
+}
+
+function pickGif(url) {
+  const input = document.getElementById('msg') || document.getElementById('mbody');
+  if (!input) return;
+  input.value = (input.value + ' ' + url).trim();
+  input.focus();
+  closeModal();
+}
+
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
