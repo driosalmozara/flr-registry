@@ -70,8 +70,10 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';
 
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const DEFAULT_ROOM_NAME = 'chat-general';
-const DEFAULT_ROOM_LABEL = 'Chat General';
+  const DEFAULT_ROOM_LABEL = 'Chat General';
 
 let me = null, myProfile = null;
 let isSuper = false, isMod = false, isChatMod = false;
