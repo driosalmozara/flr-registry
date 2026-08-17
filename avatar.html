@@ -49,6 +49,11 @@ function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function extOf(name){
+  const m = (name || '').split('.').pop();
+  return (m || 'png').replace(/[^a-zA-Z0-9]/g,'').slice(0,8) || 'png';
+}
+
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
@@ -73,7 +78,6 @@ async function init() {
 
   let html = '';
 
-  // Sección 1: Tu propio avatar
   html += `
     <div class="card">
       <h2>Tu avatar</h2>
@@ -87,7 +91,6 @@ async function init() {
     </div>
   `;
 
-  // Sección 2: Avatares de sumisos (solo Dominantes o Superadmin)
   if (isSuper || myProfile.role === 'dominant') {
     let subs = [];
 
@@ -140,33 +143,56 @@ async function init() {
 async function uploadMyAvatar() {
   const file = document.getElementById('myFile').files[0];
   if (!file) return alert('Selecciona una imagen.');
+  if (!file.type.startsWith('image/')) return alert('El archivo debe ser una imagen.');
 
-  const path = me + '/avatar';
-  const { error } = await db.storage.from('avatars').upload(path, file, { upsert: true });
+  const oldUrl = myProfile.avatar_url || '';
+  const path = me + '/' + Date.now() + '.' + extOf(file.name);
+  const { error } = await db.storage.from('avatars').upload(path, file);
   if (error) return alert(error.message);
 
   const { data } = db.storage.from('avatars').getPublicUrl(path);
   const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', me);
   if (updateError) return alert(updateError.message);
 
+  // Limpia el archivo viejo para no llenar el storage
+  if (oldUrl) {
+    try {
+      const oldPath = decodeURIComponent(oldUrl.split('/avatars/')[1] || '');
+      if (oldPath) await db.storage.from('avatars').remove([oldPath]);
+    } catch(e){}
+  }
+
+  myProfile.avatar_url = data.publicUrl;
   alert('Avatar actualizado.');
-  document.getElementById('myAvatar').src = data.publicUrl;
+  window.location.reload();
 }
 
 async function uploadSubAvatar(subId) {
   const file = document.getElementById('file_' + subId).files[0];
   if (!file) return alert('Selecciona una imagen.');
+  if (!file.type.startsWith('image/')) return alert('El archivo debe ser una imagen.');
 
-  const path = subId + '/avatar';
-  const { error } = await db.storage.from('avatars').upload(path, file, { upsert: true });
+  // Lee la URL vieja del sumiso para limpiarla después
+  const { data: oldProf } = await db.from('profiles').select('avatar_url').eq('id', subId).maybeSingle();
+  const oldUrl = (oldProf && oldProf.avatar_url) || '';
+
+  const path = subId + '/' + Date.now() + '.' + extOf(file.name);
+  const { error } = await db.storage.from('avatars').upload(path, file);
   if (error) return alert(error.message);
 
   const { data } = db.storage.from('avatars').getPublicUrl(path);
   const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', subId);
   if (updateError) return alert(updateError.message);
 
-  alert('Avatar del sumiso actualizado.');
-  document.getElementById('sub_' + subId).src = data.publicUrl;
+  if (oldUrl) {
+    try {
+      const oldPath = decodeURIComponent(oldUrl.split('/avatars/')[1] || '');
+      if (oldPath) await db.storage.from('avatars').remove([oldPath]);
+    } catch(e){}
+  }
+
+  alert('Avatar actualizado.');
+  window.location.reload();
 }
 
 init();
