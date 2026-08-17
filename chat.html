@@ -67,6 +67,8 @@ let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [], currentTargets = [];
 let ownedSet = new Set(), chatModIds = new Set();
 let rooms = [], currentRoomId = null, chatChannel = null;
+  const DEFAULT_ROOM_NAME = 'chat-general';
+const DEFAULT_ROOM_LABEL = 'Chat General';
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -145,8 +147,7 @@ function renderRoomsBar() {
   const canManage = isSuper || isMod;
   bar.innerHTML = rooms.map(r => `
     <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
-      #${esc(r.name)}
-      ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
+      #${r.name === DEFAULT_ROOM_NAME ? DEFAULT_ROOM_LABEL : esc(r.name)}      ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
     </button>
   `).join('') + (canManage ? `<button class="room-tab new-tab" onclick="createRoom()">＋ Nueva sala</button>` : '');
 }
@@ -202,8 +203,12 @@ async function renderPage() {
     db.from('chat_self_nicknames').select('*'),
     db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
     db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id')
+    db.from('app_chat_mods').select('user_id'),
+    db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by:profiles!chat_room_bans_banned_by_fkey(display_name)')
   ]);
+  const bans = (arguments[5] && arguments[5].data) || [];
+  window._roomBans = bans;
+  window._myBans = bans.filter(b => b.user_id === me).map(b => b.user_id);
 
   people = (p.data || []).map(person => ({
     ...person,
@@ -312,18 +317,26 @@ function renderParticipants() {
 
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
+      const myBan = (window._roomBans || []).find(b => b.user_id === me);
+  if (myBan) {
+    row.innerHTML = `<p class="small" style="color:#dc2626;">🚫 Tu acceso a esta sala está prohibido por ${esc(myBan.banned_by_role)}${myBan.reason ? ' · motivo: ' + esc(myBan.reason) : ''}.</p>`;
+    return;
+  }
     const chatMuted = p.chat_muted || false;
     const online = onlineIds.has(p.id);
     const isMuzzled = p.is_muzzled || false;
     const owned = ownedSet.has(p.id);
+    const isBannedHere = window._roomBans.find(b => b.user_id === p.id);
     const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
-
+    const canBan = p.id !== me && (isSuper || isMod || isChatMod);
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
           ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
         </span>
         ${canMute ? `<button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
+        ${canBan && !isBannedHere ? `<button class="mini" onclick="banFromRoom('${p.id}','${esc(n)}')" title="Prohibir en esta sala">🚫</button>` : ''}
+        ${isBannedHere ? `<button class="mini" style="color:#4ade80;border-color:#4ade80;" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')" title="Levantar ban de sala (por ${esc(isBannedHere.banned_by)} · ${isBannedHere.banned_by_role})">✓ readmitir</button>` : ''}
       </div>
     `;
   }).join('');
@@ -375,7 +388,11 @@ async function mediaDecide(id, approve){
 async function loadMessages() {
   const box = document.getElementById('msgs');
   if (!box || !currentRoomId) return;
-
+  const myBan = (window._roomBans || []).find(b => b.user_id === me);
+  if (myBan) {
+    box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`;
+    return;
+  }
   const { data } = await db.from('chat_messages_public')
     .select('*')
     .eq('room_id', currentRoomId)
@@ -423,9 +440,40 @@ async function deleteMsg(id) {
 }
 
 async function chatMuteToggle(id, shouldMute) {
-  const { error } = await db.rpc('mod_set_flag', { target_id: id, flag: 'chat_muted', on_val: shouldMute });
+  if (shouldMute) {
+    const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
+    const { error } = await db.from('profiles').update({
+      chat_muted: true,
+      chat_muted_by: me,
+      chat_muted_by_role: myRole
+    }).eq('id', id);
+    if (error) return alert(error.message);
+  } else {
+    const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
+    const { data } = await db.rpc('lift_chat_mute', { target_user_id: id, lifter_role: myRole });
+    if (!data || !data.ok) return alert(data?.error || 'No se pudo levantar.');
+  }
+  await renderPage();
+}
+
+async function banFromRoom(userId, name) {
+  if (!currentRoomId) return;
+  const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
+  const reason = prompt(`Motivo del ban a ${name} en esta sala (opcional):`) || null;
+  const { error } = await db.from('chat_room_bans').insert({
+    room_id: currentRoomId, user_id: userId, banned_by: me, banned_by_role: myRole, reason
+  });
   if (error) return alert(error.message);
   await renderPage();
+  await loadRooms(false);
+}
+
+async function liftRoomBan(banId, banRole) {
+  const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
+  const { data } = await db.rpc('lift_room_ban', { ban_id: banId, lifter_role: myRole });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo readmitir.');
+  await renderPage();
+  await loadRooms(false);
 }
 
 async function setSelfNick() {
