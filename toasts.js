@@ -526,8 +526,7 @@ function getClient(){
     if (nav && !document.querySelector('a[href="mi-galeria.html"]')) {
       var l = document.createElement('a');
       l.href = 'mi-galeria.html';
-      l.textContent = 'Mi Galería';
-      l.style.color = '#d4af37';
+l.textContent = 'Galería personal';      l.style.color = '#d4af37';
       l.style.textDecoration = 'none';
       nav.appendChild(l);
     }
