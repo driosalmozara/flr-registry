@@ -68,11 +68,11 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';
 
 const DEFAULT_ROOM_NAME = 'chat-general';
 const DEFAULT_ROOM_LABEL = 'Chat General';
-const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';
+
 let me = null, myProfile = null;
 let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
@@ -135,7 +135,7 @@ async function init() {
       renderParticipants();
     })
     .subscribe(async (status) => {
-      if (status === 'SUBSCRIPED' || status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
+      if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
     });
 }
 
@@ -149,6 +149,11 @@ async function loadRooms(initial) {
   }
   renderRoomsBar();
   if (!initial) await loadMessages();
+}
+
+async function loadRoomBans() {
+  const { data } = await db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId);
+  window._roomBans = data || [];
 }
 
 function renderRoomsBar() {
@@ -169,6 +174,8 @@ async function switchRoom(id) {
   currentRoomId = id;
   renderRoomsBar();
   subscribeChat();
+  await loadRoomBans();
+  renderParticipants();
   await renderInputRow();
   await loadMessages();
 }
@@ -249,13 +256,12 @@ function subscribeChat() {
 async function renderPage() {
   const content = document.getElementById('content');
 
-  const [p, sn, an, ow, cmods, bans] = await Promise.all([
+  const [p, sn, an, ow, cmods] = await Promise.all([
     db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
     db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
     db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id'),
-    db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId)
+    db.from('app_chat_mods').select('user_id')
   ]);
 
   people = (p.data || []).map(person => ({
@@ -266,7 +272,8 @@ async function renderPage() {
   assignedNicks = an.data || [];
   ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
   chatModIds = new Set((cmods.data || []).map(x => x.user_id));
-  window._roomBans = bans.data || [];
+
+  await loadRoomBans();
 
   const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
   const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -393,7 +400,6 @@ async function renderInputRow() {
   const row = document.getElementById('inputrow');
   if (!row) return;
 
-  // Bloqueo por sala privada
   if (currentRoomId) {
     const currentRoom = rooms.find(r => r.id === currentRoomId);
     if (currentRoom && currentRoom.is_private) {
@@ -427,13 +433,13 @@ async function renderInputRow() {
   row.innerHTML = `
     <div id="emoji-panel">
       <div class="emo-cat">Caras</div>
-      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','','😘','😜','🤔','😏','😎','🥺','','😭','😡','🤯','🥳','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','','😘','😜','🤔','😏','😎','🥺','','😭','😡','🤯','','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Corazones y gestos</div>
       <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕','💘','👑','⛓','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Manos</div>
-      <div class="emo-grid">${['👍','','👏','','🤝','','✌️','','🤟','','👊','','🤛','','👋','','🙌','','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['👍','👎','👏','','🤝','','✌️','','🤟','','👊','✊','🤛','🤜','👋','💪','🙌','👐','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Objetos</div>
-      <div class="emo-grid">${['🌹','','🍾','','🎁','','🎊','','🎶','','💌','','💻','⚡','','🍫','','🌙','','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['🌹','🍷','🍾','🎂','🎁','🎉','🎊','🎵','🎶','📷','💌','📱','💻','⚡','☕','🍫','🍓','🌙','🗝','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
     </div>
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
     <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
@@ -486,12 +492,14 @@ async function loadMessages() {
     const t = new Date(m.created_at);
     const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
     let att = '';
-    const gifMatch = (m.body || '').match(/https?:\/\/\S+giphy\S+\.gif|https?:\/\/\S+tenor\S+\.gif|https?:\/\/media\d+\.giphy\.com\S+/i);
+    let bodyText = m.body || '';
+    const gifMatch = bodyText.match(/https?:\/\/\S+?giphy\S*|https?:\/\/\S+?tenor\S*|https?:\/\/\S+\.gif(?:\?\S*)?/i);
     if (gifMatch) {
+      bodyText = bodyText.replace(gifMatch[0], '').trim();
       att += `<div><img src="${esc(gifMatch[0])}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
     }
     if (m.attachment_url) {
-      att = m.attachment_type === 'video'
+      att += m.attachment_type === 'video'
         ? `<div><video src="${esc(m.attachment_url)}" controls style="max-width:260px;border-radius:8px;display:block;margin:4px 0;"></video></div>`
         : `<div><img src="${esc(m.attachment_url)}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
     }
@@ -499,7 +507,7 @@ async function loadMessages() {
       <div class="line">
         <span class="time">[${hh}]</span>
         <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
-        ${esc(m.body || '')}
+        ${esc(bodyText)}
         ${att}
         ${(m.user_id === me || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
       </div>
@@ -624,9 +632,10 @@ async function openGifPicker() {
   openModal('<p class="small">Buscando...</p>');
   try {
     const r = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`);
+    if (!r.ok) throw new Error('sin clave');
     const j = await r.json();
     const gifs = j.data || [];
-    if (!gifs.length) { openModal('<p>Sin resultados.</p><button class="secondary" onclick="closeModal()">Cerrar</button>'); return; }
+    if (!gifs.length) throw new Error('vacío');
     let html = `<h2 style="margin-top:0;">GIFs: ${esc(query)}</h2><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:60vh;overflow-y:auto;">`;
     gifs.forEach(g => {
       const url = g.images.downsized_medium?.url || g.images.original?.url;
@@ -635,7 +644,13 @@ async function openGifPicker() {
     html += '</div><p style="margin-top:14px;"><button class="secondary" onclick="closeModal()">Cancelar</button></p>';
     openModal(html);
   } catch(e) {
-    openModal('<p>Error al buscar GIFs.</p><button class="secondary" onclick="closeModal()">Cerrar</button>');
+    window.open('https://giphy.com/search/' + encodeURIComponent(query), '_blank');
+    openModal(`
+      <p class="small">El buscador automático requiere una <b>clave gratuita de GIPHY</b>.<br><br>
+      Mientras tanto: se abrió la búsqueda en otra pestaña. Copia la URL de un GIF (terminada en <b>.gif</b>) y pégala aquí:</p>
+      <input id="gif-url" placeholder="https://media.giphy.com/....gif" style="width:100%;background:#0b0b12;border:1px solid #2a2a3d;color:#fff;border-radius:10px;padding:9px 12px;margin:6px 0;"/>
+      <button onclick="pickGif(document.getElementById('gif-url').value.trim())">Insertar GIF</button>
+      <button class="secondary" onclick="closeModal()">Cancelar</button>`);
   }
 }
 
