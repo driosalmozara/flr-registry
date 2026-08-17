@@ -43,7 +43,15 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 .room-tab.new-tab{color:#4ade80;border:1px dashed rgba(74,222,128,.4)}
 .room-tab.new-tab:hover{background:rgba(74,222,128,.08);border-color:#4ade80}
 @media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
-</style>
+#emoji-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px;font-size:16px;line-height:1}
+#emoji-panel{position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#0b0b12;border:1px solid var(--gold);border-radius:12px;padding:10px;max-width:320px;width:90vw;max-height:260px;overflow-y:auto;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+#emoji-panel.open{display:block}
+#emoji-panel .emo-cat{font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.1em;margin:8px 0 4px;font-weight:600}
+#emoji-panel .emo-cat:first-child{margin-top:0}
+#emoji-panel .emo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+#emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
+#emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
+#inputrow{position:relative}</style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
@@ -358,11 +366,23 @@ async function renderInputRow() {
   }
 
   row.innerHTML = `
+    <div id="emoji-panel">
+      <div class="emo-cat">Caras</div>
+      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','🥰','😘','😜','🤔','😏','😎','🥺','😢','😭','😡','🤯','🥳','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-cat">Corazones y gestos</div>
+      <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕','💘','👑','⛓','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-cat">Manos</div>
+      <div class="emo-grid">${['👍','👎','👏','🙏','🤝','👌','✌️','🤞','🤟','🤘','👊','✊','🤛','🤜','👋','💪','🙌','👐','🤲','🫶'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-cat">Objetos</div>
+      <div class="emo-grid">${['🌹','🍷','🍾','🎂','🎁','🎉','🎊','🎵','🎶','📷','💌','📱','💻','⚡','☕','🍫','🍓','🌙','🗝','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+    </div>
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
     <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
+    <button id="emoji-btn" type="button" title="Emojis" onclick="toggleEmoji(event)">😀</button>
     <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
     <button onclick="sendMsg()">Enviar</button>
   `;
+  document.addEventListener('click', closeEmojiOutside, true);
 }
 
 async function attachChat(input){
@@ -495,6 +515,29 @@ async function assignNickFromSelect() {
   window.location.reload();
 }
 
+  function toggleEmoji(ev) {
+  if (ev) ev.stopPropagation();
+  const p = document.getElementById('emoji-panel');
+  if (p) p.classList.toggle('open');
+}
+function closeEmojiOutside(ev) {
+  const p = document.getElementById('emoji-panel');
+  const b = document.getElementById('emoji-btn');
+  if (!p || !b) return;
+  if (!p.contains(ev.target) && ev.target !== b) p.classList.remove('open');
+}
+function insertEmoji(e) {
+  const input = document.getElementById('msg');
+  if (!input) return;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, start) + e + input.value.slice(end);
+  input.focus();
+  const pos = start + e.length;
+  input.setSelectionRange(pos, pos);
+  const p = document.getElementById('emoji-panel');
+  if (p) p.classList.remove('open');
+}
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
