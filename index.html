@@ -91,8 +91,8 @@
         </div>
 
         <div class="col card">
-          <h2>Crear cuenta</h2>
-                   <select id="reg-role" onchange="roleGenderSync('reg')">
+                    <h2>Crear cuenta</h2>
+          <select id="reg-role" onchange="roleGenderSync('reg')">
             <option value="submissive">⛓ Sumiso</option>
             <option value="dominant">♛ Dominante</option>
           </select>
@@ -102,12 +102,10 @@
           </select>
           <input id="reg-display" placeholder="Nombre público" />
           <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-      <select id="setup-country">
-        <option value="">País de residencia...</option>
-      </select>
-                <select id="setup-lang">
+          <select id="reg-country">
+            <option value="">País de residencia...</option>
           </select>
-                    <select id="reg-lang">
+          <select id="reg-lang">
             <option value="es">Idioma: Español</option>
             <option value="en">Idioma: English</option>
             <option value="pt">Idioma: Português</option>
@@ -148,8 +146,8 @@
     </section>
 
     <section id="profile-setup" class="hidden card">
-      <h2>Completa tu perfil</h2>
-           <select id="setup-role" onchange="roleGenderSync('setup')">
+            <h2>Completa tu perfil</h2>
+      <select id="setup-role" onchange="roleGenderSync('setup')">
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
       </select>
@@ -164,12 +162,12 @@
       </select>
       <select id="setup-lang">
         <option value="es">Idioma: Español</option>
-            <option value="en">Idioma: English</option>
-            <option value="pt">Idioma: Português</option>
-            <option value="fr">Idioma: Français</option>
-            <option value="de">Idioma: Deutsch</option>
-            <option value="it">Idioma: Italiano</option>
-          </select>
+        <option value="en">Idioma: English</option>
+        <option value="pt">Idioma: Português</option>
+        <option value="fr">Idioma: Français</option>
+        <option value="de">Idioma: Deutsch</option>
+        <option value="it">Idioma: Italiano</option>
+      </select>
       <button onclick="createProfile()">Guardar perfil</button>
     </section>
 
