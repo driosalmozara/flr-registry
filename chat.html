@@ -18,6 +18,7 @@ input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#f
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
 button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
 button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
+button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 12px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 #irc{display:flex;gap:12px;height:65vh}
 #side{width:230px;flex:none;overflow-y:auto;margin:0}
@@ -33,14 +34,22 @@ button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold
 .nick-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
 .nick-row label{display:block;font-size:12px;color:#a1a1aa;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
 .nick-row input,.nick-row select{margin:0}
-@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}}
+#rooms-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:#0b0b12;border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+.room-tab{padding:6px 12px;border-radius:8px;cursor:pointer;background:transparent;border:1px solid transparent;color:#a1a1aa;font-size:13px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.room-tab:hover{color:var(--gold);border-color:rgba(212,175,55,.3)}
+.room-tab.active{background:linear-gradient(180deg,rgba(212,175,55,.2),rgba(212,175,55,.05));color:var(--gold);border-color:var(--gold);box-shadow:0 0 12px rgba(212,175,55,.25)}
+.room-tab .room-del{margin-left:4px;color:#7f1d1d;opacity:.7;font-size:11px;padding:0 4px;border:none;background:transparent;cursor:pointer}
+.room-tab .room-del:hover{opacity:1}
+.room-tab.new-tab{color:#4ade80;border:1px dashed rgba(74,222,128,.4)}
+.room-tab.new-tab:hover{background:rgba(74,222,128,.08);border-color:#4ade80}
+@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ #supremacia</h1>
+  <h1 style="margin:0;">♛ Chat</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -57,6 +66,7 @@ let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [], currentTargets = [];
 let ownedSet = new Set(), chatModIds = new Set();
+let rooms = [], currentRoomId = null, chatChannel = null;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -90,15 +100,18 @@ async function init() {
   ]);
   isSuper = !!sf; isMod = !!mf; isChatMod = !!cf;
 
+  await loadRooms(true);
   await renderPage();
 
-  db.channel('flr-chat')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadMessages())
-    .subscribe();
+  subscribeChat();
 
   db.channel('flr-chat-media')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_media_pending' }, () => { if (isSuper || isMod || isChatMod) renderPage(); })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_media_pending' }, () => { if (isSuper || isMod || isChatMod) renderPage(); })
+    .subscribe();
+
+  db.channel('flr-rooms')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => loadRooms(false))
     .subscribe();
 
   presenceChannel = db.channel('flr-presencia', { config: { presence: { key: me } } });
@@ -112,6 +125,73 @@ async function init() {
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
     });
+}
+
+async function loadRooms(initial) {
+  const { data } = await db.from('chat_rooms').select('*').order('is_default', { ascending: false }).order('created_at');
+  rooms = data || [];
+  if (!rooms.length) return;
+  if (!currentRoomId || !rooms.find(r => r.id === currentRoomId)) {
+    const def = rooms.find(r => r.is_default) || rooms[0];
+    currentRoomId = def.id;
+  }
+  renderRoomsBar();
+  if (!initial) await loadMessages();
+}
+
+function renderRoomsBar() {
+  let bar = document.getElementById('rooms-bar');
+  if (!bar) return;
+  const canManage = isSuper || isMod;
+  bar.innerHTML = rooms.map(r => `
+    <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
+      #${esc(r.name)}
+      ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
+    </button>
+  `).join('') + (canManage ? `<button class="room-tab new-tab" onclick="createRoom()">＋ Nueva sala</button>` : '');
+}
+
+async function switchRoom(id) {
+  if (id === currentRoomId) return;
+  currentRoomId = id;
+  renderRoomsBar();
+  subscribeChat();
+  await loadMessages();
+}
+
+async function createRoom() {
+  const name = prompt('Nombre de la sala (sin espacios, sin #):');
+  if (!name) return;
+  const clean = name.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 30);
+  if (!clean) return alert('Nombre inválido.');
+  if (rooms.find(r => r.name === clean)) return alert('Ya existe una sala con ese nombre.');
+  const description = prompt('Descripción breve (opcional):') || '';
+  const { error } = await db.from('chat_rooms').insert({ name: clean, description, created_by: me });
+  if (error) return alert(error.message);
+  await loadRooms(false);
+  const fresh = rooms.find(r => r.name === clean);
+  if (fresh) switchRoom(fresh.id);
+}
+
+async function deleteRoom(id, name) {
+  if (!confirm(`¿Eliminar la sala #${name} y todos sus mensajes?`)) return;
+  const { error } = await db.from('chat_rooms').delete().eq('id', id);
+  if (error) return alert(error.message);
+  await loadRooms(false);
+}
+
+function subscribeChat() {
+  if (chatChannel) { db.removeChannel(chatChannel); chatChannel = null; }
+  chatChannel = db.channel('flr-chat-' + currentRoomId)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'chat_messages',
+      filter: 'room_id=eq.' + currentRoomId
+    }, () => loadMessages())
+    .on('postgres_changes', {
+      event: 'DELETE', schema: 'public', table: 'chat_messages',
+      filter: 'room_id=eq.' + currentRoomId
+    }, () => loadMessages())
+    .subscribe();
 }
 
 async function renderPage() {
@@ -205,6 +285,7 @@ async function renderPage() {
   }
 
   html += `
+    <div id="rooms-bar"></div>
     <div id="irc">
       <div id="side" class="card">
         <h3 id="ptitle">Participantes (${people.length})</h3>
@@ -218,6 +299,7 @@ async function renderPage() {
   `;
 
   content.innerHTML = html;
+  renderRoomsBar();
   renderParticipants();
   renderInputRow();
   await loadMessages();
@@ -292,9 +374,13 @@ async function mediaDecide(id, approve){
 
 async function loadMessages() {
   const box = document.getElementById('msgs');
-  if (!box) return;
+  if (!box || !currentRoomId) return;
 
-  const { data } = await db.from('chat_messages_public').select('*').order('created_at', { ascending: false }).limit(200);
+  const { data } = await db.from('chat_messages_public')
+    .select('*')
+    .eq('room_id', currentRoomId)
+    .order('created_at', { ascending: false })
+    .limit(200);
   const list = (data || []).reverse();
 
   box.innerHTML = list.map(m => {
@@ -315,7 +401,7 @@ async function loadMessages() {
         ${(m.user_id === me || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
       </div>
     `;
-  }).join('') || '<p class="small">Todavía no hay mensajes.</p>';
+  }).join('') || '<p class="small">Todavía no hay mensajes en esta sala. Sé el primero en hablar.</p>';
 
   box.scrollTop = box.scrollHeight;
 }
@@ -323,8 +409,8 @@ async function loadMessages() {
 async function sendMsg() {
   const input = document.getElementById('msg');
   const body = input.value.trim();
-  if (!body) return;
-  const { error } = await db.from('chat_messages').insert({ user_id: me, body });
+  if (!body || !currentRoomId) return;
+  const { error } = await db.from('chat_messages').insert({ user_id: me, body, room_id: currentRoomId });
   if (error) return alert(error.message);
   input.value = '';
   await loadMessages();
