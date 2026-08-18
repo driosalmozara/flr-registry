@@ -532,6 +532,29 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     }
   });
 })();
+/* ══ Enlace Aprobaciones para Staff ══ */
+(function(){
+  waitForSupabase(async function(){
+    var client = getClient();
+    var s = await client.auth.getSession();
+    if (!s.data.session) return;
+    var [adm, mod] = await Promise.all([
+      client.rpc('am_i_superadmin'),
+      client.rpc('am_i_moderator')
+    ]);
+    if (adm.data || mod.data) {
+      var nav = document.querySelector('header nav') || document.querySelector('header div');
+      if (nav && !document.querySelector('a[href="aprobaciones.html"]')) {
+        var l = document.createElement('a');
+        l.href = 'aprobaciones.html';
+        l.textContent = 'Aprobaciones';
+        l.style.color = '#d4af37';
+        l.style.textDecoration = 'none';
+        nav.appendChild(l);
+      }
+    }
+  });
+})();
 /* ══ Menú móvil desplegable ══ */
 (function(){
   function init(){
