@@ -566,4 +566,37 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
+/* ══ Banner de instalación iOS ══ */
+(function(){
+  function isIOS(){
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+  }
+  function isSafari(){
+    return /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(navigator.userAgent);
+  }
+  if (!isIOS() || !isSafari() || isStandalone()) return;
+  if (localStorage.getItem('flr_ios_install_dismissed')) return;
+
+  var st = document.createElement('style');
+  st.textContent = '#ios-install{position:fixed;bottom:14px;left:14px;right:14px;z-index:99980;background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.06));border:1px solid var(--gold);border-radius:14px;padding:14px 16px;color:#f5efe0;font-size:13px;line-height:1.55;box-shadow:0 10px 30px rgba(0,0,0,.6)}#ios-install b{color:var(--gold)}#ios-install .ios-close{float:right;background:transparent;color:#a1a1aa;border:none;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}';
+  document.head.appendChild(st);
+
+  var d = document.createElement('div');
+  d.id = 'ios-install';
+  d.innerHTML = '<button class="ios-close" aria-label="Cerrar">×</button>' +
+    '<b>♛ Lleva la casa en tu iPhone</b><br>' +
+    'Pulsa el botón <b>Compartir ⬆️</b> de Safari y elige <b>«Añadir a pantalla de inicio»</b>. ' +
+    'Tendrás la corona en tu springboard y notificaciones push.';
+  document.body.appendChild(d);
+
+  d.querySelector('.ios-close').onclick = function(){
+    d.remove();
+    localStorage.setItem('flr_ios_install_dismissed', '1');
+  };
+})();
 })();
