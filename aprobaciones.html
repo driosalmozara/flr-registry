@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Aprobaciones — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:800px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
+.small{color:#a1a1aa;font-size:13px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.lockcard{border:1px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.03))}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Aprobaciones</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null, isSuper = false, isMod = false;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+
+  const [sf, mf] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
+  isSuper = !!sf; isMod = !!mf;
+
+  if (!isSuper && !isMod) {
+    content.innerHTML = '<h2>🚫 Sin acceso</h2><p class="small">Esta sala es exclusiva del Staff.</p>';
+    return;
+  }
+
+  await render();
+
+  db.channel('aprob-live')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => render())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => render())
+    .subscribe();
+}
+
+async function render() {
+  const content = document.getElementById('content');
+  const { data: lockRow } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
+  const locked = !!(lockRow && lockRow.value === '1');
+
+  const { data: pending } = await db.from('profiles')
+    .select('id, role, display_name, age, country, gender, created_at')
+    .eq('approved', false)
+    .order('created_at', { ascending: true });
+
+  let html = '';
+
+  if (isSuper) {
+    html += `
+      <div class="card lockcard">
+        <h2 style="margin-top:0;">🔒 Cerrojo de registros</h2>
+        <p class="small">
+          <b>Cerrojo abierto:</b> los sumisos entran al instante; las Dominantes esperan aprobación (como siempre).<br>
+          <b>Cerrojo echado:</b> toda solicitud nueva queda en la antecámara hasta que un Moderador o Administrador la apruebe.
+        </p>
+        <p>Estado actual: <span class="badge">${locked ? '🔒 CERRADO — aprobaciones requeridas' : '🔓 ABIERTO — registro libre'}</span></p>
+        <button onclick="setLock(${!locked})">${locked ? '🔓 Abrir el cerrojo' : '🔒 Echar el cerrojo'}</button>
+      </div>`;
+  } else {
+    html += `<div class="card lockcard"><p class="small">Estado del cerrojo: <span class="badge">${locked ? '🔒 CERRADO' : '🔓 ABIERTO'}</span> · Solo las Administradoras pueden moverlo.</p></div>`;
+  }
+
+  html += `
+    <div class="card">
+      <h2 style="margin-top:0;">⏳ Solicitudes en la antecámara (${(pending || []).length})</h2>`;
+
+  if (!pending || pending.length === 0) {
+    html += '<p class="small">No hay solicitudes pendientes. La casa está al día.</p>';
+  } else {
+    pending.forEach(p => {
+      html += `
+        <div class="item">
+          <h3 style="margin:0 0 6px;">${p.role === 'dominant' ? '♛' : '⛓'} ${esc(p.display_name)}</h3>
+          <p class="small">Edad: ${esc(String(p.age || ''))} · ${esc(p.country || '')} · ${p.gender === 'mujer' ? 'Mujer' : 'Hombre'}</p>
+          <p class="small">Solicitado: ${new Date(p.created_at).toLocaleString()}</p>
+          <button onclick="approve('${p.id}')">✅ Aprobar entrada</button>
+        </div>`;
+    });
+  }
+  html += '</div>';
+
+  content.innerHTML = html;
+}
+
+async function setLock(on) {
+  const { data } = await db.rpc('set_lock_registration', { on_val: on });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo mover el cerrojo.');
+  alert(on ? '🔒 Cerrojo echado: toda solicitud nueva requerirá aprobación del Staff.' : '🔓 Cerrojo abierto: los sumisos vuelven a entrar al instante.');
+  await render();
+}
+
+async function approve(id) {
+  const { data } = await db.rpc('approve_member', { target_id: id });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo aprobar.');
+  alert('✅ Miembro aprobado. Recibirá la notificación de bienvenida.');
+  await render();
+}
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
