@@ -1,7 +1,7 @@
 {
   "name": "Supremacía Femenina",
   "short_name": "Supremacía",
-  "description": "Plataforma consensuada de Dominio y sumisión entre adultos.",
+  "description": "Casa de Dominio y sumisión consensuados entre adultos.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#0f0f1a",
   "lang": "es",
   "icons": [
-    { "src": "corona.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "corona.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "corona.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "corona.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
