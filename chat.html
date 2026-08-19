@@ -502,6 +502,9 @@ async function loadMessages() {
   const list = (data || []).reverse();
 
   box.innerHTML = list.map(m => {
+    const author = people.find(x => x.id === m.user_id);
+    const canDel = m.user_id === me || isSuper || isMod
+      || (isChatMod && author && author.role === 'submissive' && !ownedSet.has(m.user_id));
     const t = new Date(m.created_at);
     const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
     let att = '';
@@ -522,8 +525,7 @@ async function loadMessages() {
         <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
         ${esc(bodyText)}
         ${att}
-        ${(m.user_id === me || isSuper || isMod || isChatMod) ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}      </div>
-    `;
+        ${canDel ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}    `;
   }).join('') || '<p class="small">Todavía no hay mensajes en esta sala. Sé el primero en hablar.</p>';
 
   box.scrollTop = box.scrollHeight;
