@@ -17,6 +17,8 @@ main{max-width:1000px;margin:0 auto;padding:20px}
 input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
 button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
+  button.msg-del{background:transparent !important;border:none !important;color:#71717a !important;padding:0 5px !important;font-size:11px !important;border-radius:6px !important;opacity:.4;cursor:pointer;margin-left:6px;vertical-align:middle;letter-spacing:0 !important}
+button.msg-del:hover{opacity:1;color:#dc2626 !important}
 button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
 button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 12px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
@@ -520,8 +522,7 @@ async function loadMessages() {
         <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
         ${esc(bodyText)}
         ${att}
-        ${(m.user_id === me || isSuper) ? `<button class="mini" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
-      </div>
+        ${(m.user_id === me || isSuper || isMod || isChatMod) ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}      </div>
     `;
   }).join('') || '<p class="small">Todavía no hay mensajes en esta sala. Sé el primero en hablar.</p>';
 
