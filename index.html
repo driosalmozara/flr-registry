@@ -402,8 +402,19 @@
       const age = Number(document.getElementById('setup-age').value);
       const country = document.getElementById('setup-country').value;
       if (!display_name || !age || age < 18) return alert('Completa nombre y edad 18+.');
-      const { error } = await db.from('profiles').insert({ id: currentUser.id, role, display_name, age, country, lang: document.getElementById('setup-lang').value, gender: document.getElementById('setup-gender').value });      window.location.reload();
-    }
+      const { error } = await db.rpc('register_profile', {
+        p_id: currentUser.id, p_role: role, p_display_name: display_name, p_age: age, p_country: country,
+        p_social_links: null, p_social_links_public: false,
+        p_lang: document.getElementById('setup-lang').value, p_gender: document.getElementById('setup-gender').value
+      });
+      if (error) return alert('Perfil: ' + error.message);
+      if (role === 'dominant') {
+        await db.auth.signOut();
+        alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
+        window.location.href = 'index.html';
+      } else {
+        window.location.reload();
+      }    }
 
     async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
