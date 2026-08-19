@@ -52,6 +52,16 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 #emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
 #emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
 @media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
+  @media (max-width:640px){
+  #inputrow{flex-wrap:wrap}
+  #msg{order:2;flex:1 1 auto;min-width:0}
+  #sendbtn{order:2}
+  #inputrow button{padding:8px 12px;font-size:14px}
+  button{padding:8px 12px;font-size:14px}
+  #msgs{font-size:12px}
+  .room-tab{font-size:12px;padding:5px 9px}
+  #emoji-panel{width:min(320px,92vw)}
+}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -448,8 +458,7 @@ async function renderInputRow() {
     <button id="emoji-btn" type="button" title="Emojis" onclick="toggleEmoji(event)">😀</button>
     <button id="gif-btn" type="button" title="GIF" onclick="openGifPicker()">GIF</button>
     <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
-    <button onclick="sendMsg()">Enviar</button>
-  `;
+    <button id="sendbtn" onclick="sendMsg()">Enviar</button>  `;
   document.addEventListener('click', closeEmojiOutside, true);
 }
 
