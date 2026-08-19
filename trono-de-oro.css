@@ -163,3 +163,58 @@ div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input
 @media (max-width:480px){
   #toast-container{top:12px;right:12px;left:12px;max-width:none}
 }
+/* ═══════════════════════════════════════════════════════════
+   ESCALA DE BOLSILLO — la casa entera en pantallas chicas
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  html{font-size:14px}
+  body{font-size:14px}
+
+  h1{font-size:20px !important;letter-spacing:.02em !important}
+  h2{font-size:17px !important}
+  h3{font-size:15px !important}
+
+  header{padding:10px 12px !important}
+  header nav, header > div{font-size:12px !important;gap:8px !important}
+  .navlink{margin-left:8px !important;font-size:13px !important}
+
+  main{padding:12px !important;max-width:100% !important}
+
+  .card{padding:12px !important;margin-bottom:12px !important;border-radius:12px !important}
+  .item{padding:10px !important;border-radius:10px !important}
+  .small{font-size:12px !important}
+  label{font-size:13px !important}
+
+  button{padding:8px 12px !important;font-size:13px !important;border-radius:9px !important;letter-spacing:.04em !important}
+  button.mini{padding:2px 7px !important;font-size:11px !important}
+  input,select,textarea{padding:8px 10px !important;font-size:14px !important;border-radius:9px !important}
+
+  summary{padding:10px 12px !important;font-size:13px !important}
+  details .body{padding:10px 12px !important}
+  .count{padding:2px 8px !important;font-size:10px !important}
+  .badge{font-size:11px !important;padding:2px 7px !important}
+
+  .ava{width:44px !important;height:44px !important}
+  .sub-avatar{width:56px !important;height:56px !important}
+  img.avatar{width:96px !important;height:96px !important}
+
+  .row{gap:8px !important}
+  .col{min-width:100% !important}
+
+  .pm-line,.line{font-size:12px !important}
+  .pm-att img{max-width:160px !important;max-height:160px !important}
+  .pm-att video{max-width:190px !important}
+
+  .prow{padding:3px 4px !important;font-size:13px !important}
+  .room-tab{font-size:12px !important;padding:5px 9px !important}
+
+  #share-fab{width:44px !important;height:44px !important;bottom:12px !important;left:12px !important}
+  #google_translate_element{bottom:10px !important;right:10px !important;transform:scale(.9);transform-origin:bottom right}
+}
+
+@media (max-width:380px){
+  body{font-size:13px}
+  h1{font-size:18px !important}
+  button{padding:7px 10px !important;font-size:12px !important}
+  input,select,textarea{font-size:13px !important}
+}
