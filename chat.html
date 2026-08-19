@@ -19,6 +19,11 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
   button.msg-del{background:transparent !important;border:none !important;color:#71717a !important;padding:0 5px !important;font-size:11px !important;border-radius:6px !important;opacity:.4;cursor:pointer;margin-left:6px;vertical-align:middle;letter-spacing:0 !important}
 button.msg-del:hover{opacity:1;color:#dc2626 !important}
+  button.p-act{background:transparent !important;border:none !important;color:#71717a !important;padding:0 4px !important;font-size:12px !important;border-radius:6px !important;opacity:.5;cursor:pointer;margin-left:4px;letter-spacing:0 !important;vertical-align:middle}
+button.p-act:hover{opacity:1;color:var(--gold) !important}
+button.p-act.ban:hover{color:#dc2626 !important}
+button.p-act.ok{color:#4ade80 !important;opacity:.85}
+button.p-act.ok:hover{opacity:1}
 button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
 button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 12px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
@@ -401,9 +406,9 @@ function renderParticipants() {
           ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
         </span>
         <span>
-          ${canMute ? `<button class="mini" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
-          ${canBan && !isBannedHere ? `<button class="mini" onclick="banFromRoom('${p.id}','${esc(n)}')" title="Prohibir en esta sala">🚫</button>` : ''}
-          ${isBannedHere ? `<button class="mini" style="color:#4ade80;border-color:#4ade80;" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')" title="Levantar ban (por ${isBannedHere.banned_by_role})">✓ readmitir</button>` : ''}
+          ${canMute ? `<button class="p-act" title="${chatMuted ? 'Devolver la voz' : 'Silenciar'}" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
+          ${canBan && !isBannedHere ? `<button class="p-act ban" title="Prohibir en esta sala" onclick="banFromRoom('${p.id}','${esc(n)}')">🚫</button>` : ''}
+          ${isBannedHere ? `<button class="p-act ok" title="Levantar ban (por ${isBannedHere.banned_by_role})" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')">✓ readmitir</button>` : ''}
         </span>
       </div>
     `;
