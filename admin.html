@@ -415,10 +415,18 @@ async function rejectDominant(id) {
 
 async function deleteUser(id) {
   if (!confirm('¿Eliminar este miembro DEFINITIVAMENTE? Se borrará su cuenta, perfil, relaciones y registros.')) return;
-  const { data, error } = await db.functions.invoke('admin-delete-user', { body: { user_id: id } });
-  if (error) return alert(error.message);
-  if (data && data.ok) alert('Miembro eliminado.');
-  else alert('Error: ' + JSON.stringify(data));
+  const { data: { session } } = await db.auth.getSession();
+  const r = await fetch('/api/admin-delete-user', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + session.access_token
+    },
+    body: JSON.stringify({ user_id: id })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) return alert('Error: ' + (j.error || r.status));
+  alert('Miembro eliminado.');
   window.location.reload();
 }
 
