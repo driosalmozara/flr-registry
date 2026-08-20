@@ -25,7 +25,7 @@
     .ava { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex: none; background: #0b0b12; }
     .ava.empty { display: flex; align-items: center; justify-content: center; background: #161625; color: var(--gold); font-size: 22px; }
     .rowitem { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
-        #tour-offer{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99989}
+    #tour-offer{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99989}
     #tour-spot{position:absolute;border:2px solid var(--gold);border-radius:12px;
       box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 30px rgba(212,175,55,.5);
       transition:all .4s ease;z-index:99990;pointer-events:none}
@@ -34,6 +34,7 @@
     #tour-tip h4{color:var(--gold);margin:0 0 8px}
     #tour-tip p{color:#d4d4d8;font-size:13px;line-height:1.6;margin:0 0 12px}
     #tour-tip .tbtns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .link-gold{color:var(--gold);cursor:pointer;text-decoration:underline;font-size:14px;font-weight:600;border:none;background:none;padding:0;margin-top:14px;display:inline-block}
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -52,7 +53,8 @@
     <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
     <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
     <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
-    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería de relación</a>    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
+    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería de relación</a>
+    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
     <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
     <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
     <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
@@ -67,70 +69,73 @@
     <section id="loading" class="card">Cargando...</section>
 
     <section id="auth" class="hidden">
-      <div style="background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(212,175,55,.05));border:1px solid var(--gold);border-radius:14px;padding:18px;margin-bottom:20px;text-align:center;">
-        <h3 style="margin:0 0 8px;color:var(--gold);">✨ Únete a la casa</h3>
-        <p class="small" style="margin:0;">Este es el formulario para registrarte. Si solo deseas conocer a los miembros, visita el <a href="registro-publico.html" style="color:var(--gold);font-weight:600;">Salón de miembros</a>.</p>
-      </div>
-      <div class="row">
-        <div class="col card">
-          <h2>Iniciar sesión</h2>
-          <input id="login-email" type="email" placeholder="Correo" />
-          <input id="login-password" type="password" placeholder="Contraseña" />
-          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-            <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
-            Ver contraseña
-          </label>
-          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-            <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
-            Recordar contraseña en este dispositivo
-          </label>
-          <button onclick="login()">Entrar</button>
-          <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
-            Olvidé mi contraseña
-          </p>
+      <!-- LOGIN (siempre visible) -->
+      <div class="card" style="max-width:460px;margin:0 auto 20px;">
+        <h2 style="margin-top:0;">♛ Iniciar sesión</h2>
+        <input id="login-email" type="email" placeholder="Correo" />
+        <input id="login-password" type="password" placeholder="Contraseña" />
+        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+          <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
+          Ver contraseña
+        </label>
+        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+          <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
+          Recordar contraseña en este dispositivo
+        </label>
+        <button onclick="login()" style="width:100%;">Entrar</button>
+        <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
+          Olvidé mi contraseña
+        </p>
+        <div style="text-align:center;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+          <span class="link-gold" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
         </div>
+      </div>
 
-        <div class="col card">
-                    <h2>Crear cuenta</h2>
-          <select id="reg-role" onchange="roleGenderSync('reg')">
-            <option value="submissive">⛓ Sumiso</option>
-            <option value="dominant">♛ Dominante</option>
-          </select>
-          <select id="reg-gender">
-            <option value="hombre">Hombre</option>
-            <option value="mujer">Mujer</option>
-          </select>
-          <input id="reg-display" placeholder="Nombre público" />
-          <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-          <select id="reg-country">
-            <option value="">País de residencia...</option>
-          </select>
-          <select id="reg-lang">
-            <option value="es">Idioma: Español</option>
-            <option value="en">Idioma: English</option>
-            <option value="pt">Idioma: Português</option>
-            <option value="fr">Idioma: Français</option>
-            <option value="de">Idioma: Deutsch</option>
-            <option value="it">Idioma: Italiano</option>
-          </select>
-          <input id="reg-email" type="email" placeholder="Correo" />
-          <input id="reg-password" type="password" placeholder="Contraseña" />
-          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-            <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
-            Ver contraseña
-          </label>
-          <label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
-          <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
-          <label class="small">
-            <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
-            Mostrar mi país y redes en el Salón de miembros
-          </label>
-          <label class="small">
-            <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
-            Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
-          </label>
-          <br /><br />
-          <button onclick="register()">Registrarme</button>
+      <!-- REGISTRO (oculto por defecto) -->
+      <div id="register-card" class="card hidden" style="max-width:460px;margin:0 auto;">
+        <h2 style="margin-top:0;">✨ Crear cuenta</h2>
+        <p class="small" style="margin:0 0 14px;">Si solo deseas conocer a los miembros, visita el <a href="registro-publico.html" style="color:var(--gold);font-weight:600;">Salón de miembros</a>.</p>
+        <select id="reg-role" onchange="roleGenderSync('reg')">
+          <option value="submissive">⛓ Sumiso</option>
+          <option value="dominant">♛ Dominante</option>
+        </select>
+        <select id="reg-gender">
+          <option value="hombre">Hombre</option>
+          <option value="mujer">Mujer</option>
+        </select>
+        <input id="reg-display" placeholder="Nombre público" />
+        <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+        <select id="reg-country">
+          <option value="">País de residencia...</option>
+        </select>
+        <select id="reg-lang">
+          <option value="es">Idioma: Español</option>
+          <option value="en">Idioma: English</option>
+          <option value="pt">Idioma: Português</option>
+          <option value="fr">Idioma: Français</option>
+          <option value="de">Idioma: Deutsch</option>
+          <option value="it">Idioma: Italiano</option>
+        </select>
+        <input id="reg-email" type="email" placeholder="Correo" />
+        <input id="reg-password" type="password" placeholder="Contraseña" />
+        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+          <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
+          Ver contraseña
+        </label>
+        <label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
+        <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
+        <label class="small">
+          <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
+          Mostrar mi país y redes en el Salón de miembros
+        </label>
+        <label class="small">
+          <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
+          Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
+        </label>
+        <br /><br />
+        <button onclick="register()" style="width:100%;">Registrarme</button>
+        <div style="text-align:center;margin-top:14px;">
+          <span class="link-gold" onclick="hideRegister()">← Ya tengo cuenta, iniciar sesión</span>
         </div>
       </div>
     </section>
@@ -146,7 +151,7 @@
     </section>
 
     <section id="profile-setup" class="hidden card">
-            <h2>Completa tu perfil</h2>
+      <h2>Completa tu perfil</h2>
       <select id="setup-role" onchange="roleGenderSync('setup')">
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
@@ -240,6 +245,19 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
+    /* ══ Mostrar / ocultar registro ══ */
+    function showRegister() {
+      document.getElementById('register-card').classList.remove('hidden');
+      // Pre-llenar correo si ya lo escribió en login
+      const email = document.getElementById('login-email').value.trim();
+      if (email) document.getElementById('reg-email').value = email;
+      document.getElementById('register-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function hideRegister() {
+      document.getElementById('register-card').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
@@ -252,7 +270,7 @@
     async function loadProfileAndRender() {
       const { data, error } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
       if (error) { alert(error.message); show('auth'); return; }
-           currentProfile = data;
+      currentProfile = data;
       if (!currentProfile) { show('profile-setup'); return; }
 
       if (!currentProfile.approved) {
@@ -333,7 +351,13 @@
       const password = document.getElementById('login-password').value;
       const remember = document.getElementById('remember').checked;
       const { error } = await db.auth.signInWithPassword({ email, password });
-      if (error) return alert(error.message);
+      if (error) {
+        // Si la cuenta no existe, abrir registro con correo prellenado
+        if (error.message.toLowerCase().includes('invalid login') || error.message.toLowerCase().includes('no user')) {
+          showRegister();
+        }
+        return alert(error.message);
+      }
       try {
         if (remember) localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
         else localStorage.removeItem('flr_cred');
@@ -343,7 +367,7 @@
       window.location.reload();
     }
 
-        function roleGenderSync(prefix) {
+    function roleGenderSync(prefix) {
       const role = document.getElementById(prefix + '-role').value;
       const g = document.getElementById(prefix + '-gender');
       if (!g) return;
@@ -355,7 +379,8 @@
         if (!g.value) g.value = 'hombre';
       }
     }
-        async function register() {
+
+    async function register() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('reg-role').value;
       const display_name = document.getElementById('reg-display').value.trim();
@@ -414,7 +439,8 @@
         window.location.href = 'index.html';
       } else {
         window.location.reload();
-      }    }
+      }
+    }
 
     async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
@@ -454,21 +480,21 @@
       ).join('');
 
       const profileCard = `
-               <div class="card" id="my-profile-card">
+        <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
           <label class="small">Nombre público</label>
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
           <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
-                  <label class="small">Género</label>
+          <label class="small">Género</label>
           ${currentProfile.role === 'dominant'
             ? `<select id="profile-gender" disabled><option value="mujer" selected>Mujer</option></select>`
             : `<select id="profile-gender" ${isLocked ? 'disabled' : ''}>
                 <option value="hombre" ${currentProfile.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
                 <option value="mujer" ${currentProfile.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
               </select>`}
-                   <label class="small">Idioma preferido</label>
+          <label class="small">Idioma preferido</label>
           <select id="profile-lang" ${isLocked ? 'disabled' : ''}>
             ${[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']].map(l => `<option value="${l[0]}" ${currentProfile.lang === l[0] ? 'selected' : ''}>${l[1]}</option>`).join('')}
           </select>
@@ -484,7 +510,8 @@
             Mostrar mi país y redes en el Salón de miembros
           </label>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>        </div>
+          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>
+        </div>
       `;
 
       dashboard.insertAdjacentHTML('afterbegin', profileCard);
@@ -498,7 +525,7 @@
       const social_links_public = document.getElementById('profile-social-public').checked;
       if (!display_name) return alert('Escribe tu nombre público.');
       if (!country) return alert('Selecciona un país.');
-            const lang = document.getElementById('profile-lang').value;
+      const lang = document.getElementById('profile-lang').value;
       const gender = currentProfile.role === 'dominant' ? 'mujer' : document.getElementById('profile-gender').value;
       const { error } = await db.from('profiles')
         .update({ display_name, bio, country, lang, gender, social_links: social_links || null, social_links_public })
@@ -597,7 +624,7 @@
               Mostrar su avatar en el Salón de miembros
             </label>`;
 
-                        html += `<label class="small" style="margin-top:10px;">Género</label>`;
+            html += `<label class="small" style="margin-top:10px;">Género</label>`;
             html += `<select id="pgender_${sub.submissive_id}">
               <option value="hombre" ${sub.profiles?.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
               <option value="mujer" ${sub.profiles?.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
@@ -660,7 +687,7 @@
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
-            const gender = document.getElementById('pgender_' + submissiveId).value;
+      const gender = document.getElementById('pgender_' + submissiveId).value;
       const { error } = await db.from('profiles')
         .update({ country, gender, social_links: social_links || null, social_links_public })
         .eq('id', submissiveId);
@@ -778,16 +805,18 @@
       window.location.reload();
     }
 
-        roleGenderSync('reg');
+    roleGenderSync('reg');
     roleGenderSync('setup');
-        // ══ TOUR GUIADO ══
+
+    // ══ TOUR GUIADO ══
     let tourSteps = [], tourIdx = 0;
 
     function buildTourSteps() {
       const dom = currentProfile.role === 'dominant';
       return [
         { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Supremacía Femenina: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
-        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'El salón principal: contempla a las Dominantes y sumisos de la casa, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
+        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'El salón principal: contempla a las Dominantes y sumisos de la casa, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },
+        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
         { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
         { sel: 'a[href="chat.html"]', t: 'Chat', x: 'El canal público #supremacia. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
@@ -798,7 +827,8 @@
         { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
         { sel: 'a[href="subastas.html"]', t: 'Subastas', x: 'Las Dominantes pueden subastar a sus sumisos; las demás pujan con coronas ♛.' },
         { sel: 'a[href="cesiones.html"]', t: 'Cesiones', x: 'Cede o recibe sumisos entre Dominantes, de forma temporal o indefinida.' },
-        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
+        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },
+        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
         { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes y su visibilidad.' },
         { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Aquí gestionas solicitudes, sumisos, país y redes, marcas de subasta y carnets.' : 'Aquí ves tu estado, tu Dominante, tu registro, carnet y las solicitudes recibidas.' },
         { sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' }
@@ -873,6 +903,7 @@
       const t = document.getElementById('tour-tip'); if (t) t.remove();
       try { await db.from('profiles').update({ tour_done: true }).eq('id', currentUser.id); } catch(e) {}
     }
+
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
