@@ -34,7 +34,38 @@
     #tour-tip h4{color:var(--gold);margin:0 0 8px}
     #tour-tip p{color:#d4d4d8;font-size:13px;line-height:1.6;margin:0 0 12px}
     #tour-tip .tbtns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-    .link-gold{color:var(--gold);cursor:pointer;text-decoration:underline;font-size:14px;font-weight:600;border:none;background:none;padding:0;margin-top:14px;display:inline-block}
+
+    .auth-gate{max-width:480px;margin:0 auto;}
+    .auth-gate .card{background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.02));border-color:rgba(212,175,55,.4);}
+    .register-link{display:block;text-align:center;margin-top:14px;padding:10px;background:transparent;border:none;color:#a1a1aa;font-size:13px;cursor:pointer;text-decoration:none;}
+    .register-link:hover{color:var(--gold);}
+    .register-link b{color:var(--gold);}
+    #register-card-wrapper{animation:slideDown .4s ease;}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+
+    /* Botón Instalar en cabecera */
+    .install-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px;display:inline-flex;align-items:center;gap:6px;transition:.2s}
+    .install-btn:hover{background:rgba(212,175,55,.12)}
+
+    /* Modal de instalación */
+    .inst-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99992;display:flex;align-items:center;justify-content:center;padding:18px;animation:fadeIn .25s}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .inst-modal{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:24px;max-width:560px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+    .inst-modal h3{margin:0 0 6px;font-size:20px}
+    .inst-modal .sub{color:#a1a1aa;font-size:13px;margin-bottom:18px}
+    .inst-options{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .inst-opt{background:#0b0b12;border:1px solid var(--line);border-radius:12px;padding:18px;text-align:center;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .inst-opt:hover{border-color:var(--gold);transform:translateY(-2px)}
+    .inst-opt .ico{font-size:34px}
+    .inst-opt .nm{color:var(--gold);font-weight:700;font-size:15px}
+    .inst-opt .ds{color:#a1a1aa;font-size:12px}
+    .inst-back{margin-top:16px;text-align:center}
+    .inst-back a{color:#a1a1aa;font-size:13px;text-decoration:none;cursor:pointer}
+    .inst-back a:hover{color:var(--gold)}
+    .ios-steps{text-align:left;font-size:13px;color:#d4d4d8;line-height:1.7;margin:10px 0}
+    .ios-steps li{margin-bottom:8px}
+    .ios-steps b{color:var(--gold)}
+    @media (max-width:500px){.inst-options{grid-template-columns:1fr}}
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -42,23 +73,26 @@
 <body>
   <header>
   <h1 style="margin:0;">♛ Supremacía Femenina</h1>
-  <nav style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
-    <a style="color:#d4af37;text-decoration:none;" href="registro-publico.html">Salón de miembros</a>
-    <a style="color:#d4af37;text-decoration:none;" href="disponible.html">Disponibilidad</a>
-    <a style="color:#d4af37;text-decoration:none;" href="verificar.html">Verificar carnet</a>
-    <a style="color:#d4af37;text-decoration:none;" href="chat.html">Chat</a>
-    <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
-    <a style="color:#d4af37;text-decoration:none;" href="notificaciones.html">Notificaciones</a>
-    <a style="color:#d4af37;text-decoration:none;" href="avatar.html">Mi avatar</a>
-    <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
-    <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
-    <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
-    <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería de relación</a>
-    <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
-    <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
-    <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
-    <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
-  </nav>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <nav style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
+      <a style="color:#d4af37;text-decoration:none;" href="registro-publico.html">Salón de miembros</a>
+      <a style="color:#d4af37;text-decoration:none;" href="disponible.html">Disponibilidad</a>
+      <a style="color:#d4af37;text-decoration:none;" href="verificar.html">Verificar carnet</a>
+      <a style="color:#d4af37;text-decoration:none;" href="chat.html">Chat</a>
+      <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
+      <a style="color:#d4af37;text-decoration:none;" href="notificaciones.html">Notificaciones</a>
+      <a style="color:#d4af37;text-decoration:none;" href="avatar.html">Mi avatar</a>
+      <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
+      <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
+      <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
+      <a style="color:#d4af37;text-decoration:none;" href="galeria.html">Galería de relación</a>
+      <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
+      <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
+      <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
+      <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
+    </nav>
+    <button id="install-btn" class="install-btn hidden" onclick="openInstallModal()">📱 Instalar</button>
+  </div>
 </header>
  <div id="impbar" class="hidden" style="background:#7f1d1d;color:#fff;padding:10px 22px;gap:12px;align-items:center;justify-content:center;font-size:14px;flex-wrap:wrap;">
   👁 Estás navegando como miembro (modo Administrador).
@@ -69,73 +103,76 @@
     <section id="loading" class="card">Cargando...</section>
 
     <section id="auth" class="hidden">
-      <!-- LOGIN (siempre visible) -->
-      <div class="card" style="max-width:460px;margin:0 auto 20px;">
-        <h2 style="margin-top:0;">♛ Iniciar sesión</h2>
-        <input id="login-email" type="email" placeholder="Correo" />
-        <input id="login-password" type="password" placeholder="Contraseña" />
-        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-          <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
-          Ver contraseña
-        </label>
-        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-          <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
-          Recordar contraseña en este dispositivo
-        </label>
-        <button onclick="login()" style="width:100%;">Entrar</button>
-        <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">
-          Olvidé mi contraseña
-        </p>
-        <div style="text-align:center;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
-          <span class="link-gold" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
+      <div class="auth-gate">
+        <div class="card">
+          <h2 style="margin-top:0;">♛ Iniciar sesión</h2>
+          <p class="small" style="margin:0 0 12px;">Bienvenido de vuelta a la casa.</p>
+          <input id="login-email" type="email" placeholder="Correo" />
+          <input id="login-password" type="password" placeholder="Contraseña" />
+          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+            <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('login-password', this.checked)" />
+            Ver contraseña
+          </label>
+          <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+            <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
+            Recordar contraseña en este dispositivo
+          </label>
+          <button onclick="login()" style="width:100%;">Entrar</button>
+          <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;text-align:center;" onclick="forgotPassword()">
+            Olvidé mi contraseña
+          </p>
+          <a href="#" class="register-link" onclick="showRegister(event)">
+            ¿No tienes cuenta? <b>Regístrate</b>
+          </a>
         </div>
-      </div>
 
-      <!-- REGISTRO (oculto por defecto) -->
-      <div id="register-card" class="card hidden" style="max-width:460px;margin:0 auto;">
-        <h2 style="margin-top:0;">✨ Crear cuenta</h2>
-        <p class="small" style="margin:0 0 14px;">Si solo deseas conocer a los miembros, visita el <a href="registro-publico.html" style="color:var(--gold);font-weight:600;">Salón de miembros</a>.</p>
-        <select id="reg-role" onchange="roleGenderSync('reg')">
-          <option value="submissive">⛓ Sumiso</option>
-          <option value="dominant">♛ Dominante</option>
-        </select>
-        <select id="reg-gender">
-          <option value="hombre">Hombre</option>
-          <option value="mujer">Mujer</option>
-        </select>
-        <input id="reg-display" placeholder="Nombre público" />
-        <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
-        <select id="reg-country">
-          <option value="">País de residencia...</option>
-        </select>
-        <select id="reg-lang">
-          <option value="es">Idioma: Español</option>
-          <option value="en">Idioma: English</option>
-          <option value="pt">Idioma: Português</option>
-          <option value="fr">Idioma: Français</option>
-          <option value="de">Idioma: Deutsch</option>
-          <option value="it">Idioma: Italiano</option>
-        </select>
-        <input id="reg-email" type="email" placeholder="Correo" />
-        <input id="reg-password" type="password" placeholder="Contraseña" />
-        <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
-          <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
-          Ver contraseña
-        </label>
-        <label class="small" style="margin-top:8px;">Redes sociales / contacto (opcional)</label>
-        <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
-        <label class="small">
-          <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
-          Mostrar mi país y redes en el Salón de miembros
-        </label>
-        <label class="small">
-          <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
-          Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
-        </label>
-        <br /><br />
-        <button onclick="register()" style="width:100%;">Registrarme</button>
-        <div style="text-align:center;margin-top:14px;">
-          <span class="link-gold" onclick="hideRegister()">← Ya tengo cuenta, iniciar sesión</span>
+        <div id="register-card-wrapper" class="hidden">
+          <div class="card">
+            <h2 style="margin-top:0;">✨ Crear cuenta</h2>
+            <p class="small" style="margin:0 0 12px;">Si solo deseas contemplar a los miembros, visita el <a href="registro-publico.html" style="color:var(--gold);font-weight:600;">Salón de miembros</a>.</p>
+            <select id="reg-role" onchange="roleGenderSync('reg')">
+              <option value="submissive">⛓ Sumiso</option>
+              <option value="dominant">♛ Dominante</option>
+            </select>
+            <select id="reg-gender">
+              <option value="hombre">Hombre</option>
+              <option value="mujer">Mujer</option>
+            </select>
+            <input id="reg-display" placeholder="Nombre público" />
+            <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+            <select id="reg-country">
+              <option value="">País de residencia...</option>
+            </select>
+            <select id="reg-lang">
+              <option value="es">Idioma: Español</option>
+              <option value="en">Idioma: English</option>
+              <option value="pt">Idioma: Português</option>
+              <option value="fr">Idioma: Français</option>
+              <option value="de">Idioma: Deutsch</option>
+              <option value="it">Idioma: Italiano</option>
+            </select>
+            <input id="reg-email" type="email" placeholder="Correo" />
+            <input id="reg-password" type="password" placeholder="Contraseña" />
+            <label class="small" style="display:flex;gap:8px;align-items:center;margin:0 0 10px;">
+              <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
+              Ver contraseña
+            </label>
+            <label class="small">Redes sociales / contacto (opcional)</label>
+            <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
+            <label class="small">
+              <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
+              Mostrar mi país y redes en el Salón de miembros
+            </label>
+            <label class="small">
+              <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
+              Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
+            </label>
+            <br /><br />
+            <button onclick="register()" style="width:100%;">Registrarme</button>
+            <a href="#" class="register-link" onclick="hideRegister(event)" style="margin-top:8px;">
+              ← Volver al inicio de sesión
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -151,7 +188,7 @@
     </section>
 
     <section id="profile-setup" class="hidden card">
-      <h2>Completa tu perfil</h2>
+            <h2>Completa tu perfil</h2>
       <select id="setup-role" onchange="roleGenderSync('setup')">
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
@@ -199,6 +236,7 @@
     let db = null;
     let currentUser = null;
     let currentProfile = null;
+    let deferredInstallPrompt = null;
 
     const COUNTRIES = [
       'Afganistán','Albania','Alemania','Andorra','Angola','Antigua y Barbuda','Arabia Saudita','Argelia','Argentina','Armenia','Australia','Austria','Azerbaiyán',
@@ -245,19 +283,6 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    /* ══ Mostrar / ocultar registro ══ */
-    function showRegister() {
-      document.getElementById('register-card').classList.remove('hidden');
-      // Pre-llenar correo si ya lo escribió en login
-      const email = document.getElementById('login-email').value.trim();
-      if (email) document.getElementById('reg-email').value = email;
-      document.getElementById('register-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    function hideRegister() {
-      document.getElementById('register-card').classList.add('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
@@ -270,7 +295,7 @@
     async function loadProfileAndRender() {
       const { data, error } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
       if (error) { alert(error.message); show('auth'); return; }
-      currentProfile = data;
+           currentProfile = data;
       if (!currentProfile) { show('profile-setup'); return; }
 
       if (!currentProfile.approved) {
@@ -307,6 +332,17 @@
 
     function togglePass(id, showPass) {
       document.getElementById(id).type = showPass ? 'text' : 'password';
+    }
+
+    function showRegister(ev) {
+      if (ev) ev.preventDefault();
+      const w = document.getElementById('register-card-wrapper');
+      if (w) { w.classList.remove('hidden'); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }
+    function hideRegister(ev) {
+      if (ev) ev.preventDefault();
+      const w = document.getElementById('register-card-wrapper');
+      if (w) w.classList.add('hidden');
     }
 
     async function forgotPassword() {
@@ -352,9 +388,17 @@
       const remember = document.getElementById('remember').checked;
       const { error } = await db.auth.signInWithPassword({ email, password });
       if (error) {
-        // Si la cuenta no existe, abrir registro con correo prellenado
-        if (error.message.toLowerCase().includes('invalid login') || error.message.toLowerCase().includes('no user')) {
+        const msg = (error.message || '').toLowerCase();
+        const code = error.code || '';
+        if (code === 'invalid_credentials' || msg.includes('invalid login credentials') || msg.includes('user not found') || msg.includes('email not confirmed')) {
+          document.getElementById('reg-email').value = email;
           showRegister();
+          if (msg.includes('email not confirmed')) {
+            alert('Este correo aún no ha sido confirmado. Revisa tu bandeja de entrada o solicita un nuevo enlace.');
+          } else {
+            alert('No encontramos una cuenta con ese correo y contraseña. Si es tu primera vez, rellena el formulario que se abrió debajo.');
+          }
+          return;
         }
         return alert(error.message);
       }
@@ -367,7 +411,7 @@
       window.location.reload();
     }
 
-    function roleGenderSync(prefix) {
+        function roleGenderSync(prefix) {
       const role = document.getElementById(prefix + '-role').value;
       const g = document.getElementById(prefix + '-gender');
       if (!g) return;
@@ -379,8 +423,7 @@
         if (!g.value) g.value = 'hombre';
       }
     }
-
-    async function register() {
+        async function register() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('reg-role').value;
       const display_name = document.getElementById('reg-display').value.trim();
@@ -439,8 +482,7 @@
         window.location.href = 'index.html';
       } else {
         window.location.reload();
-      }
-    }
+      }    }
 
     async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
@@ -480,21 +522,21 @@
       ).join('');
 
       const profileCard = `
-        <div class="card" id="my-profile-card">
+               <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
           <label class="small">Nombre público</label>
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
           <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
-          <label class="small">Género</label>
+                  <label class="small">Género</label>
           ${currentProfile.role === 'dominant'
             ? `<select id="profile-gender" disabled><option value="mujer" selected>Mujer</option></select>`
             : `<select id="profile-gender" ${isLocked ? 'disabled' : ''}>
                 <option value="hombre" ${currentProfile.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
                 <option value="mujer" ${currentProfile.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
               </select>`}
-          <label class="small">Idioma preferido</label>
+                   <label class="small">Idioma preferido</label>
           <select id="profile-lang" ${isLocked ? 'disabled' : ''}>
             ${[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']].map(l => `<option value="${l[0]}" ${currentProfile.lang === l[0] ? 'selected' : ''}>${l[1]}</option>`).join('')}
           </select>
@@ -510,8 +552,7 @@
             Mostrar mi país y redes en el Salón de miembros
           </label>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>
-        </div>
+          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>        </div>
       `;
 
       dashboard.insertAdjacentHTML('afterbegin', profileCard);
@@ -525,7 +566,7 @@
       const social_links_public = document.getElementById('profile-social-public').checked;
       if (!display_name) return alert('Escribe tu nombre público.');
       if (!country) return alert('Selecciona un país.');
-      const lang = document.getElementById('profile-lang').value;
+            const lang = document.getElementById('profile-lang').value;
       const gender = currentProfile.role === 'dominant' ? 'mujer' : document.getElementById('profile-gender').value;
       const { error } = await db.from('profiles')
         .update({ display_name, bio, country, lang, gender, social_links: social_links || null, social_links_public })
@@ -624,7 +665,7 @@
               Mostrar su avatar en el Salón de miembros
             </label>`;
 
-            html += `<label class="small" style="margin-top:10px;">Género</label>`;
+                        html += `<label class="small" style="margin-top:10px;">Género</label>`;
             html += `<select id="pgender_${sub.submissive_id}">
               <option value="hombre" ${sub.profiles?.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
               <option value="mujer" ${sub.profiles?.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
@@ -687,7 +728,7 @@
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
-      const gender = document.getElementById('pgender_' + submissiveId).value;
+            const gender = document.getElementById('pgender_' + submissiveId).value;
       const { error } = await db.from('profiles')
         .update({ country, gender, social_links: social_links || null, social_links_public })
         .eq('id', submissiveId);
@@ -805,18 +846,16 @@
       window.location.reload();
     }
 
-    roleGenderSync('reg');
+        roleGenderSync('reg');
     roleGenderSync('setup');
-
-    // ══ TOUR GUIADO ══
+        // ══ TOUR GUIADO ══
     let tourSteps = [], tourIdx = 0;
 
     function buildTourSteps() {
       const dom = currentProfile.role === 'dominant';
       return [
         { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Supremacía Femenina: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
-        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'El salón principal: contempla a las Dominantes y sumisos de la casa, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },
-        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
+        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'El salón principal: contempla a las Dominantes y sumisos de la casa, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
         { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
         { sel: 'a[href="chat.html"]', t: 'Chat', x: 'El canal público #supremacia. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
@@ -827,8 +866,7 @@
         { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
         { sel: 'a[href="subastas.html"]', t: 'Subastas', x: 'Las Dominantes pueden subastar a sus sumisos; las demás pujan con coronas ♛.' },
         { sel: 'a[href="cesiones.html"]', t: 'Cesiones', x: 'Cede o recibe sumisos entre Dominantes, de forma temporal o indefinida.' },
-        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },
-        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
+        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
         { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes y su visibilidad.' },
         { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Aquí gestionas solicitudes, sumisos, país y redes, marcas de subasta y carnets.' : 'Aquí ves tu estado, tu Dominante, tu registro, carnet y las solicitudes recibidas.' },
         { sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' }
@@ -903,7 +941,6 @@
       const t = document.getElementById('tour-tip'); if (t) t.remove();
       try { await db.from('profiles').update({ tour_done: true }).eq('id', currentUser.id); } catch(e) {}
     }
-
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
@@ -932,6 +969,123 @@
       init();
     }
   </script>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════════
+     INSTALAR EN DISPOSITIVO MÓVIL — Android (nativo) / iOS (manual)
+     ═══════════════════════════════════════════════════════════ */
+  (function(){
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    // Capturar el evento nativo de instalación (Android Chrome/Edge)
+    window.addEventListener('beforeinstallprompt', function(e){
+      e.preventDefault();
+      deferredInstallPrompt = e;
+    });
+
+    // Mostrar el botón solo si no estamos ya en modo app y el navegador lo soporta
+    function shouldShowButton(){
+      if (isStandalone) return false;
+      // Android: siempre mostrar (hay install prompt o instrucciones)
+      if (isAndroid) return true;
+      // iOS Safari: mostrar (siempre es manual)
+      if (isIOS && isSafari) return true;
+      // Desktop Chrome/Edge: también soporta PWA
+      if (/Chrome|Edg/.test(ua) && !/Mobile/.test(ua)) return true;
+      return false;
+    }
+
+    if (shouldShowButton()) {
+      const b = document.getElementById('install-btn');
+      if (b) b.classList.remove('hidden');
+    }
+
+    window.openInstallModal = function(){
+      const ov = document.createElement('div');
+      ov.className = 'inst-overlay';
+      ov.onclick = function(e){ if (e.target === ov) ov.remove(); };
+
+      const androidStatus = deferredInstallPrompt
+        ? '<div class="ios-steps" style="margin:0;"><li><b>Pulsa “Instalar ahora”</b> y aparecerá en tu pantalla de inicio.</li></div><button onclick="doAndroidInstall(this)">⬇ Instalar ahora</button>'
+        : '<div class="ios-steps" style="margin:0;"><li>Abre esta página en <b>Chrome</b> o <b>Edge</b>.</li><li>Pulsa el menú <b>⋮</b> (arriba a la derecha).</li><li>Elige <b>“Instalar aplicación”</b> o <b>“Añadir a pantalla de inicio”</b>.</li></div>';
+
+      ov.innerHTML = `
+        <div class="inst-modal">
+          <h3>♛ Lleva la casa en tu bolsillo</h3>
+          <p class="sub">Elige tu dispositivo para instalar la aplicación:</p>
+          <div class="inst-options">
+            <div class="inst-opt" onclick="showAndroidFlow(this)">
+              <div class="ico">🤖</div>
+              <div class="nm">Android</div>
+              <div class="ds">Chrome · Edge</div>
+            </div>
+            <div class="inst-opt" onclick="showIOSFlow(this)">
+              <div class="ico">🍎</div>
+              <div class="nm">iPhone / iPad</div>
+              <div class="ds">Safari</div>
+            </div>
+          </div>
+          <div id="inst-detail"></div>
+          <div class="inst-back">
+            <a onclick="this.closest('.inst-overlay').remove()">← Volver</a>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+    };
+
+    window.showAndroidFlow = function(opt){
+      const modal = opt.closest('.inst-modal');
+      modal.querySelectorAll('.inst-opt').forEach(o => o.style.borderColor = '');
+      opt.style.borderColor = 'var(--gold)';
+      const det = modal.querySelector('#inst-detail');
+      det.innerHTML = `
+        <h4 style="margin:18px 0 6px;color:var(--gold);">🤖 Android</h4>
+        <p class="small" style="margin-bottom:10px;">Instala la casa en tu dispositivo. Se abrirá en pantalla completa, sin la barra del navegador.</p>
+        ${androidStatus}
+      `;
+    };
+
+    window.showIOSFlow = function(opt){
+      const modal = opt.closest('.inst-modal');
+      modal.querySelectorAll('.inst-opt').forEach(o => o.style.borderColor = '');
+      opt.style.borderColor = 'var(--gold)';
+      const det = modal.querySelector('#inst-detail');
+      det.innerHTML = `
+        <h4 style="margin:18px 0 6px;color:var(--gold);">🍎 iPhone / iPad</h4>
+        <p class="small" style="margin-bottom:10px;">Abre esta página en <b style="color:var(--gold);">Safari</b> y sigue estos pasos:</p>
+        <ol class="ios-steps">
+          <li>Pulsa el botón <b>Compartir ⬆</b> en la barra inferior de Safari.</li>
+          <li>Desliza hacia arriba y elige <b>“Añadir a pantalla de inicio”</b>.</li>
+          <li>Confirma el nombre y pulsa <b>“Añadir”</b>.</li>
+        </ol>
+        <p class="small">La corona aparecerá en tu pantalla de inicio y abrirá la casa en pantalla completa.</p>
+      `;
+    };
+
+    window.doAndroidInstall = function(btn){
+      if (!deferredInstallPrompt) return;
+      btn.disabled = true;
+      btn.textContent = 'Instalando...';
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function(choice){
+        if (choice.outcome === 'accepted') {
+          btn.textContent = '✓ Instalado';
+          const b = document.getElementById('install-btn');
+          if (b) b.classList.add('hidden');
+        } else {
+          btn.disabled = false;
+          btn.textContent = '⬇ Instalar ahora';
+        }
+        deferredInstallPrompt = null;
+      });
+    };
+  })();
+  </script>
+
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
