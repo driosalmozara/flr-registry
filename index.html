@@ -43,11 +43,9 @@
     #register-card-wrapper{animation:slideDown .4s ease;}
     @keyframes slideDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
 
-    /* Botón Instalar en cabecera */
     .install-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px;display:inline-flex;align-items:center;gap:6px;transition:.2s}
     .install-btn:hover{background:rgba(212,175,55,.12)}
 
-    /* Modal de instalación */
     .inst-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99992;display:flex;align-items:center;justify-content:center;padding:18px;animation:fadeIn .25s}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     .inst-modal{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:24px;max-width:560px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.7)}
@@ -283,6 +281,11 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
+    async function domLockIsOn() {
+      const { data } = await db.from('app_settings').select('value').eq('key', 'lock_dominant_approval').maybeSingle();
+      return !data || data.value === '1';
+    }
+
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
@@ -455,9 +458,15 @@
       if (profileError) return alert('Perfil: ' + profileError.message);
 
       if (role === 'dominant') {
-        await db.auth.signOut();
-        alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
-        window.location.href = 'index.html';
+        const lockOn = await domLockIsOn();
+        if (lockOn) {
+          await db.auth.signOut();
+          alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
+          window.location.href = 'index.html';
+        } else {
+          alert('👑 Bienvenida, Diosa. Tu cuenta está activa desde este instante.');
+          window.location.reload();
+        }
       } else {
         window.location.reload();
       }
@@ -477,12 +486,19 @@
       });
       if (error) return alert('Perfil: ' + error.message);
       if (role === 'dominant') {
-        await db.auth.signOut();
-        alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
-        window.location.href = 'index.html';
+        const lockOn = await domLockIsOn();
+        if (lockOn) {
+          await db.auth.signOut();
+          alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
+          window.location.href = 'index.html';
+        } else {
+          alert('👑 Bienvenida, Diosa. Tu cuenta está activa desde este instante.');
+          window.location.reload();
+        }
       } else {
         window.location.reload();
-      }    }
+      }
+    }
 
     async function deleteMyAccount() {
       if (!confirm('¿Eliminar tu cuenta DEFINITIVAMENTE? Se borrarán tu perfil, relaciones, registros y carnets.')) return;
@@ -581,7 +597,7 @@
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
 
       const { data: requests, error: reqError } = await db.from('relationships')
-        .select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name, age, bio, avatar_url)')
+        .select('id, submissive_id, initiated_by, profiles!relationships_submissive_id_fkey(display_name, age, bio, avatar_url)')
         .eq('dominant_id', currentUser.id).eq('status', 'pending');
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
@@ -605,11 +621,14 @@
 
       let html = '';
 
-      html += '<div class="card"><h2>Solicitudes pendientes</h2>';
-      if (!requests || requests.length === 0) {
-        html += '<p class="small">No tienes solicitudes pendientes.</p>';
+      const received = (requests || []).filter(r => r.initiated_by === 'submissive');
+      const sent     = (requests || []).filter(r => r.initiated_by === 'dominant');
+
+      html += '<div class="card"><h2>Solicitudes recibidas</h2>';
+      if (received.length === 0) {
+        html += '<p class="small">No tienes solicitudes recibidas.</p>';
       } else {
-        requests.forEach(req => {
+        received.forEach(req => {
           const profile = req.profiles || {};
           html += `
             <div class="item">
@@ -621,6 +640,27 @@
               <p class="small">${escapeHtml(profile.bio || '')}</p>
               <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
               <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>
+              <button class="secondary" onclick="messageSub('${req.submissive_id}')">💬 Mensaje</button>
+            </div>`;
+        });
+      }
+      html += '</div>';
+
+      html += '<div class="card"><h2>Mis solicitudes enviadas</h2>';
+      if (sent.length === 0) {
+        html += '<p class="small">No has enviado solicitudes pendientes a sumisos libres.</p>';
+      } else {
+        sent.forEach(req => {
+          const profile = req.profiles || {};
+          html += `
+            <div class="item">
+              <div class="rowitem">
+                ${avatarHTML(profile.avatar_url, '⛓')}
+                <h3 style="margin:0;">${escapeHtml(profile.display_name || 'Sumiso')}</h3>
+              </div>
+              <p class="small">Edad: ${escapeHtml(String(profile.age || ''))} · ⏳ Esperando respuesta</p>
+              <p class="small">${escapeHtml(profile.bio || '')}</p>
+              <button class="danger" onclick="withdrawRequest('${req.id}')">↩ Retirar solicitud</button>
               <button class="secondary" onclick="messageSub('${req.submissive_id}')">💬 Mensaje</button>
             </div>`;
         });
@@ -707,6 +747,13 @@
 
     async function respondRequest(id, status) {
       const { error } = await db.from('relationships').update({ status }).eq('id', id);
+      if (error) return alert(error.message);
+      window.location.reload();
+    }
+
+    async function withdrawRequest(id) {
+      if (!confirm('¿Retirar esta solicitud? El sumiso dejará de verla.')) return;
+      const { error } = await db.from('relationships').delete().eq('id', id);
       if (error) return alert(error.message);
       window.location.reload();
     }
@@ -800,7 +847,7 @@
         html += '</div>';
       }
 
-      if (rel && rel.status === 'pending') {
+      if (rel && rel.status === 'pending' && rel.initiated_by !== 'dominant') {
         html += `<div class="card">
           <h2>Solicitud enviada</h2>
           <p>Esperando confirmación de <b>${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
@@ -971,9 +1018,7 @@
   </script>
 
   <script>
-  /* ═══════════════════════════════════════════════════════════
-     INSTALAR EN DISPOSITIVO MÓVIL — Android (nativo) / iOS (manual)
-     ═══════════════════════════════════════════════════════════ */
+  /* ══ INSTALAR EN DISPOSITIVO MÓVIL ══ */
   (function(){
     const ua = navigator.userAgent;
     const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -981,20 +1026,15 @@
     const isAndroid = /Android/i.test(ua);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-    // Capturar el evento nativo de instalación (Android Chrome/Edge)
     window.addEventListener('beforeinstallprompt', function(e){
       e.preventDefault();
       deferredInstallPrompt = e;
     });
 
-    // Mostrar el botón solo si no estamos ya en modo app y el navegador lo soporta
     function shouldShowButton(){
       if (isStandalone) return false;
-      // Android: siempre mostrar (hay install prompt o instrucciones)
       if (isAndroid) return true;
-      // iOS Safari: mostrar (siempre es manual)
       if (isIOS && isSafari) return true;
-      // Desktop Chrome/Edge: también soporta PWA
       if (/Chrome|Edg/.test(ua) && !/Mobile/.test(ua)) return true;
       return false;
     }
