@@ -67,6 +67,8 @@ async function render() {
   const content = document.getElementById('content');
   const { data: lockRow } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
   const locked = !!(lockRow && lockRow.value === '1');
+  const { data: domLockRow } = await db.from('app_settings').select('value').eq('key', 'lock_dominant_approval').maybeSingle();
+  const domLocked = !domLockRow || domLockRow.value === '1';
 
   const { data: pending } = await db.from('profiles')
     .select('id, role, display_name, age, country, gender, created_at')
@@ -85,6 +87,16 @@ async function render() {
         </p>
         <p>Estado actual: <span class="badge">${locked ? '🔒 CERRADO — aprobaciones requeridas' : '🔓 ABIERTO — registro libre'}</span></p>
         <button onclick="setLock(${!locked})">${locked ? '🔓 Abrir el cerrojo' : '🔒 Echar el cerrojo'}</button>
+      </div>`;
+        html += `
+      <div class="card lockcard">
+        <h2 style="margin-top:0;">👑 Cerrojo de aprobación de Dominantes</h2>
+        <p class="small">
+          <b>Cerrojo echado (por defecto):</b> toda Dominante nueva espera aprobación del Staff.<br>
+          <b>Cerrojo abierto:</b> las Diosas entran activas al instante al registrarse.
+        </p>
+        <p>Estado actual: <span class="badge">${domLocked ? '🔒 APROBACIÓN REQUERIDA' : '🔓 ENTRADA LIBRE DE DIOSAS'}</span></p>
+        <button onclick="setDomLock(${!domLocked})">${domLocked ? '🔓 Abrir (activas al instante)' : '🔒 Echar (requerir aprobación)'}</button>
       </div>`;
   } else {
     html += `<div class="card lockcard"><p class="small">Estado del cerrojo: <span class="badge">${locked ? '🔒 CERRADO' : '🔓 ABIERTO'}</span> · Solo las Administradoras pueden moverlo.</p></div>`;
@@ -126,6 +138,12 @@ async function approve(id) {
   await render();
 }
 
+  async function setDomLock(on) {
+  const { data } = await db.rpc('set_lock_dominant_approval', { on_val: on });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo mover el cerrojo.');
+  alert(on ? '🔒 Cerrojo echado: las Dominantes nuevas requerirán aprobación del Staff.' : '🔓 Cerrojo abierto: las Dominantes nuevas entran activas al instante.');
+  await render();
+}
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
