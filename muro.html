@@ -136,6 +136,25 @@ async function render() {
     likes = lk.data || []; comments = cm.data || [];
   }
 
+    const queue = list.filter(p =>
+    (p.status === 'pending' && (isSuper || isMod)) ||
+    (p.status === 'owner_pending' && mySubIds.has(p.author_id))
+  );
+  if (queue.length) {
+    html += `<div class="card"><h3 style="margin-top:0;">📥 Aprobaciones pendientes (${queue.length})</h3>`;
+    queue.forEach(p => {
+      html += `
+        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#0b0b12;">
+          <p class="small" style="margin:0 0 6px;"><b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b> · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}</p>
+          <p style="margin:0 0 6px;white-space:pre-wrap;">${esc((p.body || '').slice(0, 220))}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${(isSuper || isMod) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
+            ${p.status === 'owner_pending' && mySubIds.has(p.author_id) ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
   html += '<h3>🏛 Muro de la casa</h3>';
   if (!list.length) html += '<p class="small">Aún no hay publicaciones. Sé la primera voz del muro.</p>';
 
