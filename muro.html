@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Muro — Supremacía Femenina</title>
+<title>Muro — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -27,11 +27,24 @@ button.mini:hover{color:#dc2626}
 .badge.no{border-color:#dc2626;color:#dc2626}
 .media img{max-width:100%;border-radius:10px;margin:6px 0}
 .media video{max-width:100%;border-radius:10px;margin:6px 0}
-.acts{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .acts button{background:transparent;color:#a1a1aa;border:1px solid var(--line)}
-.acts button.liked{color:var(--gold);border-color:var(--gold)}
+.rbar{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+.rbtn{background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:#a1a1aa;font-size:14px;cursor:pointer}
+.rbtn:hover{border-color:var(--gold)}
+.rbtn.mine{border-color:var(--gold);color:var(--gold);background:rgba(212,175,55,.1)}
+.rbtn span{margin-left:5px;font-size:11px;color:inherit}
+.rbar.sm{margin:4px 0}
+.rbar.sm .rbtn{padding:1px 8px;font-size:12px}
 .cmt{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
 .cmt .small b{color:var(--gold)}
+.reply{margin-left:26px;border-left:2px solid var(--line);padding-left:10px;margin-top:6px}
+.linkbtn{background:transparent;border:none;color:#a1a1aa;font-size:12px;cursor:pointer;padding:2px 6px}
+.linkbtn:hover{color:var(--gold)}
+#emojipop{position:absolute;z-index:99999;display:none;grid-template-columns:repeat(8,32px);gap:2px;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+#emojipop span{cursor:pointer;font-size:19px;text-align:center;border-radius:8px}
+#emojipop span:hover{background:rgba(212,175,55,.15)}
+.hidden{display:none}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -39,7 +52,7 @@ button.mini:hover{color:#dc2626}
 <body>
 <header>
   <h1 style="margin:0;">🧱 Muro</h1>
-  <div><a class="navlink" href="index.html">Inicio</a><a class="navlink" href="chat.html">Chat</a></div>
+  <div><a class="navlink" href="index.html?stay=1">Mi perfil</a><a class="navlink" href="chat.html">Chat</a></div>
 </header>
 <main><div id="content" class="card">Cargando...</div></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -48,10 +61,59 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const RMAP = [['like','👍'],['love','❤️'],['down','👎'],['angry','😡']];
+const EMOJIS = ['😀','😂','😍','😘','😎','🥰','😳','😢','😭','😡','🤬','','👍','👎','🙏','👏','💪','🔥','❤️','💛','💜','🖤','💋','💎','👑','','🌹','🍷','','✨','🤍','🖤'];
+
 let me = null, isSuper = false, isMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
+let reactions = [];
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
+
+function rCounts(tid){
+  const o = { like:0, love:0, down:0, angry:0 };
+  reactions.filter(r => r.target_id === tid).forEach(r => { o[r.reaction] = (o[r.reaction]||0)+1; });
+  return o;
+}
+function myReact(tid){ const r = reactions.find(x => x.target_id === tid && x.user_id === me); return r ? r.reaction : null; }
+function rbar(ttype, tid, small){
+  const c = rCounts(tid), mine = myReact(tid);
+  return `<div class="rbar${small ? ' sm' : ''}">` + RMAP.map(x =>
+    `<button class="rbtn ${mine === x[0] ? 'mine' : ''}" onclick="react('${ttype}','${tid}','${x[0]}')">${x[1]}${c[x[0]] ? `<span>${c[x[0]]}</span>` : ''}</button>`
+  ).join('') + `</div>`;
+}
+
+async function react(ttype, tid, r){
+  const ex = myReact(tid);
+  if (ex === r) await db.from('muro_reactions').delete().eq('target_type',ttype).eq('target_id',tid).eq('user_id',me);
+  else await db.from('muro_reactions').upsert(
+    { target_type:ttype, target_id:tid, user_id:me, reaction:r },
+    { onConflict: 'target_type,target_id,user_id' }
+  );
+  await render();
+}
+
+function openEmoji(btn, inputId){
+  let pop = document.getElementById('emojipop');
+  if (!pop) {
+    pop = document.createElement('div'); pop.id = 'emojipop';
+    pop.innerHTML = EMOJIS.map(e => `<span onclick="insEmoji('${e}')">${e}</span>`).join('');
+    document.body.appendChild(pop);
+    document.addEventListener('click', function(e){
+      if (!pop.contains(e.target) && !e.target.classList.contains('emojibtn')) pop.style.display = 'none';
+    });
+  }
+  pop.dataset.target = inputId;
+  const r = btn.getBoundingClientRect();
+  pop.style.display = 'grid';
+  pop.style.top = (r.bottom + 6 + window.scrollY) + 'px';
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+}
+function insEmoji(e){
+  const pop = document.getElementById('emojipop');
+  const input = document.getElementById(pop.dataset.target);
+  if (input) { input.value += e; input.focus(); }
+}
 
 async function init() {
   const content = document.getElementById('content');
@@ -75,7 +137,7 @@ async function init() {
   db.channel('muro-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_posts' }, () => render())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_comments' }, () => render())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_likes' }, () => render())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_reactions' }, () => render())
     .subscribe();
 }
 
@@ -106,6 +168,9 @@ async function render() {
       <div class="card">
         <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
         <textarea id="wbody" rows="3" placeholder="Comparte con la casa..."></textarea>
+        <div style="display:flex;gap:6px;margin:-4px 0 8px;">
+          <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'wbody')">😊</button>
+        </div>
         <input type="file" id="wfile" style="display:none" onchange="pickFile(this)"/>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="ghost" onclick="document.getElementById('wfile').click()">📎 Adjuntar</button>
@@ -127,16 +192,19 @@ async function render() {
   );
 
   const ids = list.map(p => p.id);
-  let likes = [], comments = [];
+  let comments = [];
   if (ids.length) {
-    const [lk, cm] = await Promise.all([
-      db.from('muro_likes').select('*').in('post_id', ids),
-      db.from('muro_comments').select('*').in('post_id', ids).order('created_at')
-    ]);
-    likes = lk.data || []; comments = cm.data || [];
+    const cm = await db.from('muro_comments').select('*').in('post_id', ids).order('created_at');
+    comments = cm.data || [];
+  }
+  const allIds = ids.concat(comments.map(c => c.id));
+  reactions = [];
+  if (allIds.length) {
+    const rk = await db.from('muro_reactions').select('*').in('target_id', allIds);
+    reactions = rk.data || [];
   }
 
-    const queue = list.filter(p =>
+  const queue = list.filter(p =>
     (p.status === 'pending' && (isSuper || isMod)) ||
     (p.status === 'owner_pending' && mySubIds.has(p.author_id))
   );
@@ -155,13 +223,13 @@ async function render() {
     });
     html += `</div>`;
   }
+
   html += '<h3>🏛 Muro de la casa</h3>';
   if (!list.length) html += '<p class="small">Aún no hay publicaciones. Sé la primera voz del muro.</p>';
 
   list.forEach(p => {
-    const myLike = likes.find(l => l.post_id === p.id && l.user_id === me);
-    const count = likes.filter(l => l.post_id === p.id).length;
     const cmts = comments.filter(c => c.post_id === p.id);
+    const tops = cmts.filter(c => !c.parent_id);
     const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id);
     const canStaffAct = (isSuper || isMod) && p.status === 'pending';
     const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
@@ -190,29 +258,58 @@ async function render() {
         </div>
         <div style="white-space:pre-wrap;">${esc(p.body || '')}</div>
         ${media}
+        ${rbar('post', p.id, false)}
         <div class="acts">
-          <button class="${myLike ? 'liked' : ''}" onclick="toggleLike('${p.id}')">👍 ${count || ''}</button>
-          ${p.allow_comments ? `<button onclick="document.getElementById('ci_${p.id}').focus()">💬 ${cmts.length || ''}</button>` : '<button disabled>💬 desactivados</button>'}
+          <button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmts.length || ''} Comentarios</button>
           ${canStaffAct ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${canOwnerAct ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${canDelete ? `<button onclick="delPost('${p.id}')">🗑 Eliminar</button>` : ''}
           ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
         </div>
         <div class="cmt">
-          ${cmts.map(c => `
-            <p class="small" style="margin:6px 0;"><b>${esc(c.author_id === me ? 'Tú' : '')}</b>${c.author_id !== me ? '' : ''}${esc('')}<span style="color:#d4d4d8;">${esc(c.body)}</span>
-            ${(c.author_id === me || isSuper || (isMod)) ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
-          `).join('')}
+          ${tops.map(c => commentHTML(c, cmts)).join('')}
           ${p.allow_comments && p.status === 'approved' ? `
-            <div style="display:flex;gap:8px;margin-top:8px;">
+            <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
               <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
+              <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
               <button onclick="addComment('${p.id}')">Enviar</button>
-            </div>` : ''}
+            </div>` : (p.status === 'approved' ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
         </div>
       </div>`;
   });
 
   content.innerHTML = html;
+}
+
+function commentHTML(c, all) {
+  const replies = all.filter(x => x.parent_id === c.id);
+  const canDel = c.author_id === me || isSuper || isMod;
+  return `
+    <div style="margin:8px 0;">
+      <p class="small" style="margin:4px 0;"><b>${esc(c.author_id === me ? 'Tú' : '')}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
+      <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
+      ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
+      ${rbar('comment', c.id, true)}
+      <button class="linkbtn" onclick="toggleReply('${c.id}')">↩ Responder</button>
+      <div id="rb_${c.id}" class="hidden" style="display:flex;gap:6px;margin:6px 0 6px 26px;align-items:center;">
+        <input id="ri_${c.id}" placeholder="Responder..." style="margin:0;"/>
+        <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'ri_${c.id}')">😊</button>
+        <button onclick="addReply('${c.id}','${c.post_id}')">Enviar</button>
+        <button class="linkbtn" onclick="toggleReply('${c.id}')">Cancelar</button>
+      </div>
+      ${replies.map(r => `
+        <div class="reply">
+          <p class="small" style="margin:4px 0;"><b>${esc(r.author_id === me ? 'Tú' : '')}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
+          <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
+          ${(r.author_id === me || isSuper || isMod) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
+          ${rbar('comment', r.id, true)}
+        </div>`).join('')}
+    </div>`;
+}
+
+function toggleReply(id){
+  const box = document.getElementById('rb_' + id);
+  if (box) box.classList.toggle('hidden');
 }
 
 function pickFile(input){
@@ -240,18 +337,20 @@ async function submitPost() {
   await render();
 }
 
-async function toggleLike(id) {
-  const { data: ex } = await db.from('muro_likes').select('*').eq('post_id', id).eq('user_id', me).maybeSingle();
-  if (ex) await db.from('muro_likes').delete().eq('post_id', id).eq('user_id', me);
-  else await db.from('muro_likes').insert({ post_id: id, user_id: me });
+async function addComment(postId) {
+  const input = document.getElementById('ci_' + postId);
+  const body = input.value.trim();
+  if (!body) return;
+  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body });
+  if (error) return alert(error.message);
   await render();
 }
 
-async function addComment(id) {
-  const input = document.getElementById('ci_' + id);
+async function addReply(commentId, postId) {
+  const input = document.getElementById('ri_' + commentId);
   const body = input.value.trim();
   if (!body) return;
-  const { error } = await db.from('muro_comments').insert({ post_id: id, author_id: me, body });
+  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body, parent_id: commentId });
   if (error) return alert(error.message);
   await render();
 }
