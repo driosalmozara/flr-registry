@@ -167,7 +167,7 @@ async function requestSubmissive(subId) {
   (chas.data || []).forEach(c => { chastityMap[c.submissive_id] = c.since; });
 
   const st = stats.data || {};
-  const enSalon = (doms.data ? doms.data.length : 0) + (subs.data ? subs.data.length : 0);
+  const enSalon = st.in_salon ?? ((doms.data ? doms.data.length : 0) + (subs.data ? subs.data.length : 0));
   document.getElementById('stats').innerHTML = `
     <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${st.total ?? 0}</h2><p class="small" style="margin:4px 0 0;">Miembros registrados</p></div>
     <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${st.dominants ?? 0}</h2><p class="small" style="margin:4px 0 0;">♛ Diosas</p></div>
