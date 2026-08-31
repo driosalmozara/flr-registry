@@ -692,7 +692,8 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     ['terminos.html', 'Términos']
   ];
   var flags = { staff: false, admin: false };
-  var rebuilding = false, scheduled = false;
+  var lock = false, scheduled = false;
+  var currentWrap = null;
 
   var st = document.createElement('style');
   st.textContent =
@@ -721,7 +722,7 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     if (!header) return;
     var nav = header.querySelector('nav');
     if (!nav) { nav = document.createElement('nav'); header.appendChild(nav); }
-    rebuilding = true;
+    lock = true;
     nav.className = 'qnav';
     nav.innerHTML = '';
 
@@ -737,8 +738,8 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     others.forEach(function(o){ menu.appendChild(makeLink(o[0], o[1])); });
     wrap.appendChild(btn); wrap.appendChild(menu);
     btn.onclick = function(e){ e.stopPropagation(); menu.classList.toggle('open'); };
-    document.addEventListener('click', function(e){ if (!wrap.contains(e.target)) menu.classList.remove('open'); });
     nav.appendChild(wrap);
+    currentWrap = wrap;
 
     var h1 = header.querySelector('h1');
     if (h1 && !h1.dataset.linked) {
@@ -747,14 +748,21 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
       h1.title = 'Ir al Muro';
       h1.onclick = function(){ location.href = 'muro.html'; };
     }
-    rebuilding = false;
+    setTimeout(function(){ lock = false; }, 120);
   }
 
   function schedule(){
-    if (rebuilding || scheduled) return;
+    if (lock || scheduled) return;
     scheduled = true;
     setTimeout(function(){ scheduled = false; rebuild(); }, 400);
   }
+
+  document.addEventListener('click', function(e){
+    if (currentWrap && !currentWrap.contains(e.target)) {
+      var m = currentWrap.querySelector('.qmenu');
+      if (m) m.classList.remove('open');
+    }
+  });
 
   function init(){
     rebuild();
@@ -769,7 +777,7 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     });
     var header = document.querySelector('header');
     if (header && window.MutationObserver) {
-      new MutationObserver(function(){ if (!rebuilding) schedule(); }).observe(header, { childList: true, subtree: true });
+      new MutationObserver(function(){ if (!lock) schedule(); }).observe(header, { childList: true, subtree: true });
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
