@@ -8,7 +8,7 @@
     document.head.appendChild(st);
     var d = document.createElement('div');
     d.id = 'maint-gate';
-    d.innerHTML = '<div class="mg-card"><div class="mg-crown">♛</div><h2>Supremacía Femenina</h2><p><b style="color:#d4af37;">Las Diosas están trabajando en el sitio.</b></p><p>Volverá a estar operativo en unos minutos.</p><p style="font-size:12px;color:#8a8578;margin-top:14px;">· Contenido simbólico y consensuado entre adultos ·</p></div>';
+    d.innerHTML = '<div class="mg-card"><div class="mg-crown">♛</div><h2>Queendomland</h2><p><b style="color:#d4af37;">Las Diosas están trabajando en el sitio.</b></p><p>Volverá a estar operativo en unos minutos.</p><p style="font-size:12px;color:#8a8578;margin-top:14px;">· Contenido simbólico y consensuado entre adultos ·</p></div>';
     document.body.appendChild(d);
     document.body.style.overflow = 'hidden';
     gateEl = d;
@@ -81,7 +81,7 @@
   lock.innerHTML = `
     <div class="ag-card">
       <div class="ag-crown">♛</div>
-      <h2>Supremacía Femenina</h2>
+      <h2>Queendomland</h2>
       <p class="ag-warn">Contenido para adultos</p>
       <p class="ag-text">Esta plataforma reúne dinámicas consensuadas de Dominio y sumisión entre
       personas adultas. Al entrar declaras, bajo tu responsabilidad, que eres
@@ -194,7 +194,7 @@ function notificacionSistema(title, body){
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function(reg){
-      reg.showNotification(title || '♛ Supremacía Femenina', {
+      reg.showNotification(title || '♛ Queendomland', {
         body: body || '', icon: 'corona.png', badge: 'corona.png'
       });
     }).catch(function(){});
@@ -631,4 +631,28 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     d.remove();
     localStorage.setItem('flr_ios_install_dismissed', '1');
   };
+})();
+/* ══ Rebrand global: Queendomland ══ */
+(function(){
+  var RX = /Supremac[íi]a Femenina/g;
+  function rebrandText(node){
+    if (node.nodeType === 3) {
+      if (node.nodeValue && RX.test(node.nodeValue)) {
+        node.nodeValue = node.nodeValue.replace(RX, 'Queendomland');
+      }
+      return;
+    }
+    if (node.nodeType === 1) (node.childNodes || []).forEach(rebrandText);
+  }
+  function run(){
+    if (document.title && RX.test(document.title)) document.title = document.title.replace(RX, 'Queendomland');
+    if (document.body) rebrandText(document.body);
+    document.querySelectorAll('input,textarea').forEach(function(el){
+      var v = el.getAttribute('placeholder');
+      if (v && RX.test(v)) el.setAttribute('placeholder', v.replace(RX, 'Queendomland'));
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+  setInterval(run, 2500);
 })();
