@@ -656,3 +656,15 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
   else run();
   setInterval(run, 2500);
 })();
+/* ══ Enlace Muro ══ */
+(function(){
+  var nav = document.querySelector('header nav') || document.querySelector('header div');
+  if (nav && !document.querySelector('a[href="muro.html"]')) {
+    var l = document.createElement('a');
+    l.href = 'muro.html';
+    l.textContent = 'Muro';
+    l.style.color = '#d4af37';
+    l.style.textDecoration = 'none';
+    nav.appendChild(l);
+  }
+})();
