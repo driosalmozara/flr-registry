@@ -668,3 +668,110 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     nav.appendChild(l);
   }
 })();
+/* ══ Nav reina: 4 botones nobles + menú Más ══ */
+(function(){
+  var PRIMARY = [
+    ['index.html?stay=1', 'Mi perfil'],
+    ['registro-publico.html', 'Salón de miembros'],
+    ['chat.html', 'Chat'],
+    ['mensajes.html', 'Mensajes']
+  ];
+  var OTHERS = [
+    ['muro.html', 'Muro'],
+    ['disponible.html', 'Disponibilidad'],
+    ['verificar.html', 'Verificar carnet'],
+    ['notificaciones.html', 'Notificaciones'],
+    ['avatar.html', 'Mi avatar'],
+    ['disciplina.html', 'Disciplina'],
+    ['contrato.html', 'Contrato'],
+    ['carnet.html', 'Carnet'],
+    ['galeria.html', 'Galería de relación'],
+    ['mi-galeria.html', 'Galería personal'],
+    ['cesiones.html', 'Cesiones'],
+    ['subastas.html', 'Subastas'],
+    ['terminos.html', 'Términos']
+  ];
+  var flags = { staff: false, admin: false };
+  var rebuilding = false, scheduled = false;
+
+  var st = document.createElement('style');
+  st.textContent =
+    '.qnav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}' +
+    '.qwrap{position:relative;display:inline-block}' +
+    '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
+    '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:10px;min-width:200px;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
+    '.qmenu.open{display:flex}' +
+    '.qmenu a{padding:7px 10px;border-radius:8px}' +
+    '.qmenu a:hover{background:rgba(212,175,55,.12)}' +
+    '@media (max-width:760px){header nav.mob-open .qwrap{display:inline-block !important}header nav.mob-open .qmenu{position:static !important;box-shadow:none !important}}';
+  document.head.appendChild(st);
+
+  function currentFile(){ return (location.pathname.split('/').pop() || 'index.html'); }
+
+  function makeLink(href, label){
+    var a = document.createElement('a');
+    a.href = href; a.textContent = label;
+    a.style.cssText = 'color:#d4af37;text-decoration:none;font-size:13px;';
+    if (href.split('?')[0] === currentFile()) a.style.borderBottom = '2px solid #d4af37';
+    return a;
+  }
+
+  function rebuild(){
+    var header = document.querySelector('header');
+    if (!header) return;
+    var nav = header.querySelector('nav');
+    if (!nav) { nav = document.createElement('nav'); header.appendChild(nav); }
+    rebuilding = true;
+    nav.className = 'qnav';
+    nav.innerHTML = '';
+
+    PRIMARY.forEach(function(p){ nav.appendChild(makeLink(p[0], p[1])); });
+
+    var others = OTHERS.slice();
+    if (flags.staff) others = others.concat([['moderacion.html','Moderación'],['aprobaciones.html','Aprobaciones']]);
+    if (flags.admin) others.push(['admin.html','Admin']);
+
+    var wrap = document.createElement('div'); wrap.className = 'qwrap';
+    var btn = document.createElement('button'); btn.className = 'qbtn'; btn.innerHTML = '☰ Más';
+    var menu = document.createElement('div'); menu.className = 'qmenu';
+    others.forEach(function(o){ menu.appendChild(makeLink(o[0], o[1])); });
+    wrap.appendChild(btn); wrap.appendChild(menu);
+    btn.onclick = function(e){ e.stopPropagation(); menu.classList.toggle('open'); };
+    document.addEventListener('click', function(e){ if (!wrap.contains(e.target)) menu.classList.remove('open'); });
+    nav.appendChild(wrap);
+
+    var h1 = header.querySelector('h1');
+    if (h1 && !h1.dataset.linked) {
+      h1.dataset.linked = '1';
+      h1.style.cursor = 'pointer';
+      h1.title = 'Ir al Muro';
+      h1.onclick = function(){ location.href = 'muro.html'; };
+    }
+    rebuilding = false;
+  }
+
+  function schedule(){
+    if (rebuilding || scheduled) return;
+    scheduled = true;
+    setTimeout(function(){ scheduled = false; rebuild(); }, 400);
+  }
+
+  function init(){
+    rebuild();
+    waitForSupabase(async function(){
+      var client = getClient();
+      var s = await client.auth.getSession();
+      if (!s.data.session) return;
+      var a = await client.rpc('am_i_superadmin');
+      var m = await client.rpc('am_i_moderator');
+      flags.admin = !!a; flags.staff = !!(a || m);
+      rebuild();
+    });
+    var header = document.querySelector('header');
+    if (header && window.MutationObserver) {
+      new MutationObserver(function(){ if (!rebuilding) schedule(); }).observe(header, { childList: true, subtree: true });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
