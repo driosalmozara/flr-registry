@@ -114,8 +114,8 @@ async function render() {
             <input type="checkbox" id="wallow" checked style="width:auto;margin:0;"/> Permitir comentarios
           </label>
         </div>
-        <p style="margin:10px 0 0;"><button onclick="submitPost()">Enviar a aprobación</button></p>
-        <p class="small" style="margin:6px 0 0;">Toda publicación es revisada por el Staff${'' /* los sumisos con dueña además por su Dueña */}.</p>
+        <p style="margin:10px 0 0;"><button onclick="submitPost()">${(isSuper || isMod) ? 'Publicar ahora' : 'Enviar a aprobación'}</button></p>
+        <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
       </div>`;
   }
 
@@ -216,7 +216,7 @@ async function submitPost() {
   }
   const { data } = await db.rpc('muro_submit', { p_body: body, p_media_url: url, p_media_type: type, p_allow_comments: allow });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
-  alert('🧱 Enviada. Será visible cuando el Staff la apruebe' );
+  alert(data.status === 'approved' ? '🧱 Publicado en el muro.' : '🧱 Enviada. Será visible cuando el Staff la apruebe.');
   pendingFile = null;
   await render();
 }
