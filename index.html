@@ -298,8 +298,12 @@
     async function loadProfileAndRender() {
       const { data, error } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
       if (error) { alert(error.message); show('auth'); return; }
-           currentProfile = data;
+      currentProfile = data;
       if (!currentProfile) { show('profile-setup'); return; }
+      if (currentProfile.approved && !new URLSearchParams(window.location.search).has('stay')) {
+        window.location.replace('muro.html');
+        return;
+      }
 
       if (!currentProfile.approved) {
         document.getElementById('dashboard').innerHTML = `
@@ -411,7 +415,7 @@
       } catch (e) {}
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
-      window.location.reload();
+      window.location.href = 'muro.html';
     }
 
         function roleGenderSync(prefix) {
