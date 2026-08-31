@@ -700,9 +700,10 @@ l.textContent = 'Galería personal';      l.style.color = '#d4af37';
     '.qnav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}' +
     '.qwrap{position:relative;display:inline-block}' +
     '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
-    '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:10px;min-width:200px;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
+    '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;min-width:190px;max-height:min(70vh,520px);overflow-y:auto;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
     '.qmenu.open{display:flex}' +
-    '.qmenu a{padding:7px 10px;border-radius:8px}' +
+    '.qmenu a{padding:5px 9px;border-radius:8px;font-size:12px}' +
+    '.qmenu::-webkit-scrollbar{width:6px}.qmenu::-webkit-scrollbar-thumb{background:rgba(212,175,55,.45);border-radius:3px}.qmenu::-webkit-scrollbar-track{background:transparent}' +
     '.qmenu a:hover{background:rgba(212,175,55,.12)}' +
     '@media (max-width:760px){header nav.mob-open .qwrap{display:inline-block !important}header nav.mob-open .qmenu{position:static !important;box-shadow:none !important}}';
   document.head.appendChild(st);
