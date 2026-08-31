@@ -900,26 +900,42 @@
 
     function buildTourSteps() {
       const dom = currentProfile.role === 'dominant';
-      return [
+      const steps = [
         { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Supremacía Femenina: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
-        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'El salón principal: contempla a las Dominantes y sumisos de la casa, sus carnets y galerías públicas. Las Dominantes pueden solicitar sumisos libres desde aquí.' },        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
+        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'Contempla a las Dominantes y sumisos de la casa, sus carnets y galerías. Por defecto todos son visibles; cada miembro puede ocultarse o mostrarse desde “Mi perfil”.' },
+        { sel: 'a[href="muro.html"]', t: 'Muro de la casa', x: 'Publica textos, imágenes, videos y archivos al estilo red social: da 👍, comenta y responde. Toda publicación pasa por aprobación del Staff — y también de tu Dueña, si eres sumiso de su propiedad.' },
+        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
         { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
-        { sel: 'a[href="chat.html"]', t: 'Chat', x: 'El canal público #supremacia. El botón brilla en dorado cuando hay mensajes sin leer.' },
+        { sel: 'a[href="chat.html"]', t: 'Chat y salas', x: 'Además del salón general hay salas públicas, privadas y de Staff: crea la tuya, usa emojis, GIFs y adjuntos. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
-        { sel: 'a[href="notificaciones.html"]', t: 'Notificaciones', x: 'Todo lo que te ocurre: solicitudes, disciplina, cesiones, subastas, aprobaciones del Staff.' },
+        { sel: 'a[href="notificaciones.html"]', t: 'Notificaciones', x: 'Todo lo que te ocurre: solicitudes, disciplina, cesiones, subastas, aprobaciones del Staff y avisos del muro.' },
         { sel: 'a[href="avatar.html"]', t: 'Mi avatar', x: 'Cambia tu fotografía de perfil.' },
-        { sel: 'a[href="disciplina.html"]', t: 'Disciplina', x: 'Recompensas, castigos, mordaza y castidad con contador de días en vivo.' },
+        { sel: 'a[href="disciplina.html"]', t: 'Disciplina', x: 'Recompensas, castigos, mordaza y castidad con contador en vivo. Mientras dure la mordaza, ni el chat ni el muro aceptan tu voz.' },
         { sel: 'a[href="contrato.html"]', t: 'Contrato', x: 'El contrato simbólico entre Dominante y sumiso, con anexos de cesión y descarga en PDF.' },
         { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
         { sel: 'a[href="subastas.html"]', t: 'Subastas', x: 'Las Dominantes pueden subastar a sus sumisos; las demás pujan con coronas ♛.' },
         { sel: 'a[href="cesiones.html"]', t: 'Cesiones', x: 'Cede o recibe sumisos entre Dominantes, de forma temporal o indefinida.' },
-        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
-        { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes y su visibilidad.' },
-        { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Aquí gestionas solicitudes, sumisos, país y redes, marcas de subasta y carnets.' : 'Aquí ves tu estado, tu Dominante, tu registro, carnet y las solicitudes recibidas.' },
-        { sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' }
-      ].filter(s => document.querySelector(s.sel));
+        { sel: 'a[href="mi-galeria.html"]', t: 'Galería personal', x: 'Tu galería de fotos; tú (o tu Dominante) eligen cuáles se ven en el Salón de miembros.' },
+        { sel: '#install-btn', t: 'Instalar en tu móvil', x: 'Lleva la casa como aplicación propia: pantalla completa, ícono de corona y notificaciones push en Android o iPhone.' },
+        { sel: '#share-fab', t: 'Compartir', x: 'Difunde la plataforma por WhatsApp, Telegram, X, Facebook, correo o copiando el enlace.' },
+        { sel: '#my-profile-card', t: 'Mi perfil', x: 'Edita tu nombre público, bio, país, idioma, género, redes… y elige si tu perfil se muestra en el Salón de miembros.' },
+        { sel: '#dashboard', t: dom ? 'Tu panel de mando' : 'Tu panel de sumiso', x: dom ? 'Gestiona solicitudes recibidas y enviadas —puedes retirar las tuyas mientras no sean aceptadas—, sumisos, marcas de subasta y carnets.' : 'Ves tu estado, tu Dominante, tu registro y carnet; puedes cancelar tu solicitud mientras no sea aceptada.' }
+      ];
+      if (document.querySelector('a[href="aprobaciones.html"]')) {
+        steps.push(
+          { sel: 'a[href="aprobaciones.html"]', t: 'Aprobaciones y cerrojos', x: 'El Staff aprueba miembros y publicaciones del muro. La Administración maneja los dos cerrojos: el de registros y el de aprobación de Dominantes.' },
+          { sel: 'a[href="moderacion.html"]', t: 'Moderación', x: 'Silencios, mordazas, expulsiones de sala y disciplina de la comunidad.' }
+        );
+      }
+      steps.push({ sel: 'button[onclick="logout()"]', t: 'Cerrar sesión', x: 'Sal cuando quieras. Recuerda: tu consentimiento es siempre revocable.' });
+      return steps.filter(function(s){
+        const el = document.querySelector(s.sel);
+        if (!el) return false;
+        if (s.sel === '#install-btn' && el.classList.contains('hidden')) return false;
+        return true;
+      });
     }
-
+    
     function offerTour() {
       const ov = document.createElement('div');
       ov.id = 'tour-offer';
