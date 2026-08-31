@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Muro — Supremacía Femenina</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:760px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+textarea,input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:5px 0 10px;font-family:inherit}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.mini{background:transparent;color:#71717a;border:none;padding:2px 6px;font-size:12px}
+button.mini:hover{color:#dc2626}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.post{border:1px solid var(--line);border-radius:14px;background:#0b0b12;padding:14px;margin-bottom:14px}
+.post .head{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.ava{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#161625}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:11px}
+.badge.wait{border-color:#f59e0b;color:#f59e0b}
+.badge.no{border-color:#dc2626;color:#dc2626}
+.media img{max-width:100%;border-radius:10px;margin:6px 0}
+.media video{max-width:100%;border-radius:10px;margin:6px 0}
+.acts{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.acts button{background:transparent;color:#a1a1aa;border:1px solid var(--line)}
+.acts button.liked{color:var(--gold);border-color:var(--gold)}
+.cmt{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+.cmt .small b{color:var(--gold)}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">🧱 Muro</h1>
+  <div><a class="navlink" href="index.html">Inicio</a><a class="navlink" href="chat.html">Chat</a></div>
+</header>
+<main><div id="content" class="card">Cargando...</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null, isSuper = false, isMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+
+  const [sf, mf, bl, mz, subs] = await Promise.all([
+    db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'),
+    db.from('muro_blocks').select('*').eq('user_id', me).maybeSingle(),
+    db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle(),
+    db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed')
+  ]);
+  isSuper = !!sf; isMod = !!mf;
+  myBlock = bl.data;
+  myMuzzled = !!(mz.data && mz.data.is_muzzled);
+  mySubIds = new Set((subs.data || []).map(x => x.submissive_id));
+
+  await render();
+
+  db.channel('muro-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_posts' }, () => render())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_comments' }, () => render())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_likes' }, () => render())
+    .subscribe();
+}
+
+async function render() {
+  const content = document.getElementById('content');
+  let html = '';
+
+  if (isSuper || isMod) {
+    const { data: blocks } = await db.from('muro_blocks').select('*, profiles!muro_blocks_user_id_fkey(display_name)').order('created_at', { ascending: false });
+    if (blocks && blocks.length) {
+      html += `<div class="card"><h3 style="margin-top:0;">🚫 Bloqueados para publicar</h3>`;
+      blocks.forEach(b => {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);">
+          <span>⛓ ${esc(b.profiles?.display_name || '?')} <span class="small">· por ${esc(b.blocked_by_role)}</span></span>
+          <button class="ghost" onclick="unblock('${b.user_id}')">✓ Desbloquear</button>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  if (myMuzzled) {
+    html += `<div class="card"><p class="small" style="color:#dc2626;">🔇 Estás amordazado: no puedes enviar publicaciones mientras dure la mordaza.</p></div>`;
+  } else if (myBlock) {
+    html += `<div class="card"><p class="small" style="color:#dc2626;">🚫 El Staff te ha bloqueado temporalmente para publicar.${myBlock.reason ? ' Motivo: ' + esc(myBlock.reason) : ''}</p></div>`;
+  } else {
+    html += `
+      <div class="card">
+        <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
+        <textarea id="wbody" rows="3" placeholder="Comparte con la casa..."></textarea>
+        <input type="file" id="wfile" style="display:none" onchange="pickFile(this)"/>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="ghost" onclick="document.getElementById('wfile').click()">📎 Adjuntar</button>
+          <span id="wfilechip" class="small"></span>
+          <label class="small" style="display:flex;gap:6px;align-items:center;margin-left:auto;">
+            <input type="checkbox" id="wallow" checked style="width:auto;margin:0;"/> Permitir comentarios
+          </label>
+        </div>
+        <p style="margin:10px 0 0;"><button onclick="submitPost()">Enviar a aprobación</button></p>
+        <p class="small" style="margin:6px 0 0;">Toda publicación es revisada por el Staff${'' /* los sumisos con dueña además por su Dueña */}.</p>
+      </div>`;
+  }
+
+  const { data: posts } = await db.from('muro_posts')
+    .select('*, author:profiles!muro_posts_author_id_fkey(id, display_name, role, avatar_url)')
+    .order('created_at', { ascending: false }).limit(120);
+  const list = (posts || []).filter(p =>
+    p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id)
+  );
+
+  const ids = list.map(p => p.id);
+  let likes = [], comments = [];
+  if (ids.length) {
+    const [lk, cm] = await Promise.all([
+      db.from('muro_likes').select('*').in('post_id', ids),
+      db.from('muro_comments').select('*').in('post_id', ids).order('created_at')
+    ]);
+    likes = lk.data || []; comments = cm.data || [];
+  }
+
+  html += '<h3>🏛 Muro de la casa</h3>';
+  if (!list.length) html += '<p class="small">Aún no hay publicaciones. Sé la primera voz del muro.</p>';
+
+  list.forEach(p => {
+    const myLike = likes.find(l => l.post_id === p.id && l.user_id === me);
+    const count = likes.filter(l => l.post_id === p.id).length;
+    const cmts = comments.filter(c => c.post_id === p.id);
+    const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id);
+    const canStaffAct = (isSuper || isMod) && p.status === 'pending';
+    const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
+    const canBlock = (isSuper) || (isMod && p.author?.role === 'submissive' && !mySubIds.has(p.author_id));
+
+    let badge = '';
+    if (p.status === 'pending') badge = '<span class="badge wait">⏳ espera Staff</span>';
+    if (p.status === 'owner_pending') badge = '<span class="badge wait">⏳ espera a su Dueña</span>';
+    if (p.status === 'rejected') badge = '<span class="badge no">❌ rechazada</span>';
+
+    let media = '';
+    if (p.media_url) {
+      if (p.media_type === 'image') media = `<div class="media"><img src="${esc(p.media_url)}"/></div>`;
+      else if (p.media_type === 'video') media = `<div class="media"><video src="${esc(p.media_url)}" controls></video></div>`;
+      else media = `<div class="media"><a href="${esc(p.media_url)}" target="_blank" style="color:var(--gold);">📄 Archivo adjunto</a></div>`;
+    }
+
+    html += `
+      <div class="post">
+        <div class="head">
+          <img class="ava" src="${esc(p.author?.avatar_url || '')}" onerror="this.style.visibility='hidden'"/>
+          <div>
+            <b style="color:${p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8'}">${p.author?.role === 'dominant' ? '♛' : '⛓'} ${esc(p.author?.display_name || '?')}</b>
+            <div class="small">${hh(p.created_at)} ${badge}</div>
+          </div>
+        </div>
+        <div style="white-space:pre-wrap;">${esc(p.body || '')}</div>
+        ${media}
+        <div class="acts">
+          <button class="${myLike ? 'liked' : ''}" onclick="toggleLike('${p.id}')">👍 ${count || ''}</button>
+          ${p.allow_comments ? `<button onclick="document.getElementById('ci_${p.id}').focus()">💬 ${cmts.length || ''}</button>` : '<button disabled>💬 desactivados</button>'}
+          ${canStaffAct ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
+          ${canOwnerAct ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
+          ${canDelete ? `<button onclick="delPost('${p.id}')">🗑 Eliminar</button>` : ''}
+          ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
+        </div>
+        <div class="cmt">
+          ${cmts.map(c => `
+            <p class="small" style="margin:6px 0;"><b>${esc(c.author_id === me ? 'Tú' : '')}</b>${c.author_id !== me ? '' : ''}${esc('')}<span style="color:#d4d4d8;">${esc(c.body)}</span>
+            ${(c.author_id === me || isSuper || (isMod)) ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
+          `).join('')}
+          ${p.allow_comments && p.status === 'approved' ? `
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
+              <button onclick="addComment('${p.id}')">Enviar</button>
+            </div>` : ''}
+        </div>
+      </div>`;
+  });
+
+  content.innerHTML = html;
+}
+
+function pickFile(input){
+  const f = input.files[0]; if (!f) return;
+  pendingFile = f;
+  document.getElementById('wfilechip').textContent = '📎 ' + f.name;
+}
+
+async function submitPost() {
+  const body = document.getElementById('wbody').value.trim();
+  const allow = document.getElementById('wallow').checked;
+  if (!body && !pendingFile) return alert('Escribe algo o adjunta un archivo.');
+  let url = null, type = null;
+  if (pendingFile) {
+    const path = me + '/' + Date.now() + '_' + pendingFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+    const { error } = await db.storage.from('muro').upload(path, pendingFile);
+    if (error) return alert(error.message);
+    url = db.storage.from('muro').getPublicUrl(path).data.publicUrl;
+    type = pendingFile.type.startsWith('image') ? 'image' : pendingFile.type.startsWith('video') ? 'video' : 'file';
+  }
+  const { data } = await db.rpc('muro_submit', { p_body: body, p_media_url: url, p_media_type: type, p_allow_comments: allow });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
+  alert('🧱 Enviada. Será visible cuando el Staff la apruebe' );
+  pendingFile = null;
+  await render();
+}
+
+async function toggleLike(id) {
+  const { data: ex } = await db.from('muro_likes').select('*').eq('post_id', id).eq('user_id', me).maybeSingle();
+  if (ex) await db.from('muro_likes').delete().eq('post_id', id).eq('user_id', me);
+  else await db.from('muro_likes').insert({ post_id: id, user_id: me });
+  await render();
+}
+
+async function addComment(id) {
+  const input = document.getElementById('ci_' + id);
+  const body = input.value.trim();
+  if (!body) return;
+  const { error } = await db.from('muro_comments').insert({ post_id: id, author_id: me, body });
+  if (error) return alert(error.message);
+  await render();
+}
+
+async function delComment(id) {
+  const { data } = await db.rpc('muro_delete_comment', { comment_id: id });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo eliminar.');
+  await render();
+}
+
+async function delPost(id) {
+  let reason = null;
+  if (isSuper || isMod) reason = prompt('Motivo opcional a enviar al autor (déjalo vacío para no avisar):');
+  const { data } = await db.rpc('muro_delete_post', { post_id: id, reason });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo eliminar.');
+  await render();
+}
+
+async function staffApprove(id) { const { data } = await db.rpc('muro_staff_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function staffReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_staff_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
+async function ownerApprove(id) { const { data } = await db.rpc('muro_owner_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function ownerReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_owner_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
+
+async function blockUser(uid) {
+  const r = prompt('Motivo del bloqueo (opcional):');
+  const { data } = await db.rpc('muro_block', { target: uid, reason: r });
+  if (!data?.ok) return alert(data?.error);
+  await render();
+}
+async function unblock(uid) { const { data } = await db.rpc('muro_unblock', { target: uid }); if (!data?.ok) alert(data?.error); await render(); }
+
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
