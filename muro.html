@@ -130,7 +130,7 @@ async function init() {
     db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
     db.from('app_chat_mods').select('user_id').eq('user_id', me).maybeSingle()
   ]);
-  isSuper = !!sf; isMod = !!mf; isChatMod = !!cm.data;
+  isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cm.data;
   myBlock = bl.data;
   myMuzzled = !!(mz.data && mz.data.is_muzzled);
   mySubIds = new Set((subs.data || []).map(x => x.submissive_id));
