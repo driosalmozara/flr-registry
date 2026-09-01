@@ -1179,10 +1179,18 @@ body.view-login #login{
 </style>
 <script>
 (function(){
+  function visible(el){ return el && el.offsetParent !== null; }
   function upd(){
-    var l = document.getElementById('login');
-    var on = l && !l.classList.contains('hidden');
-    document.body.classList.toggle('view-login', !!on);
+    var on = false;
+    var heads = document.querySelectorAll('h1,h2,h3');
+    for (var i = 0; i < heads.length; i++) {
+      if (/Iniciar sesi/i.test(heads[i].textContent)) {
+        var card = heads[i].closest('.card') || heads[i].parentElement;
+        on = visible(card);
+        break;
+      }
+    }
+    document.body.classList.toggle('view-login', on);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', upd);
   else upd();
