@@ -1163,5 +1163,31 @@ body{top:0!important}
 #impbar{display:flex}
 #impbar.hidden{display:none!important}
 </style>
+  <style>
+/* ══ Telón de la puerta de entrada ══ */
+body.view-login{
+  background:
+    linear-gradient(rgba(8,5,9,.72), rgba(8,5,9,.9)),
+    url('portada-entrada.jpg') center/cover no-repeat fixed !important;
+}
+body.view-login #login{
+  background:rgba(13,10,14,.78) !important;
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(212,175,55,.45) !important;
+  box-shadow:0 30px 90px rgba(0,0,0,.75), 0 0 60px rgba(212,175,55,.08) !important;
+}
+</style>
+<script>
+(function(){
+  function upd(){
+    var l = document.getElementById('login');
+    var on = l && !l.classList.contains('hidden');
+    document.body.classList.toggle('view-login', !!on);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', upd);
+  else upd();
+  setInterval(upd, 600);
+})();
+</script>
 </body>
 </html>
