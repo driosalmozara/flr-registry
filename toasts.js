@@ -565,8 +565,8 @@ function getClient(){
       if (!s.data.session) return;
       var a = await client.rpc('am_i_superadmin');
       var m = await client.rpc('am_i_moderator');
-      flags.admin = !!a; flags.staff = !!(a || m);
-      rebuild();
+      var r = await client.rpc('am_i_superadmin');
+      isAdmin = !!(r && r.data);
     });
     var header = document.querySelector('header');
     if (header && window.MutationObserver) {
