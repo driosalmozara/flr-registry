@@ -210,6 +210,7 @@ async function render() {
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
+    window.__posts = list;
   const ids = list.map(p => p.id);
   let comments = [];
   if (ids.length) {
@@ -307,7 +308,7 @@ async function render() {
 
 function commentHTML(c, all) {
   const replies = all.filter(x => x.parent_id === c.id);
-  const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive');
+  const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id);
   return `
     <div style="margin:8px 0;">
       <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
@@ -325,7 +326,7 @@ function commentHTML(c, all) {
         <div class="reply">
           <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
           <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
-          ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive')) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
+          ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
           ${rbar('comment', r.id, true)}
         </div>`).join('')}
     </div>`;
@@ -394,7 +395,19 @@ async function delPost(id) {
   await render();
 }
 
-async function staffApprove(id) { const { data } = await db.rpc('muro_staff_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function staffApprove(id) {
+  const p = (window.__posts || []).find(x => x.id === id);
+  let bypass = false;
+  if (p && p.author?.role === 'submissive' && isSuper) {
+    const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
+    if (rel) {
+      bypass = confirm('⚠ Este sumiso tiene Dueña.\n\nSi apruebas como Administración, la publicación entrará directa al muro y su Dueña NO podrá confirmarla (aunque sí conservará el poder de eliminarla).\n\n¿Confirmas la aprobación administrativa?');
+    }
+  }
+  const { data } = await db.rpc('muro_staff_approve', { post_id: id, bypass_owner: bypass });
+  if (!data?.ok) alert(data?.error);
+  await render();
+}
 async function staffReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_staff_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
 async function ownerApprove(id) { const { data } = await db.rpc('muro_owner_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
 async function ownerReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_owner_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
