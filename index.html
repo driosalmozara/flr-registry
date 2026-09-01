@@ -1277,5 +1277,34 @@ body.view-login #login{
   else build();
 })();
 </script>
+  <script>
+/* ══ Ocultar apodo de admin a miembros que no son Staff ══ */
+(function(){
+  async function hideIfNotStaff(){
+    for (var i = 0; i < 80; i++) {
+      await new Promise(r => setTimeout(r, 250));
+      var prof = (typeof currentProfile !== 'undefined') ? currentProfile : null;
+      if (!prof) continue;
+      
+      const [adm, mod, chatmod] = await Promise.all([
+        db.from('app_admins').select('user_id').eq('user_id', prof.id).maybeSingle(),
+        db.from('app_moderators').select('user_id').eq('user_id', prof.id).maybeSingle(),
+        db.from('app_chat_mods').select('user_id').eq('user_id', prof.id).maybeSingle()
+      ]);
+      const isStaff = !!(adm.data || mod.data || chatmod.data);
+      
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(function(card){
+        if (/Apodo de administrador/i.test(card.textContent) && !isStaff) {
+          card.style.display = 'none';
+        }
+      });
+      if (isStaff || cards.length > 0) break;
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideIfNotStaff);
+  else hideIfNotStaff();
+})();
+</script>
 </body>
 </html>
