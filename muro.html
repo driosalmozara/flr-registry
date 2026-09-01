@@ -14,33 +14,35 @@ main{max-width:760px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .small{color:#a1a1aa;font-size:13px}
 textarea,input{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:5px 0 10px;font-family:inherit}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;min-height:0 !important;letter-spacing:.02em !important}
 button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold)}
-button.mini{background:transparent;color:#71717a;border:none;padding:2px 6px;font-size:12px}
-button.mini:hover{color:#dc2626}
+button.mini{background:transparent !important;color:#71717a !important;border:none !important;padding:0 5px !important;font-size:11px !important;font-weight:400 !important}
+button.mini:hover{color:#dc2626 !important}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .post{border:1px solid var(--line);border-radius:14px;background:#0b0b12;padding:14px;margin-bottom:14px}
 .post .head{display:flex;gap:10px;align-items:center;margin-bottom:8px}
-.ava{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#161625}
+.ava{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#161625;flex:none}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:11px}
 .badge.wait{border-color:#f59e0b;color:#f59e0b}
 .badge.no{border-color:#dc2626;color:#dc2626}
 .media img{max-width:100%;border-radius:10px;margin:6px 0}
 .media video{max-width:100%;border-radius:10px;margin:6px 0}
-.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
-.acts button{background:transparent;color:#a1a1aa;border:1px solid var(--line)}
-.rbar{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
-.rbtn{background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:#a1a1aa;font-size:14px;cursor:pointer}
-.rbtn:hover{border-color:var(--gold)}
-.rbtn.mine{border-color:var(--gold);color:var(--gold);background:rgba(212,175,55,.1)}
-.rbtn span{margin-left:5px;font-size:11px;color:inherit}
-.rbar.sm{margin:4px 0}
-.rbar.sm .rbtn{padding:1px 8px;font-size:12px}
+.acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.acts button{background:transparent !important;color:#a1a1aa !important;border:1px solid var(--line) !important;padding:4px 10px !important;font-size:12px !important;font-weight:500 !important;border-radius:9px !important}
+.acts button:hover{color:var(--gold) !important;border-color:var(--gold) !important}
+.rbar{display:flex;gap:5px;margin:6px 0;flex-wrap:wrap}
+.rbtn{background:transparent !important;border:1px solid var(--line) !important;border-radius:999px !important;padding:2px 9px !important;color:#a1a1aa !important;font-size:12px !important;font-weight:400 !important;line-height:1.4 !important;cursor:pointer}
+.rbtn:hover{border-color:var(--gold) !important}
+.rbtn.mine{border-color:var(--gold) !important;color:var(--gold) !important;background:rgba(212,175,55,.1) !important}
+.rbtn span{margin-left:4px;font-size:10px;color:inherit}
+.rbar.sm{margin:3px 0}
+.rbar.sm .rbtn{padding:1px 7px !important;font-size:11px !important}
 .cmt{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
 .cmt .small b{color:var(--gold)}
 .reply{margin-left:26px;border-left:2px solid var(--line);padding-left:10px;margin-top:6px}
-.linkbtn{background:transparent;border:none;color:#a1a1aa;font-size:12px;cursor:pointer;padding:2px 6px}
-.linkbtn:hover{color:var(--gold)}
+.linkbtn{background:transparent !important;border:none !important;color:#a1a1aa !important;font-size:11px !important;cursor:pointer;padding:2px 6px !important;font-weight:400 !important}
+.linkbtn:hover{color:var(--gold) !important}
+.emojibtn{background:transparent !important;border:1px solid var(--line) !important;color:#fff !important;padding:3px 8px !important;font-size:13px !important;border-radius:9px !important;cursor:pointer}
 #emojipop{position:absolute;z-index:99999;display:none;grid-template-columns:repeat(8,32px);gap:2px;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 #emojipop span{cursor:pointer;font-size:19px;text-align:center;border-radius:8px}
 #emojipop span:hover{background:rgba(212,175,55,.15)}
@@ -62,9 +64,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const RMAP = [['like','👍'],['love','❤️'],['down','👎'],['angry','😡']];
-const EMOJIS = ['😀','😂','😍','😘','😎','🥰','😳','😢','😭','😡','🤬','','👍','👎','🙏','👏','💪','🔥','❤️','💛','💜','🖤','💋','💎','👑','','🌹','🍷','','✨','🤍','🖤'];
+const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😢','😭','😡','🤬','👍','👎','🙏','','💪','','❤️','💛','💜','🖤','💋','','👑','','🍷','✨','🤍','⛓','🐕','🦮'];
 
-let me = null, isSuper = false, isMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
+let me = null, isSuper = false, isMod = false, isChatMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
 let reactions = [];
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -121,13 +123,14 @@ async function init() {
   if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
 
-  const [sf, mf, bl, mz, subs] = await Promise.all([
+  const [sf, mf, bl, mz, subs, cm] = await Promise.all([
     db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'),
     db.from('muro_blocks').select('*').eq('user_id', me).maybeSingle(),
     db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle(),
-    db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed')
+    db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
+    db.from('app_chat_mods').select('user_id').eq('user_id', me).maybeSingle()
   ]);
-  isSuper = !!sf; isMod = !!mf;
+  isSuper = !!sf; isMod = !!mf; isChatMod = !!cm.data;
   myBlock = bl.data;
   myMuzzled = !!(mz.data && mz.data.is_muzzled);
   mySubIds = new Set((subs.data || []).map(x => x.submissive_id));
@@ -169,7 +172,7 @@ async function render() {
         <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
         <textarea id="wbody" rows="3" placeholder="Comparte con la casa..."></textarea>
         <div style="display:flex;gap:6px;margin:-4px 0 8px;">
-          <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'wbody')">😊</button>
+          <button class="emojibtn" onclick="openEmoji(this,'wbody')">😊</button>
         </div>
         <input type="file" id="wfile" style="display:none" onchange="pickFile(this)"/>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -178,6 +181,15 @@ async function render() {
           <label class="small" style="display:flex;gap:6px;align-items:center;margin-left:auto;">
             <input type="checkbox" id="wallow" checked style="width:auto;margin:0;"/> Permitir comentarios
           </label>
+          ${(isSuper || isMod) ? `
+          <label class="small" style="display:flex;gap:6px;align-items:center;">
+            Identidad:
+            <select id="was" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
+              <option value="user">Mi nombre</option>
+              <option value="staff">🛡 Staff Queendomland</option>
+              ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
+            </select>
+          </label>` : ''}
         </div>
         <p style="margin:10px 0 0;"><button onclick="submitPost()">${(isSuper || isMod) ? 'Publicar ahora' : 'Enviar a aprobación'}</button></p>
         <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
@@ -191,10 +203,17 @@ async function render() {
     p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id)
   );
 
+  list.sort((a, b) => {
+    if (a.pinned_by && !b.pinned_by) return -1;
+    if (!a.pinned_by && b.pinned_by) return 1;
+    if (a.pinned_by && b.pinned_by) return new Date(b.pinned_at) - new Date(a.pinned_at);
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+
   const ids = list.map(p => p.id);
   let comments = [];
   if (ids.length) {
-    const cm = await db.from('muro_comments').select('*').in('post_id', ids).order('created_at');
+    const cm = await db.from('muro_comments').select('*, author:profiles!muro_comments_author_id_fkey(display_name, role)').in('post_id', ids).order('created_at');
     comments = cm.data || [];
   }
   const allIds = ids.concat(comments.map(c => c.id));
@@ -230,10 +249,10 @@ async function render() {
   list.forEach(p => {
     const cmts = comments.filter(c => c.post_id === p.id);
     const tops = cmts.filter(c => !c.parent_id);
-    const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id);
+    const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.author?.role === 'submissive');
     const canStaffAct = (isSuper || isMod) && p.status === 'pending';
     const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
-    const canBlock = (isSuper) || (isMod && p.author?.role === 'submissive' && !mySubIds.has(p.author_id));
+    const canBlock = (isSuper) || ((isMod || isChatMod) && p.author?.role === 'submissive' && !mySubIds.has(p.author_id));
 
     let badge = '';
     if (p.status === 'pending') badge = '<span class="badge wait">⏳ espera Staff</span>';
@@ -250,10 +269,14 @@ async function render() {
     html += `
       <div class="post">
         <div class="head">
-          <img class="ava" src="${esc(p.author?.avatar_url || '')}" onerror="this.style.visibility='hidden'"/>
+          ${p.post_as === 'anon'
+            ? '<div class="ava" style="display:flex;align-items:center;justify-content:center;color:#a1a1aa;">👤</div>'
+            : (p.post_as === 'staff'
+              ? '<div class="ava" style="display:flex;align-items:center;justify-content:center;color:#f59e0b;">🛡</div>'
+              : `<img class="ava" src="${esc(p.author?.avatar_url || '')}" onerror="this.style.visibility='hidden'"/>`)}
           <div>
-            <b style="color:${p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8'}">${p.author?.role === 'dominant' ? '♛' : '⛓'} ${esc(p.author?.display_name || '?')}</b>
-            <div class="small">${hh(p.created_at)} ${badge}</div>
+            ${p.post_as === 'anon' ? '' : `<b style="color:${p.post_as === 'staff' ? '#f59e0b' : (p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${p.post_as === 'staff' ? '🛡 Staff Queendomland' : (p.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(p.author?.display_name || '?')}</b>`}
+            <div class="small">${hh(p.created_at)} ${badge}${p.pinned_by ? ' · 📌 fijada' : ''}</div>
           </div>
         </div>
         <div style="white-space:pre-wrap;">${esc(p.body || '')}</div>
@@ -265,13 +288,14 @@ async function render() {
           ${canOwnerAct ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${canDelete ? `<button onclick="delPost('${p.id}')">🗑 Eliminar</button>` : ''}
           ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
+          ${(isSuper || isMod) ? (p.pinned_by ? `<button onclick="unpinPost('${p.id}')">📌 Desfijar</button>` : `<button onclick="pinPost('${p.id}')">📌 Fijar</button>`) : ''}
         </div>
         <div class="cmt">
           ${tops.map(c => commentHTML(c, cmts)).join('')}
           ${p.allow_comments && p.status === 'approved' ? `
             <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
               <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
-              <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
+              <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
               <button onclick="addComment('${p.id}')">Enviar</button>
             </div>` : (p.status === 'approved' ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
         </div>
@@ -283,25 +307,25 @@ async function render() {
 
 function commentHTML(c, all) {
   const replies = all.filter(x => x.parent_id === c.id);
-  const canDel = c.author_id === me || isSuper || isMod;
+  const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive');
   return `
     <div style="margin:8px 0;">
-      <p class="small" style="margin:4px 0;"><b>${esc(c.author_id === me ? 'Tú' : '')}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
+      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
       <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
       ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
       ${rbar('comment', c.id, true)}
       <button class="linkbtn" onclick="toggleReply('${c.id}')">↩ Responder</button>
       <div id="rb_${c.id}" class="hidden" style="display:flex;gap:6px;margin:6px 0 6px 26px;align-items:center;">
         <input id="ri_${c.id}" placeholder="Responder..." style="margin:0;"/>
-        <button class="emojibtn" style="background:transparent;border:1px solid var(--line);color:#fff;" onclick="openEmoji(this,'ri_${c.id}')">😊</button>
+        <button class="emojibtn" onclick="openEmoji(this,'ri_${c.id}')">😊</button>
         <button onclick="addReply('${c.id}','${c.post_id}')">Enviar</button>
         <button class="linkbtn" onclick="toggleReply('${c.id}')">Cancelar</button>
       </div>
       ${replies.map(r => `
         <div class="reply">
-          <p class="small" style="margin:4px 0;"><b>${esc(r.author_id === me ? 'Tú' : '')}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
+          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
           <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
-          ${(r.author_id === me || isSuper || isMod) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
+          ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive')) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
           ${rbar('comment', r.id, true)}
         </div>`).join('')}
     </div>`;
@@ -321,6 +345,7 @@ function pickFile(input){
 async function submitPost() {
   const body = document.getElementById('wbody').value.trim();
   const allow = document.getElementById('wallow').checked;
+  const as = document.getElementById('was')?.value || 'user';
   if (!body && !pendingFile) return alert('Escribe algo o adjunta un archivo.');
   let url = null, type = null;
   if (pendingFile) {
@@ -330,7 +355,7 @@ async function submitPost() {
     url = db.storage.from('muro').getPublicUrl(path).data.publicUrl;
     type = pendingFile.type.startsWith('image') ? 'image' : pendingFile.type.startsWith('video') ? 'video' : 'file';
   }
-  const { data } = await db.rpc('muro_submit', { p_body: body, p_media_url: url, p_media_type: type, p_allow_comments: allow });
+  const { data } = await db.rpc('muro_submit', { p_body: body, p_media_url: url, p_media_type: type, p_allow_comments: allow, p_as: as });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
   alert(data.status === 'approved' ? '🧱 Publicado en el muro.' : '🧱 Enviada. Será visible cuando el Staff la apruebe.');
   pendingFile = null;
@@ -341,7 +366,7 @@ async function addComment(postId) {
   const input = document.getElementById('ci_' + postId);
   const body = input.value.trim();
   if (!body) return;
-  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body });
+  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body, comment_as: document.getElementById('was')?.value || 'user' });
   if (error) return alert(error.message);
   await render();
 }
@@ -350,7 +375,7 @@ async function addReply(commentId, postId) {
   const input = document.getElementById('ri_' + commentId);
   const body = input.value.trim();
   if (!body) return;
-  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body, parent_id: commentId });
+  const { error } = await db.from('muro_comments').insert({ post_id: postId, author_id: me, body, parent_id: commentId, comment_as: document.getElementById('was')?.value || 'user' });
   if (error) return alert(error.message);
   await render();
 }
@@ -373,6 +398,8 @@ async function staffApprove(id) { const { data } = await db.rpc('muro_staff_appr
 async function staffReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_staff_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
 async function ownerApprove(id) { const { data } = await db.rpc('muro_owner_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
 async function ownerReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_owner_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
+async function pinPost(id) { const { data } = await db.rpc('muro_pin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function unpinPost(id) { const { data } = await db.rpc('muro_unpin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
 
 async function blockUser(uid) {
   const r = prompt('Motivo del bloqueo (opcional):');
@@ -395,24 +422,6 @@ function googleTranslateElementInit() {
 .goog-te-banner-frame{display:none!important}
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
-</style>
-<style>
-/* ══ Botones finos del Muro ══ */
-button{min-height:0 !important;letter-spacing:.02em !important}
-.rbtn{background:transparent !important;border:1px solid var(--line) !important;border-radius:999px !important;padding:2px 9px !important;color:#a1a1aa !important;font-size:12px !important;font-weight:400 !important;line-height:1.4 !important}
-.rbtn:hover{border-color:var(--gold) !important}
-.rbtn.mine{border-color:var(--gold) !important;color:var(--gold) !important;background:rgba(212,175,55,.1) !important}
-.rbtn span{margin-left:4px;font-size:10px}
-.rbar{gap:5px !important;margin:6px 0 !important}
-.rbar.sm .rbtn{padding:1px 7px !important;font-size:11px !important}
-.acts{gap:6px !important;margin-top:8px !important}
-.acts button{background:transparent !important;color:#a1a1aa !important;border:1px solid var(--line) !important;padding:4px 10px !important;font-size:12px !important;font-weight:500 !important;border-radius:9px !important}
-.acts button:hover{color:var(--gold) !important;border-color:var(--gold) !important}
-.linkbtn{background:transparent !important;border:none !important;color:#a1a1aa !important;font-size:11px !important;padding:2px 6px !important;font-weight:400 !important}
-.linkbtn:hover{color:var(--gold) !important}
-button.mini{background:transparent !important;color:#71717a !important;border:none !important;padding:0 5px !important;font-size:11px !important;font-weight:400 !important}
-button.mini:hover{color:#dc2626 !important}
-.emojibtn{background:transparent !important;border:1px solid var(--line) !important;color:#fff !important;padding:3px 8px !important;font-size:13px !important;border-radius:9px !important}
 </style>
 </body>
 </html>
