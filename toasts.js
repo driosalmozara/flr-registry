@@ -613,3 +613,36 @@ function getClient(){
   else run();
   setInterval(run, 2500);
 })();
+/* ══ Secciones de Staff: solo el Staff las ve ══ */
+(function(){
+  function init(){
+    waitForSupabase(async function(){
+      var client = getClient();
+      var s = await client.auth.getSession();
+      if (!s.data.session) return;
+      var uid = s.data.session.user.id;
+      var c = await Promise.all([
+        client.from('app_admins').select('user_id').eq('user_id', uid).maybeSingle(),
+        client.from('app_moderators').select('user_id').eq('user_id', uid).maybeSingle(),
+        client.from('app_chat_mods').select('user_id').eq('user_id', uid).maybeSingle()
+      ]);
+      var isStaff = !!(c[0].data || c[1].data || c[2].data);
+      if (isStaff) return;
+      var tries = 0;
+      var t = setInterval(function(){
+        tries++;
+        var done = false;
+        document.querySelectorAll('.card, section, div').forEach(function(el){
+          var h = el.querySelector('h2, h3');
+          if (h && /Apodos como Administrador/i.test(h.textContent)) {
+            el.style.display = 'none';
+            done = true;
+          }
+        });
+        if (done || tries > 30) clearInterval(t);
+      }, 500);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
