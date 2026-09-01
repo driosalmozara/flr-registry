@@ -1197,5 +1197,85 @@ body.view-login #login{
   setInterval(upd, 600);
 })();
 </script>
+  <script>
+/* ══ Mi cuenta: correo y contraseña con jerarquía ══ */
+(function(){
+  function getProfile(){ return (typeof currentProfile !== 'undefined') ? currentProfile : null; }
+
+  window.accSaveEmail = async function(){
+    const email = document.getElementById('acc-email').value.trim();
+    const { error } = await db.auth.updateUser({ email: email });
+    document.getElementById('acc-msg').textContent = error
+      ? '⚠ ' + error.message
+      : '📬 Te enviamos un enlace de confirmación al nuevo correo.';
+  };
+  window.accSavePass = async function(){
+    const pass = document.getElementById('acc-pass').value;
+    if (pass.length < 6) return alert('La contraseña necesita al menos 6 caracteres.');
+    const { error } = await db.auth.updateUser({ password: pass });
+    document.getElementById('acc-msg').textContent = error ? '⚠ ' + error.message : '🔒 Contraseña actualizada.';
+    if (!error) document.getElementById('acc-pass').value = '';
+  };
+  window.accReset = async function(uid){
+    const pw = document.getElementById('pw_' + uid).value;
+    if (pw.length < 6) return alert('Mínimo 6 caracteres.');
+    const { data } = await db.rpc('superadmin_set_password', { target: uid, new_password: pw });
+    alert(data && data.ok ? '✅ Contraseña fijada para ese miembro.' : (data ? data.error : 'Error'));
+  };
+
+  async function build(){
+    var prof = null;
+    for (var i = 0; i < 60 && !prof; i++) { await new Promise(r => setTimeout(r, 250)); prof = getProfile(); }
+    if (!prof) return;
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h2>🔐 Mi cuenta</h2>
+      <label class="small">Correo electrónico</label>
+      <input id="acc-email" value="${session.user.email || ''}"/>
+      <button onclick="accSaveEmail()">Guardar correo</button>
+      <label class="small" style="display:block;margin-top:12px;">Nueva contraseña</label>
+      <input id="acc-pass" type="password" placeholder="Mínimo 6 caracteres"/>
+      <button onclick="accSavePass()">Cambiar contraseña</button>
+      <p class="small" id="acc-msg" style="margin-top:10px;"></p>`;
+    var profCard = document.getElementById('my-profile-card');
+    var anchor = profCard || document.querySelector('main');
+    if (profCard) profCard.parentNode.insertBefore(card, profCard.nextSibling);
+    else anchor.appendChild(card);
+
+    if (prof.role === 'dominant') {
+      const { data } = await db.rpc('dominant_sub_emails');
+      if (data && data.length) {
+        var c2 = document.createElement('div');
+        c2.className = 'card';
+        c2.innerHTML = '<h2>📧 Correos de mis sumisos</h2>' + data.map(function(s){
+          return '<p class="small" style="margin:6px 0;">⛓ <b>' + s.display_name + '</b> — ' + s.email + ' <i>(solo lectura)</i></p>';
+        }).join('');
+        card.parentNode.insertBefore(c2, card.nextSibling);
+      }
+    }
+
+    const sup = await db.rpc('is_superadmin');
+    if (sup.data) {
+      const { data } = await db.rpc('superadmin_all_emails');
+      var c3 = document.createElement('div');
+      c3.className = 'card';
+      c3.innerHTML = '<h2>👁 Llaves del reino (Super-admin)</h2>' + (data || []).map(function(u){
+        return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0;">' +
+          '<span class="small" style="flex:1;min-width:220px;">' + (u.role === 'dominant' ? '♛' : '⛓') + ' <b>' + u.display_name + '</b> — ' + u.email + '</span>' +
+          '<input id="pw_' + u.user_id + '" placeholder="Nueva contraseña" style="width:170px;margin:0;"/>' +
+          '<button onclick="accReset(\'' + u.user_id + '\')">Fijar</button></div>';
+      }).join('');
+      card.parentNode.insertBefore(c3, card.nextSibling);
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
+  else build();
+})();
+</script>
 </body>
 </html>
