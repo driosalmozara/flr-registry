@@ -44,7 +44,7 @@
   var st = document.createElement('style');
   st.textContent = `
     #adult-gate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
-      background:url('portada-adultos.jpg') center/cover no-repeat fixed, #1a0d12;
+      background:url('portada-entrada.jpg') center/cover no-repeat fixed, #1a0d12;
       padding:20px;overflow:auto}
     #adult-gate:before{content:'';position:absolute;inset:0;
       background:radial-gradient(ellipse at center, rgba(15,10,14,.55), rgba(10,6,10,.92));}
