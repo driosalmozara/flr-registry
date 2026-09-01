@@ -526,9 +526,10 @@ function getClient(){
     nav.className = 'qnav';
     nav.innerHTML = '';
     PRIMARY.forEach(function(p){ nav.appendChild(makeLink(p[0], p[1])); });
-    var others = OTHERS.slice();
-    if (flags.staff) others = others.concat([['moderacion.html','Moderación'],['aprobaciones.html','Aprobaciones']]);
-    if (flags.admin) others.push(['admin.html','Admin']);
+    var others = [];
+    if (flags.staff) others = others.concat([['moderacion.html','🛡 Moderación'],['aprobaciones.html','📥 Aprobaciones']]);
+    if (flags.admin) others.push(['admin.html','♛ Admin']);
+    others = others.concat(OTHERS);
     var wrap = document.createElement('div'); wrap.className = 'qwrap';
     var btn = document.createElement('button'); btn.className = 'qbtn'; btn.innerHTML = '☰ Más';
     var menu = document.createElement('div'); menu.className = 'qmenu';
@@ -559,14 +560,16 @@ function getClient(){
   });
   function init(){
     rebuild();
-    waitForSupabase(async function(){
+     waitForSupabase(async function(){
       var client = getClient();
       var s = await client.auth.getSession();
       if (!s.data.session) return;
-      var a = await client.rpc('am_i_superadmin');
-      var m = await client.rpc('am_i_moderator');
-      var r = await client.rpc('am_i_superadmin');
-      isAdmin = !!(r && r.data);
+      var uid = s.data.session.user.id;
+      var adm = await client.from('app_admins').select('user_id').eq('user_id', uid).maybeSingle();
+      var mod = await client.from('app_moderators').select('user_id').eq('user_id', uid).maybeSingle();
+      flags.admin = !!adm.data;
+      flags.staff = !!(adm.data || mod.data);
+      rebuild();
     });
     var header = document.querySelector('header');
     if (header && window.MutationObserver) {
