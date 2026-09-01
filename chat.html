@@ -129,7 +129,7 @@ async function init() {
   const [sf, mf, cf] = await Promise.all([
     db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'), db.rpc('am_i_chatmod')
   ]);
-  isSuper = !!sf; isMod = !!mf; isChatMod = !!cf;
+  isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cf.data;
 
   await loadRooms(true);
   await renderPage();
