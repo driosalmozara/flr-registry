@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Contrato de sumisión — Supremacía Femenina</title>
+<title>Contrato de sumisión — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -424,7 +424,7 @@ async function downloadContractPDF(id) {
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
-  pdf.text('Supremacia Femenina', 40, 78);
+  pdf.text('Queendomland', 40, 78);
 
   pdf.setFontSize(11);
   pdf.text('Dominante: ' + (dom?.display_name || ''), 40, 110);
@@ -471,7 +471,7 @@ async function downloadContractPDF(id) {
     pdf.text('Aceptada por: ' + (activeTransfer.to_profile?.display_name || ''), 40, ay);
   }
 
-  pdf.save('contrato-supremacia-femenina.pdf');
+  pdf.save('contrato-queendomland.pdf');
 }
 async function releaseSubmissive(relId) {
   if (!confirm('¿Estás segura de que deseas LIBERAR a este sumiso?\n\nEsto romperá el vínculo permanentemente.')) return;
