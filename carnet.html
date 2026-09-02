@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Carnet — Supremacía Femenina</title>
+<title>Carnet — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d;--violet:#7c3aed}
 *{box-sizing:border-box}
@@ -208,7 +208,7 @@ async function loadCard(relId) {
     <div id="card">
       <div class="card-top">
         <div>
-          <div class="card-title">♛ SUPREMACÍA FEMENINA</div>
+          <div class="card-title">♛ QUEENDOMLAND</div>
           <div class="card-sub">Carnet oficial de sumisión</div>
         </div>
         <img class="qr" src="${qrSrc}" />
@@ -249,7 +249,7 @@ async function downloadCardPDF() {
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
   pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 86, 54);
-  pdf.save('carnet-supremacia-femenina.pdf');
+  pdf.save('carnet-queendomland.pdf');
 }
 init();
 </script>
