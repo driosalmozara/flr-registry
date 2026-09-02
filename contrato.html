@@ -201,7 +201,7 @@ function contractHTML(c, isDom, activeTransfer, fromDom, toDom) {
   html += `<p class="small">Firma Dominante: ${c.dominant_signed_at ? escapeHtml(new Date(c.dominant_signed_at).toLocaleString()) : 'pendiente'}</p>`;
   html += `<p class="small">Firma sumiso: ${c.submissive_signed_at ? escapeHtml(new Date(c.submissive_signed_at).toLocaleString()) : 'pendiente'}</p>`;
 
-  if (activeTransfer && (isDom || !activeTransfer.signed_at)) {
+  if (activeTransfer && (!activeTransfer.signed_at || me.role === 'dominant')) {
     html += `
       <div class="anexo">
         <h3>📜 ANEXO DE CESIÓN</h3>
@@ -439,7 +439,7 @@ async function downloadContractPDF(id) {
   pdf.text('Firma Sumiso: ' + (c.submissive_signed_at ? new Date(c.submissive_signed_at).toLocaleString() : 'pendiente'), 40, y + 18);
   pdf.text('Documento simbolico y consensuado entre adultos.', 40, y + 46);
 
-  if (activeTransfer && (isDom || !activeTransfer.signed_at)) {
+  if (activeTransfer && (!activeTransfer.signed_at || me.role === 'dominant')) {
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
