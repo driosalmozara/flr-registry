@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Moderación — Supremacía Femenina</title>
+<title>Moderación — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -95,19 +95,19 @@ async function render(){
   const allUsers = allp.data || [];
   html += `
     <div class="card">
-      <h2>🎙 Moderadores de chat</h2>
-      <p class="small">Organizan la sala de chat y pueden silenciar sumisos sin dueña. No forman parte de la Administración; Moderadoras y Administradoras tienen autoridad sobre ellos y pueden nombrarlos o destituirlos.</p>
+      <h2>⛓🐕‍🦺 Perros Guardianes</h2>
+      <p class="small">Sumisos con función colaborativa: moderan el chat y el muro sobre sumisos sin Dueña. Llevan las cadenas y el doberman como símbolo. No forman parte de la Administración; Moderadoras y Administradoras tienen autoridad sobre ellos y pueden nombrarlos o destituirlos.</p>
   `;
   allUsers.filter(x => chatModIds.includes(x.id)).forEach(x => {
     html += `<div class="item"><div class="rowitem">
-      <div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Moderador de chat</span></div>
+      <div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Perro guardián</span></div>
       <button class="danger" onclick="removeChatMod('${x.id}')">Quitar</button>
     </div></div>`;
   });
   const cand = allUsers.filter(x => !chatModIds.includes(x.id));
   if (cand.length) {
     html += `
-      <label class="small">Nombrar nuevo Moderador de chat</label>
+      <label class="small">Nombrar nuevo Perro guardián</label>
       <select id="newchatmod">
         ${cand.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
       </select>
@@ -160,12 +160,12 @@ async function setFlag(id, flag, on){
   const id = document.getElementById('newchatmod').value;
   const { error } = await db.from('app_chat_mods').insert({ user_id: id });
   if (error) return alert(error.message);
-  alert('Moderador de chat nombrado.');
+  alert('Perro guardián nombrado.');
   window.location.reload();
 }
 
 async function removeChatMod(id){
-  if (!confirm('¿Quitar el privilegio de Moderador de chat?')) return;
+  if (!confirm('¿Quitar el privilegio de Perro guardián?')) return;
   const { error } = await db.from('app_chat_mods').delete().eq('user_id', id);
   if (error) return alert(error.message);
   window.location.reload();
