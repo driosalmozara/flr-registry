@@ -466,22 +466,13 @@ async function downloadContractPDF(id) {
 
   pdf.save('contrato-supremacia-femenina.pdf');
 }
-    async function releaseSubmissive(relId) {
-  if (!confirm('¿Estás segura de que deseas LIBERAR a este sumiso?\n\nEsto romperá el vínculo permanentemente, anulará su carnet y revocará el contrato.')) return;
+async function releaseSubmissive(relId) {
+  if (!confirm('¿Estás segura de que deseas LIBERAR a este sumiso?\n\nEsto romperá el vínculo permanentemente.')) return;
   
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) return alert('Inicia sesión.');
+  const { data } = await db.rpc('release_submissive', { rel_id: relId });
+  if (!data || !data.ok) return alert(data?.error || 'Error al liberar.');
   
-  const r = await fetch('/api/liberar-sumiso', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ relationship_id: relId })
-  });
-  
-  const j = await r.json();
-  if (!r.ok) return alert(j.error || 'Error al liberar.');
-  
-  alert('Sumiso liberado. El vínculo ha sido roto y su carnet anulado.');
+  alert('⛓ Vínculo roto. El sumiso vuelve a ser libre.');
   window.location.reload();
 }
 init();
