@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Panel de Administración — Supremacía Femenina</title>
+<title>Panel de Administración — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -203,6 +203,33 @@ async function render() {
   }
   html += '</div></details>';
 
+    // ===== PERROS GUARDIANES =====
+  const chatMods = await db.from('app_chat_mods').select('user_id');
+  const chatModIds = (chatMods.data || []).map(x => x.user_id);
+
+  html += `<details><summary>⛓🐕‍🦺 Perros Guardianes <span class="count">${chatModIds.length}</span></summary><div class="body">`;
+  html += '<p class="small">Sumisos con función colaborativa: moderan el chat y el muro sobre sumisos sin Dueña. Llevan las cadenas y el doberman como símbolo.</p>';
+
+  users.filter(x => chatModIds.includes(x.id)).forEach(x => {
+    html += `<div class="item"><div class="rowitem">`;
+    html += avatarHTML(x.avatar_url, '⛓🐕‍🦺');
+    html += `<div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Perro guardián</span></div>`;
+    html += `<button class="danger" onclick="removeChatMod('${x.id}')">Quitar</button>`;
+    html += `</div></div>`;
+  });
+
+  const guardianCandidates = users.filter(x => !chatModIds.includes(x.id) && !admins.includes(x.id) && !mods.includes(x.id));
+  if (guardianCandidates.length > 0) {
+    html += `
+      <label class="small">Nombrar nuevo Perro guardián</label>
+      <select id="newchatmod">
+        ${guardianCandidates.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+      </select>
+      <button onclick="makeChatMod()">Nombrar Perro guardián</button>
+    `;
+  }
+  html += '</div></details>';
+
   // ===== MIEMBROS =====
   html += `
     <details><summary>👥 Miembros <span class="count">${users.length}</span></summary><div class="body">
@@ -382,6 +409,20 @@ async function makeMod() {
   window.location.reload();
 }
 
+  async function makeChatMod() {
+  const id = document.getElementById('newchatmod').value;
+  const { error } = await db.from('app_chat_mods').insert({ user_id: id });
+  if (error) return alert(error.message);
+  alert('Perro guardián nombrado.');
+  window.location.reload();
+}
+
+async function removeChatMod(id) {
+  if (!confirm('¿Quitar facultades de Perro guardián?')) return;
+  const { error } = await db.from('app_chat_mods').delete().eq('user_id', id);
+  if (error) return alert(error.message);
+  window.location.reload();
+}
 async function removeMod(id) {
   if (!confirm('¿Quitar facultades de moderación?')) return;
   const { error } = await db.from('app_moderators').delete().eq('user_id', id);
