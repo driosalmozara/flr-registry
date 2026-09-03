@@ -279,7 +279,6 @@ async function downloadCardPDF() {
     useCORS: true,
     allowTaint: true
   });
-  3, backgroundColor: '#0f0f1a' });
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
   pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 86, 54);
