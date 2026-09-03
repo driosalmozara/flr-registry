@@ -247,6 +247,62 @@ async function requestSubmissive(subId) {
   }
 
   listBox.innerHTML = html2;
+  // ══ Sección de Visibilidad y Privacidad (solo si hay sesión) ══
+  async function renderVisibilitySection() {
+    if (!currentUser) return;
+    const { data: profile } = await db.from('profiles')
+      .select('id, role, available_public, show_avatar_public')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    if (!profile) return;
+
+    // Si es sumiso con dueña, no controla su visibilidad
+    if (profile.role === 'submissive') {
+      const { data: owned } = await db.from('relationships')
+        .select('id')
+        .eq('submissive_id', currentUser.id)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+      if (owned) return;
+    }
+
+    const appearLabel = profile.role === 'dominant'
+      ? 'Aparecer en el Salón como Dominante'
+      : 'Aparecer en el Salón como "Sumiso sin Dueña"';
+
+    const section = document.createElement('div');
+    section.className = 'card';
+    section.innerHTML = `
+      <h2 style="margin-top:0;">👁 Visibilidad y Privacidad</h2>
+      <p class="small">Controla qué se muestra de ti en el Salón de miembros. ${profile.role === 'dominant' ? 'Como Dominante, tú decides cuándo aparecer.' : 'En cuanto una Dominante te confirme, ella tomará el control.'}</p>
+      <label>
+        <input type="checkbox" id="vis_avail" ${profile.available_public ? 'checked' : ''} />
+        ${appearLabel}
+      </label>
+      <label>
+        <input type="checkbox" id="vis_ava" ${profile.show_avatar_public ? 'checked' : ''} />
+        Mostrar mi avatar en el Salón
+      </label>
+      <button onclick="saveVisibility()">Guardar visibilidad</button>
+    `;
+    // Insertar después de las estadísticas
+    const statsCard = document.getElementById('stats');
+    if (statsCard) statsCard.parentNode.insertBefore(section, statsCard.nextSibling);
+    else document.querySelector('main').appendChild(section);
+  }
+
+  window.saveVisibility = async function() {
+    const available_public = document.getElementById('vis_avail').checked;
+    const show_avatar_public = document.getElementById('vis_ava').checked;
+    const { error } = await db.from('profiles')
+      .update({ available_public, show_avatar_public })
+      .eq('id', currentUser.id);
+    if (error) return alert(error.message);
+    alert('Visibilidad actualizada.');
+    window.location.reload();
+  };
+
+  renderVisibilitySection();
 })();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
