@@ -281,14 +281,14 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    async function domLockIsOn() {    async function regLockIsOn() {
-      const { data } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
-      return !!(data && data.value === '1');
-    }
+    async function domLockIsOn() {
       const { data } = await db.from('app_settings').select('value').eq('key', 'lock_dominant_approval').maybeSingle();
       return !data || data.value === '1';
     }
-
+    async function regLockIsOn() {
+      const { data } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
+      return !!(data && data.value === '1');
+    }
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
