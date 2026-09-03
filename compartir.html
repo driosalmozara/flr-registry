@@ -34,7 +34,15 @@ const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let me=null,role=null;
+const nameMap={};
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function nameOf(id){return nameMap[id]||'…';}
+async function loadNames(ids){
+  const arr=[...new Set(ids)].filter(Boolean);
+  if(!arr.length)return;
+  const {data}=await db.from('profiles').select('id, display_name').in('id',arr);
+  (data||[]).forEach(p=>nameMap[p.id]=p.display_name);
+}
 function dates(m){
   let s='';
   if(m.signed_at)s+='Inicio: <b>'+new Date(m.signed_at).toLocaleString()+'</b>';
@@ -56,19 +64,19 @@ async function render(){
 
   if(role==='dominant'){
     const [subsRes,domsRes]=await Promise.all([
-      db.from('relationships').select('id, profiles!relationships_submissive_id_fkey(id, display_name)').eq('dominant_id',me).eq('status','confirmed'),
+      db.from('relationships').select('submissive_id, profiles!relationships_submissive_id_fkey(display_name)').eq('dominant_id',me).eq('status','confirmed'),
       db.from('profiles').select('id, display_name').eq('role','dominant').neq('id',me).order('display_name')
     ]);
     const subs=subsRes.data||[];
     const doms=domsRes.data||[];
     html+=`<div class="card"><h2 style="margin-top:0;">🤝 Compartir a un sumiso</h2>
       <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
-      ${subs&&subs.length?`
+      ${subs.length?`
       <label class="small">Sumiso en propiedad</label>
-      <select id="sh_sub">${subs.map(s=>`<option value="${s.id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
+      <select id="sh_sub">${subs.map(s=>`<option value="${s.submissive_id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
       <label class="small">Dominantes con quienes compartir</label>
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
-        ${(doms||[]).map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.display_name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
+        ${doms.map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.display_name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
       </div>
       <label class="small">Condiciones del anexo</label>
       <textarea id="sh_cond" rows="3" placeholder="Ej.: horarios compartidos, protocolos, límites de disciplina…"></textarea>
@@ -76,17 +84,19 @@ async function render(){
     </div>`;
 
     const {data:ann}=await db.from('sharing_annexes')
-      .select('*, sub:profiles!sharing_annexes_submissive_id_fkey(display_name), members:sharing_members(*, dom:profiles!sharing_members_dominant_id_fkey(display_name))')
+      .select('id, conditions, created_at, submissive_id, members:sharing_members(id, status, dominant_id, signed_at, ended_at)')
       .eq('owner_id',me).order('created_at',{ascending:false});
     if(ann&&ann.length){
+      const ids=[];ann.forEach(a=>{ids.push(a.submissive_id);(a.members||[]).forEach(m=>ids.push(m.dominant_id));});
+      await loadNames(ids);
       html+='<div class="card"><h2 style="margin-top:0;">📜 Mis anexos como Dueña</h2>';
       ann.forEach(a=>{
-        html+=`<div class="item"><b>⛓ ${esc(a.sub?.display_name||'')}</b>
+        html+=`<div class="item"><b>⛓ ${esc(nameOf(a.submissive_id))}</b>
           ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}
           <div class="small">Creado: ${new Date(a.created_at).toLocaleString()}</div>`;
         (a.members||[]).forEach(m=>{
           html+=`<div style="margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;">
-            ♛ ${esc(m.dom?.display_name||'')} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'activa':'terminada'}</span>
+            ♛ ${esc(nameOf(m.dominant_id))} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'activa':'terminada'}</span>
             ${dates(m)}
             ${m.status!=='ended'?`<button class="danger" style="margin-top:6px;" onclick="removeMember('${m.id}')">🚫 Dejar de compartir con ella</button>`:''}
           </div>`;
@@ -98,12 +108,14 @@ async function render(){
   }
 
   const {data:pend}=await db.from('sharing_members')
-    .select('*, annex:sharing_annexes(*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), sub:profiles!sharing_annexes_submissive_id_fkey(display_name))')
+    .select('id, status, annex:sharing_annexes(id, conditions, owner_id, submissive_id)')
     .eq('dominant_id',me).eq('status','pending');
   if(pend&&pend.length){
+    const ids=[];pend.forEach(m=>{ids.push(m.annex?.owner_id,m.annex?.submissive_id);});
+    await loadNames(ids);
     html+='<div class="card"><h2 style="margin-top:0;">✍ Anexos por firmar</h2>';
     pend.forEach(m=>{
-      html+=`<div class="item"><b>⛓ ${esc(m.annex?.sub?.display_name||'')}</b> · ofrecido por ♛ ${esc(m.annex?.owner?.display_name||'')}
+      html+=`<div class="item"><b>⛓ ${esc(nameOf(m.annex?.submissive_id))}</b> · ofrecido por ♛ ${esc(nameOf(m.annex?.owner_id))}
         ${m.annex?.conditions?`<div class="cond">${esc(m.annex.conditions)}</div>`:'<p class="small">Sin condiciones especiales.</p>'}
         <button onclick="sign('${m.id}')">✍ Firmar anexo (acepto ser también su Dueña)</button>
       </div>`;
@@ -112,12 +124,14 @@ async function render(){
   }
 
   const {data:act}=await db.from('sharing_members')
-    .select('*, annex:sharing_annexes(*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), sub:profiles!sharing_annexes_submissive_id_fkey(display_name))')
+    .select('id, status, signed_at, ended_at, annex:sharing_annexes(id, conditions, owner_id, submissive_id)')
     .eq('dominant_id',me).eq('status','active');
   if(act&&act.length){
+    const ids=[];act.forEach(m=>{ids.push(m.annex?.owner_id,m.annex?.submissive_id);});
+    await loadNames(ids);
     html+='<div class="card"><h2 style="margin-top:0;">♛ Sumisos que comparto</h2>';
     act.forEach(m=>{
-      html+=`<div class="item"><b>⛓ ${esc(m.annex?.sub?.display_name||'')}</b> · Dueña del contrato: ♛ ${esc(m.annex?.owner?.display_name||'')}
+      html+=`<div class="item"><b>⛓ ${esc(nameOf(m.annex?.submissive_id))}</b> · Dueña del contrato: ♛ ${esc(nameOf(m.annex?.owner_id))}
         ${m.annex?.conditions?`<div class="cond">${esc(m.annex.conditions)}</div>`:''}
         ${dates(m)}
         <button class="danger" style="margin-top:6px;" onclick="leave('${m.id}')">🕊 Deshacer anexo (romper mi vínculo)</button>
@@ -128,15 +142,17 @@ async function render(){
 
   if(role==='submissive'){
     const {data:mine}=await db.from('sharing_annexes')
-      .select('*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), members:sharing_members(*, dom:profiles!sharing_members_dominant_id_fkey(display_name))')
+      .select('id, conditions, created_at, owner_id, members:sharing_members(id, status, dominant_id, signed_at, ended_at)')
       .eq('submissive_id',me).order('created_at',{ascending:false});
     if(mine&&mine.length){
+      const ids=[];mine.forEach(a=>{ids.push(a.owner_id);(a.members||[]).forEach(m=>ids.push(m.dominant_id));});
+      await loadNames(ids);
       html+='<div class="card"><h2 style="margin-top:0;">🗂 Anexos sobre mí (archivo)</h2>';
       mine.forEach(a=>{
-        html+=`<div class="item"><b>Dueña del contrato:</b> ♛ ${esc(a.owner?.display_name||'')}
+        html+=`<div class="item"><b>Dueña del contrato:</b> ♛ ${esc(nameOf(a.owner_id))}
           ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}`;
         (a.members||[]).forEach(m=>{
-          html+=`<div style="margin:6px 0;">♛ ${esc(m.dom?.display_name||'')} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'me comparte':'terminada'}</span>${dates(m)}</div>`;
+          html+=`<div style="margin:6px 0;">♛ ${esc(nameOf(m.dominant_id))} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'me comparte':'terminada'}</span>${dates(m)}</div>`;
         });
         html+='</div>';
       });
