@@ -471,7 +471,7 @@ function getClient(){
   };
 })();
 
-/* ── 14) Nav reina: 4 botones nobles + menú Más ── */
+/* ── 14) Nav reina: 4 botones nobles + menú Más con submenús ── */
 (function(){
   var PRIMARY = [
     ['index.html?stay=1', 'Mi perfil'],
@@ -482,14 +482,18 @@ function getClient(){
   var OTHERS = [
     ['muro.html', 'Muro'],
     ['disponible.html', 'Disponibilidad'],
-    ['verificar.html', 'Verificar carnet'],
     ['notificaciones.html', 'Notificaciones'],
     ['avatar.html', 'Mi avatar'],
     ['disciplina.html', 'Disciplina'],
     ['contrato.html', 'Contrato'],
-    ['carnet.html', 'Carnet'],
-    ['galeria.html', 'Galería de relación'],
-    ['mi-galeria.html', 'Galería personal'],
+    { title: 'Carnet de Sumiso en Propiedad', items: [
+      ['carnet.html', '🪪 Carnet'],
+      ['verificar.html', '🔍 Verificar carnet']
+    ]},
+    { title: 'Galería', items: [
+      ['galeria.html', '📸 Galería de relación'],
+      ['mi-galeria.html', '🖼 Galería personal']
+    ]},
     ['cesiones.html', 'Cesiones'],
     ['subastas.html', 'Subastas'],
     ['contacto.html', '📬 Contacto con el Staff'],
@@ -504,10 +508,15 @@ function getClient(){
     '.qnav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}' +
     '.qwrap{position:relative;display:inline-block}' +
     '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
-    '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;min-width:190px;max-height:min(70vh,520px);overflow-y:auto;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
+    '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;min-width:220px;max-height:min(75vh,580px);overflow-y:auto;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
     '.qmenu.open{display:flex}' +
-    '.qmenu a{padding:5px 9px;border-radius:8px;font-size:12px}' +
+    '.qmenu a{padding:6px 10px;border-radius:8px;font-size:13px;display:block}' +
     '.qmenu a:hover{background:rgba(212,175,55,.12)}' +
+    '.qmenu .qgroup{margin:4px 0 2px;padding:0 10px}' +
+    '.qmenu .qgroup-title{font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.12em;font-weight:700;padding:6px 0 4px;border-bottom:1px solid rgba(212,175,55,.2);margin-bottom:4px}' +
+    '.qmenu .qgroup-items a{padding:5px 10px;font-size:12px}' +
+    '.qmenu .qstaff-section{border-bottom:1px solid rgba(212,175,55,.3);padding-bottom:6px;margin-bottom:6px}' +
+    '.qmenu .qstaff-section .qgroup-title{color:#f59e0b}' +
     '.qmenu::-webkit-scrollbar{width:6px}.qmenu::-webkit-scrollbar-thumb{background:rgba(212,175,55,.45);border-radius:3px}.qmenu::-webkit-scrollbar-track{background:transparent}' +
     '@media (max-width:760px){header nav.mob-open .qwrap{display:inline-block !important}header nav.mob-open .qmenu{position:static !important;box-shadow:none !important}}';
   document.head.appendChild(st);
@@ -515,9 +524,22 @@ function getClient(){
   function makeLink(href, label){
     var a = document.createElement('a');
     a.href = href; a.textContent = label;
-    a.style.cssText = 'color:#d4af37;text-decoration:none;font-size:13px;';
+    a.style.cssText = 'color:#d4af37;text-decoration:none;';
     if (href.split('?')[0] === currentFile()) a.style.borderBottom = '2px solid #d4af37';
     return a;
+  }
+  function makeGroup(title, items){
+    var div = document.createElement('div');
+    div.className = 'qgroup';
+    var t = document.createElement('div');
+    t.className = 'qgroup-title';
+    t.textContent = title;
+    div.appendChild(t);
+    var itemsDiv = document.createElement('div');
+    itemsDiv.className = 'qgroup-items';
+    items.forEach(function(it){ itemsDiv.appendChild(makeLink(it[0], it[1])); });
+    div.appendChild(itemsDiv);
+    return div;
   }
   function rebuild(){
     var header = document.querySelector('header');
@@ -528,14 +550,39 @@ function getClient(){
     nav.className = 'qnav';
     nav.innerHTML = '';
     PRIMARY.forEach(function(p){ nav.appendChild(makeLink(p[0], p[1])); });
-    var others = [];
-    if (flags.staff) others = others.concat([['moderacion.html','🛡 Moderación'],['aprobaciones.html','📥 Aprobaciones']]);
-    if (flags.admin) others.push(['admin.html','♛ Admin']);
-    others = others.concat(OTHERS);
     var wrap = document.createElement('div'); wrap.className = 'qwrap';
     var btn = document.createElement('button'); btn.className = 'qbtn'; btn.innerHTML = '☰ Más';
     var menu = document.createElement('div'); menu.className = 'qmenu';
-    others.forEach(function(o){ menu.appendChild(makeLink(o[0], o[1])); });
+
+    // Sección Staff (solo admins y moderadoras, NO perros guardianes)
+    if (flags.staff) {
+      var staffSection = document.createElement('div');
+      staffSection.className = 'qstaff-section';
+      var staffGroup = document.createElement('div');
+      staffGroup.className = 'qgroup';
+      var staffTitle = document.createElement('div');
+      staffTitle.className = 'qgroup-title';
+      staffTitle.textContent = 'Staff';
+      staffGroup.appendChild(staffTitle);
+      var staffItems = document.createElement('div');
+      staffItems.className = 'qgroup-items';
+      if (flags.admin) staffItems.appendChild(makeLink('admin.html', '♛ Admin'));
+      staffItems.appendChild(makeLink('moderacion.html', '🛡 Moderación'));
+      staffItems.appendChild(makeLink('aprobaciones.html', '📥 Aprobaciones'));
+      staffGroup.appendChild(staffItems);
+      staffSection.appendChild(staffGroup);
+      menu.appendChild(staffSection);
+    }
+
+    // Resto del menú
+    OTHERS.forEach(function(o){
+      if (Array.isArray(o)) {
+        menu.appendChild(makeLink(o[0], o[1]));
+      } else if (o.title && o.items) {
+        menu.appendChild(makeGroup(o.title, o.items));
+      }
+    });
+
     wrap.appendChild(btn); wrap.appendChild(menu);
     btn.onclick = function(e){ e.stopPropagation(); menu.classList.toggle('open'); };
     nav.appendChild(wrap);
