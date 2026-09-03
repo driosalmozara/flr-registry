@@ -33,6 +33,9 @@ button{background:var(--gold);color:#000;font-weight:700;border:none;border-radi
 .card-title{color:var(--gold);font-weight:800;letter-spacing:2px;font-size:11px}
 .card-sub{color:#a1a1aa;font-size:7.5px;margin-top:1mm}
 .qr{width:15mm;height:15mm;background:#fff;border-radius:2mm;padding:1mm}
+  .card-avatar{width:18mm;height:18mm;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold);background:#161625;flex:none}
+.card-avatar.empty{display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:24px;font-weight:700}
+.card-top-right{display:flex;gap:3mm;align-items:center}
 .line{font-size:9px;color:#e5e5e5;margin:1mm 0}
 .line span{color:#a1a1aa}
 .line b{color:#fff}
@@ -169,6 +172,17 @@ async function loadCard(relId) {
     .eq('id', relId)
     .maybeSingle();
 
+  // Consultar avatar actual del sumiso (se actualiza solo al cambiar)
+  let subAvatarUrl = '';
+  if (rel && rel.submissive_id) {
+    const { data: subProf } = await db
+      .from('profiles')
+      .select('avatar_url, display_name')
+      .eq('id', rel.submissive_id)
+      .maybeSingle();
+    subAvatarUrl = subProf?.avatar_url || '';
+  }
+
   if (!card) {
     wrap.innerHTML = '<p class="small">La Dominante aún no emite el carnet.</p>';
     return;
@@ -219,7 +233,12 @@ async function loadCard(relId) {
           <div class="card-title">♛ QUEENDOMLAND</div>
           <div class="card-sub">Carnet oficial de sumisión</div>
         </div>
-        <img class="qr" src="${qrSrc}" />
+        <div class="card-top-right">
+          ${subAvatarUrl
+            ? `<img class="card-avatar" src="${escapeHtml(subAvatarUrl)}" onerror="this.outerHTML='<div class=\\'card-avatar empty\\'>⛓</div>'" />`
+            : '<div class="card-avatar empty">⛓</div>'}
+          <img class="qr" src="${qrSrc}" />
+        </div>
       </div>
 
       <div>
@@ -254,7 +273,13 @@ function chastityDaysCalc(sinceISO){
 
 async function downloadCardPDF() {
   const el = document.getElementById('card');
-  const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#0f0f1a' });
+  const canvas = await html2canvas(el, {
+    scale: 3,
+    backgroundColor: '#0f0f1a',
+    useCORS: true,
+    allowTaint: true
+  });
+  3, backgroundColor: '#0f0f1a' });
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
   pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 86, 54);
