@@ -481,7 +481,7 @@ function getClient(){
   ];
   var OTHERS = [
     ['muro.html', 'Muro'],
-    ['disponible.html', 'Disponibilidad'],
+    // disponible.html eliminado: ahora vive dentro del Salón y de Mi perfil
     ['notificaciones.html', 'Notificaciones'],
     ['avatar.html', 'Mi avatar'],
     { title: 'Gestión de sumisos en propiedad', items: [
