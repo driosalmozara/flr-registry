@@ -646,6 +646,8 @@
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
+            const { data: shared } = await db.rpc('my_shared_submissives');
+      const sharedSubs = shared || [];
       let records = [];
       let cards = [];
       if (submissives && submissives.length > 0) {
@@ -727,7 +729,7 @@
       html += '</div>';
 
       html += '<div class="card"><h2>Mis sumisos</h2>';
-      if (!submissives || submissives.length === 0) {
+      if ((!submissives || submissives.length === 0) && sharedSubs.length === 0) {
         html += '<p class="small">Todavía no tienes sumisos confirmados.</p>';
       } else {
         submissives.forEach(sub => {
@@ -793,6 +795,18 @@
             html += `</div>`;
           }
           html += `</div>`;
+        });
+        sharedSubs.forEach(sh => {
+          html += `<div class="item">`;
+          html += `<div class="rowitem">${avatarHTML(sh.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sh.slave_name || sh.name || 'Sumiso')}</h3></div>`;
+          html += `<p class="small" style="color:#d4af37;">🤝 Compartido · Dueña del contrato: ♛ ${escapeHtml(sh.owner_name || '')}</p>`;
+          if (sh.registration_number) html += `<p class="small">Nº registro: ${escapeHtml(sh.registration_number)}</p>`;
+          html += `<div class="row" style="margin-top:10px;">`;
+          html += `<button class="secondary" onclick="messageSub('${sh.sub_id}')">💬 Mensaje</button>`;
+          html += `<button class="secondary" onclick="window.location.href='disciplina.html'">⚖ Disciplina</button>`;
+          html += `<button class="secondary" onclick="window.location.href='galeria.html'">📸 Galería</button>`;
+          html += `<button class="secondary" onclick="window.location.href='carnet.html'">🪪 Carnet</button>`;
+          html += `</div></div>`;
         });
       }
       html += '</div>';
