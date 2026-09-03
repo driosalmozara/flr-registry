@@ -55,10 +55,12 @@ async function render(){
   let html='';
 
   if(role==='dominant'){
-    const [subs,doms]=await Promise.all([
+    const [subsRes,domsRes]=await Promise.all([
       db.from('relationships').select('id, profiles!relationships_submissive_id_fkey(id, display_name)').eq('dominant_id',me).eq('status','confirmed'),
       db.from('profiles').select('id, display_name').eq('role','dominant').neq('id',me).order('display_name')
     ]);
+    const subs=subsRes.data||[];
+    const doms=domsRes.data||[];
     html+=`<div class="card"><h2 style="margin-top:0;">🤝 Compartir a un sumiso</h2>
       <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
       ${subs&&subs.length?`
