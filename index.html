@@ -74,7 +74,6 @@
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <nav style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
       <a style="color:#d4af37;text-decoration:none;" href="registro-publico.html">Salón de miembros</a>
-      <a style="color:#d4af37;text-decoration:none;" href="disponible.html">Disponibilidad</a>
       <a style="color:#d4af37;text-decoration:none;" href="verificar.html">Verificar carnet</a>
       <a style="color:#d4af37;text-decoration:none;" href="chat.html">Chat</a>
       <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
@@ -947,9 +946,7 @@
       const dom = currentProfile.role === 'dominant';
       const steps = [
         { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Queendomland: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
-        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'Contempla a las Dominantes y sumisos de la casa, sus carnets y galerías. Por defecto todos son visibles; cada miembro puede ocultarse o mostrarse desde “Mi perfil”.' },
-        { sel: 'a[href="muro.html"]', t: 'Muro de la casa', x: 'Publica textos, imágenes, videos y archivos al estilo red social: reacciona con 👍 ❤️ 👎 😡, comenta y responde a comentarios. Toda publicación pasa por aprobación del Staff — y también de tu Dueña, si eres sumiso de su propiedad.' },
-        { sel: 'a[href="disponible.html"]', t: 'Disponibilidad', x: 'Muestra qué sumisos están disponibles y abiertos a recibir solicitudes.' },
+{ sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'Contempla a las Dominantes y sumisos de la casa, sus carnets y galerías. Cada miembro controla su visibilidad desde el Salón o desde "Mi perfil".' },        { sel: 'a[href="muro.html"]', t: 'Muro de la casa', x: 'Publica textos, imágenes, videos y archivos al estilo red social: reacciona con 👍 ❤️ 👎 😡, comenta y responde a comentarios. Toda publicación pasa por aprobación del Staff — y también de tu Dueña, si eres sumiso de su propiedad.' },
         { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
         { sel: 'a[href="chat.html"]', t: 'Chat y salas', x: 'Además del salón general hay salas públicas, privadas y de Staff: crea la tuya, usa emojis, GIFs y adjuntos. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
