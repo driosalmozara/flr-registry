@@ -581,10 +581,28 @@
             Mostrar mi país y redes en el Salón de miembros
           </label>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
-          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>        </div>
+          <button class="secondary" onclick="startTour()">🎬 Ver tour</button>
+        </div>
       `;
 
-      dashboard.insertAdjacentHTML('afterbegin', profileCard);
+      // Sección de Visibilidad y Privacidad
+      const visibilityCard = `
+        <div class="card">
+          <h2>👁 Visibilidad y Privacidad</h2>
+          <p class="small">Controla qué se muestra de ti en el Salón de miembros.</p>
+          <label>
+            <input type="checkbox" id="vis_avail" ${currentProfile.available_public ? 'checked' : ''} />
+            ${currentProfile.role === 'dominant' ? 'Aparecer en el Salón como Dominante' : 'Aparecer en el Salón como "Sumiso sin Dueña"'}
+          </label>
+          <label>
+            <input type="checkbox" id="vis_ava" ${currentProfile.show_avatar_public ? 'checked' : ''} />
+            Mostrar mi avatar en el Salón
+          </label>
+          <button onclick="saveVisibility()">Guardar visibilidad</button>
+        </div>
+      `;
+
+      dashboard.insertAdjacentHTML('afterbegin', profileCard + visibilityCard);
     }
 
     async function saveMyProfile() {
@@ -604,7 +622,17 @@
       alert('Perfil actualizado.');
       window.location.reload();
     }
-
+    
+    async function saveVisibility() {
+      const available_public = document.getElementById('vis_avail').checked;
+      const show_avatar_public = document.getElementById('vis_ava').checked;
+      const { error } = await db.from('profiles')
+        .update({ available_public, show_avatar_public })
+        .eq('id', currentUser.id);
+      if (error) return alert(error.message);
+      alert('Visibilidad actualizada.');
+      window.location.reload();
+    }
     async function renderDominant() {
       const dashboard = document.getElementById('dashboard');
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
