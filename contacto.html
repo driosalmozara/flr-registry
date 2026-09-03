@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Contacto con el Staff — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px;font-family:inherit}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
+.item.respondido{border-left:3px solid #4ade80}
+.item.abierto{border-left:3px solid var(--gold)}
+.tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}
+.tag.denuncia{background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid #dc2626}
+.tag.consulta{background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid #3b82f6}
+.tag.reclamo{background:rgba(245,158,11,.2);color:#fcd34d;border:1px solid #f59e0b}
+.tag.sugerencia{background:rgba(124,58,237,.2);color:#c4b5fd;border:1px solid #7c3aed}
+.reply-box{background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3);border-radius:10px;padding:12px;margin-top:10px}
+.reply-box b{color:var(--gold)}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">📬 Contacto con el Staff</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null, isStaffFull = false;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+async function init(){
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
+  me = session.user.id;
+
+  const { data } = await db.rpc('is_staff_full');
+  isStaffFull = !!data;
+
+  await render();
+}
+
+async function render(){
+  const content = document.getElementById('content');
+  let html = `
+    <div class="card">
+      <h2 style="margin-top:0;">📬 Escribe al Staff</h2>
+      <p class="small">Usa este canal para denuncias, consultas, reclamos o sugerencias. Tu mensaje llegará <b>directamente a las Moderadoras y Administradoras</b> (no a los Perros Guardianes). Recibirás una notificación cuando te respondan.</p>
+      <label class="small">Categoría</label>
+      <select id="msg-cat">
+        <option value="consulta">🔍 Consulta</option>
+        <option value="sugerencia">💡 Sugerencia</option>
+        <option value="reclamo">⚠ Reclamo</option>
+        <option value="denuncia">🚨 Denuncia</option>
+      </select>
+      <label class="small">Asunto</label>
+      <input id="msg-subj" placeholder="Título breve de tu mensaje" />
+      <label class="small">Mensaje</label>
+      <textarea id="msg-body" rows="5" placeholder="Describe con detalle tu consulta, sugerencia, reclamo o denuncia..."></textarea>
+      <button onclick="sendMessage()">📤 Enviar al Staff</button>
+    </div>`;
+
+  if (isStaffFull) {
+    const { data: all } = await db.from('staff_messages')
+      .select('*, user:profiles!staff_messages_user_id_fkey(display_name, role), replier:profiles!staff_messages_replied_by_fkey(display_name)')
+      .order('created_at', { ascending: false });
+    const open = (all || []).filter(m => m.status !== 'cerrado');
+    html += `<div class="card"><h2 style="margin-top:0;">👁 Bandeja del Staff (${open.length} abiertos)</h2>`;
+    if (!open.length) html += '<p class="small">No hay mensajes pendientes.</p>';
+    open.forEach(m => {
+      html += `
+        <div class="item ${m.status}">
+          <span class="tag ${m.category}">${m.category}</span>
+          <b>${esc(m.subject)}</b>
+          <div class="small" style="margin:6px 0;">
+            De ${esc(m.user?.display_name || '?')} (${m.user?.role || '?'}) · ${new Date(m.created_at).toLocaleString()}
+          </div>
+          <div style="white-space:pre-wrap;margin:8px 0;">${esc(m.body)}</div>
+          ${m.reply ? `<div class="reply-box"><b>Respuesta del Staff (${esc(m.replier?.display_name || '?')}):</b><div style="white-space:pre-wrap;margin-top:6px;">${esc(m.reply)}</div></div>` : `
+          <label class="small" style="margin-top:10px;">Responder:</label>
+          <textarea id="reply_${m.id}" rows="3" placeholder="Escribe la respuesta oficial del Staff..."></textarea>
+          <button onclick="replyMsg('${m.id}')">💌 Enviar respuesta</button>`}
+        </div>`;
+    });
+    html += '</div>';
+  } else {
+    const { data: mine } = await db.from('staff_messages')
+      .select('*, replier:profiles!staff_messages_replied_by_fkey(display_name)')
+      .eq('user_id', me)
+      .order('created_at', { ascending: false });
+    if (mine && mine.length) {
+      html += `<div class="card"><h2 style="margin-top:0;">📜 Mis mensajes al Staff</h2>`;
+      mine.forEach(m => {
+        html += `
+          <div class="item ${m.status}">
+            <span class="tag ${m.category}">${m.category}</span>
+            <b>${esc(m.subject)}</b>
+            <div class="small" style="margin:6px 0;">${new Date(m.created_at).toLocaleString()} · Estado: <b>${m.status}</b></div>
+            <div style="white-space:pre-wrap;margin:8px 0;">${esc(m.body)}</div>
+            ${m.reply ? `<div class="reply-box"><b>Respuesta del Staff (${esc(m.replier?.display_name || '?')}):</b><div style="white-space:pre-wrap;margin-top:6px;">${esc(m.reply)}</div></div>` : '<p class="small" style="margin-top:8px;color:#a1a1aa;">⏳ Esperando respuesta del Staff...</p>'}
+          </div>`;
+      });
+      html += '</div>';
+    }
+  }
+
+  content.innerHTML = html;
+}
+
+async function sendMessage(){
+  const category = document.getElementById('msg-cat').value;
+  const subject = document.getElementById('msg-subj').value.trim();
+  const body = document.getElementById('msg-body').value.trim();
+  if (!subject) return alert('Escribe un asunto.');
+  if (!body) return alert('Escribe tu mensaje.');
+  const { data } = await db.rpc('submit_staff_message', { p_category: category, p_subject: subject, p_body: body });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
+  alert('📬 Mensaje enviado al Staff. Recibirás una notificación cuando te respondan.');
+  document.getElementById('msg-subj').value = '';
+  document.getElementById('msg-body').value = '';
+  await render();
+}
+
+async function replyMsg(id){
+  const reply = document.getElementById('reply_' + id).value.trim();
+  if (!reply) return alert('Escribe una respuesta.');
+  const { data } = await db.rpc('staff_reply_message', { msg_id: id, p_reply: reply });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo responder.');
+  alert('💌 Respuesta enviada.');
+  await render();
+}
+
+init();
+</script>
+</body>
+</html>
