@@ -111,21 +111,25 @@ async function init() {
       .select('id, profiles!relationships_submissive_id_fkey(display_name, id)')
       .eq('dominant_id', me.id)
       .eq('status', 'confirmed');
+    const { data: shared } = await db.rpc('my_shared_submissives');
+    const sharedSubs = shared || [];
 
-    if (!subs || subs.length === 0) {
+    if ((!subs || subs.length === 0) && sharedSubs.length === 0) {
       content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">Cuando confirmes un sumiso podrás imprimir su carnet.</p>';
       return;
     }
 
+    const firstVal = (subs && subs.length) ? subs[0].id : sharedSubs[0].rel_id;
     content.innerHTML = `
       <h2>Elige al sumiso</h2>
       <select id="pick" onchange="loadCard(this.value)">
-        ${subs.map(s => `<option value="${s.id}">⛓ ${escapeHtml(s.profiles?.display_name || 'Sumiso')}</option>`).join('')}
+        ${(subs || []).map(s => `<option value="${s.id}">⛓ ${escapeHtml(s.profiles?.display_name || 'Sumiso')}</option>`).join('')}
+        ${sharedSubs.map(s => `<option value="${s.rel_id}">🤝 ${escapeHtml(s.slave_name || s.name || 'Sumiso')} (compartido)</option>`).join('')}
       </select>
       <div id="cardwrap"></div>
     `;
 
-    await loadCard(subs[0].id);
+    await loadCard(firstVal);
   } else {
     const { data: rel } = await db
       .from('relationships')
@@ -147,68 +151,23 @@ async function init() {
 async function loadCard(relId) {
   const wrap = document.getElementById('cardwrap');
 
-  const { data: record } = await db
-    .from('submissive_records')
-    .select('*')
-    .eq('relationship_id', relId)
-    .maybeSingle();
+  const { data: V, error: vErr } = await db.rpc('card_view', { p_rel: relId });
+  if (vErr) { wrap.innerHTML = '<p class="small">Error: ' + escapeHtml(vErr.message) + '</p>'; return; }
+  if (!V) { wrap.innerHTML = '<p class="small">No tienes acceso a este carnet.</p>'; return; }
 
-  if (!record) {
-    wrap.innerHTML = '<p class="small">No hay registro todavía.</p>';
-    return;
-  }
-
-  const { data: card } = await db
-    .from('cards')
-    .select('*')
-    .eq('record_id', record.id)
-    .order('issued_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { data: rel } = await db
-    .from('relationships')
-    .select('profiles!relationships_dominant_id_fkey(display_name, id), submissive_id')
-    .eq('id', relId)
-    .maybeSingle();
-
-  // Consultar avatar actual del sumiso (se actualiza solo al cambiar)
-  let subAvatarUrl = '';
-  if (rel && rel.submissive_id) {
-    const { data: subProf } = await db
-      .from('profiles')
-      .select('avatar_url, display_name')
-      .eq('id', rel.submissive_id)
-      .maybeSingle();
-    subAvatarUrl = subProf?.avatar_url || '';
-  }
-
-  if (!card) {
-    wrap.innerHTML = '<p class="small">La Dominante aún no emite el carnet.</p>';
-    return;
-  }
-
-  // Consultar si hay una cesión activa
-  const { data: activeTransfer } = await db
-    .from('transfers')
-    .select('*, from_profile:profiles!transfers_from_dominant_id_fkey(display_name), to_profile:profiles!transfers_to_dominant_id_fkey(display_name)')
-    .eq('submissive_id', rel.submissive_id)
-    .eq('status', 'activa')
-    .maybeSingle();
-
-  // Consultar si hay castidad activa
-  const { data: chastityAll } = await db.rpc('active_chastity');
-  const activeChastity = (chastityAll || []).find(c => c.submissive_id === rel.submissive_id);
+  const record = V.record || null;
+  const card = V.card || null;
+  const rel = { submissive_id: V.submissive_id, profiles: { display_name: V.owner_name } };
+  const subAvatarUrl = V.sub_avatar || '';
+  const activeTransfer = V.transfer || null;
+  const activeChastity = V.chastity || null;
+  const sharedNames = V.shared_names || [];
   const chastityDays = activeChastity ? chastityDaysCalc(activeChastity.since) : null;
 
-    let sharedNames = [];
-  const { data: shAnn } = await db.from('sharing_annexes').select('id').eq('submissive_id', rel.submissive_id);
-  if (shAnn && shAnn.length) {
-    const { data: shm } = await db.from('sharing_members')
-      .select('status, dom:profiles!sharing_members_dominant_id_fkey(display_name)')
-      .in('annex_id', shAnn.map(a => a.id)).eq('status', 'active');
-    sharedNames = (shm || []).map(m => m.dom?.display_name).filter(Boolean);
-  }
+  if (!record) { wrap.innerHTML = '<p class="small">No hay registro todavía.</p>'; return; }
+  if (!card) { wrap.innerHTML = '<p class="small">La Dominante aún no emite el carnet.</p>'; return; }
+
+  const verifyUrl = 
   const verifyUrl = window.location.origin + '/verificar.html?code=' + encodeURIComponent(card.verification_code || '');
   const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(verifyUrl);
 
