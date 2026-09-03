@@ -96,7 +96,7 @@ let me = null, myProfile = null;
 let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [], currentTargets = [];
-let ownedSet = new Set(), chatModIds = new Set();
+let ownedSet = new Set(), chatModIds = new Set(), myDominion = new Set();
 let rooms = [], currentRoomId = null, chatChannel = null;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -173,6 +173,8 @@ async function loadRooms(initial) {
 async function loadRoomBans() {
   const { data } = await db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId);
   window._roomBans = data || [];
+    const { data: rm } = await db.from('chat_room_mutes').select('user_id').eq('room_id', currentRoomId);
+  window._roomMutes = new Set((rm.data || []).map(x => x.user_id));
 }
 
 function renderRoomsBar() {
@@ -291,6 +293,8 @@ async function renderPage() {
   assignedNicks = an.data || [];
   ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
   chatModIds = new Set((cmods.data || []).map(x => x.user_id));
+    const { data: domIds } = await db.rpc('my_dominion_ids');
+  myDominion = new Set(domIds || []);
 
   await loadRoomBans();
 
@@ -399,15 +403,18 @@ function renderParticipants() {
     const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
     const isBannedHere = (window._roomBans || []).find(b => b.user_id === p.id);
     const canBan = p.id !== me && (isSuper || isMod || isChatMod);
+        const roomMuted = (window._roomMutes || new Set()).has(p.id);
+    const canDom = p.id !== me && myDominion.has(p.id);
 
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}${roomMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO EN ESTA SALA)</span>' : ''}
         </span>
         <span>
           ${canMute ? `<button class="p-act" title="${chatMuted ? 'Devolver la voz' : 'Silenciar'}" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
           ${canBan && !isBannedHere ? `<button class="p-act ban" title="Prohibir en esta sala" onclick="banFromRoom('${p.id}','${esc(n)}')">🚫</button>` : ''}
+                    ${canDom ? `<button class="p-act" title="${(p.chat_muted || roomMuted) ? 'Devolver la voz' : 'Silenciar'}" onclick="domMuteAsk('${p.id}', ${!(p.chat_muted || roomMuted)})">${(p.chat_muted || roomMuted) ? '🔊' : '🔇'}</button>` : ''}
           ${isBannedHere ? `<button class="p-act ok" title="Levantar ban (por ${isBannedHere.banned_by_role})" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')">✓ readmitir</button>` : ''}
         </span>
       </div>
@@ -437,6 +444,10 @@ async function renderInputRow() {
     return;
   }
 
+    if ((window._roomMutes || new Set()).has(me)) {
+    row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Tu Dueña te silenció en esta sala.</p>';
+    return;
+  }
   const { data: myProfileData } = await db.from('profiles').select('chat_muted').eq('id', me).maybeSingle();
   if (myProfileData && myProfileData.chat_muted) {
     row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Has sido silenciado por el Staff. No puedes participar en el chat.</p>';
@@ -540,6 +551,7 @@ async function sendMsg() {
   const input = document.getElementById('msg');
   const body = input.value.trim();
   if (!body || !currentRoomId) return;
+    if ((window._roomMutes || new Set()).has(me)) return alert('🔇 Estás silenciado en esta sala.');
   const { error } = await db.from('chat_messages').insert({ user_id: me, body, room_id: currentRoomId });
   if (error) return alert(error.message);
   input.value = '';
@@ -552,7 +564,22 @@ async function deleteMsg(id) {
   await loadMessages();
 }
 
-async function chatMuteToggle(id, shouldMute) {
+async function chatMuteToggle(id, shouldMute) {function domMuteAsk(id, on) {
+  openModal(`<h2 style="margin-top:0;">${on ? '🔇 Silenciar' : '🔊 Devolver la voz'} a ${esc(nameFor(id))}</h2>
+    <p class="small">Elige el alcance de tu decisión:</p>
+    <button onclick="domMuteDo('${id}', ${on}, 'room')">Solo en esta sala</button>
+    <button onclick="domMuteDo('${id}', ${on}, 'all')">En todas las salas</button>
+    <button class="secondary" onclick="closeModal()">Cancelar</button>`);
+}
+async function domMuteDo(id, on, scope) {
+  closeModal();
+  const rpc = scope === 'room'
+    ? await db.rpc('dom_room_mute', { sub_id: id, room_id: currentRoomId, on_val: on })
+    : await db.rpc('dom_global_mute', { sub_id: id, on_val: on });
+  if (!rpc.data || !rpc.data.ok) return alert(rpc.data?.error || 'Error');
+  await loadRoomBans();
+  await renderPage();
+}
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   if (shouldMute) {
     const { error } = await db.from('profiles').update({
