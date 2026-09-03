@@ -488,7 +488,8 @@ function getClient(){
       ['disciplina.html', '⚖ Disciplina'],
       ['contrato.html', '📜 Contrato'],
       ['cesiones.html', '⚖ Cesiones'],
-      ['subastas.html', '🔨 Subastas']
+      ['subastas.html', '🔨 Subastas'],
+      ['compartir.html', '🤝 Compartir sumisos']
     ]},
     { title: 'Carnet de Sumiso en Propiedad', items: [
       ['carnet.html', '🪪 Carnet'],
