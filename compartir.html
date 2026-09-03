@@ -33,78 +33,44 @@ label.dom{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:14px}
 const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-let me=null,role=null;const nameMap={};
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function nameOf(id){return nameMap[id]||'…';}
-async function loadNames(ids){
-  const arr=[...new Set(ids)].filter(Boolean);
-  if(!arr.length)return;
-  const {data}=await db.from('profiles').select('id, display_name').in('id',arr);
-  (data||[]).forEach(p=>nameMap[p.id]=p.display_name);
-}
 function dates(m){
   let s='';
   if(m.signed_at)s+='Inicio: <b>'+new Date(m.signed_at).toLocaleString()+'</b>';
   if(m.ended_at)s+=' · Término: <b>'+new Date(m.ended_at).toLocaleString()+'</b>';
   return s?'<div class="small" style="margin-top:4px;">🗓 '+s+'</div>':'';
 }
-async function annexesOf(ids){
-  if(!ids||!ids.length)return[];
-  const {data}=await db.from('sharing_annexes').select('id, conditions, created_at, owner_id, submissive_id').in('id',ids);
-  return data||[];
-}
-async function membersOf(annexIds){
-  if(!annexIds||!annexIds.length)return[];
-  const {data}=await db.from('sharing_members').select('id, annex_id, dominant_id, status, signed_at, ended_at').in('annex_id',annexIds);
-  return data||[];
-}
-async function init(){
-  const content=document.getElementById('content');
-  const {data:{session}}=await db.auth.getSession();
-  if(!session){content.innerHTML='<h2>Inicia sesión primero</h2>';return;}
-  me=session.user.id;
-  const {data:p}=await db.from('profiles').select('role').eq('id',me).maybeSingle();
-  role=p?p.role:null;
-  await render();
-}
+function tag(st){return st==='pending'?'por firmar':st==='active'?'activa':'terminada';}
 async function render(){
   const content=document.getElementById('content');
+  const {data:D,error}=await db.rpc('share_page_data');
+  if(error||!D){content.innerHTML='<p class="small">Error: '+esc((error&&error.message)||'sin datos')+'</p>';return;}
   let html='';
 
-  if(role==='dominant'){
-    const [subsRes,domsRes]=await Promise.all([
-      db.from('relationships').select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name)').eq('dominant_id',me).eq('status','confirmed'),
-      db.from('profiles').select('id, display_name').eq('role','dominant').neq('id',me).order('display_name')
-    ]);
-    const subs=subsRes.data||[];const doms=domsRes.data||[];
+  if(D.role==='dominant'){
     html+=`<div class="card"><h2 style="margin-top:0;">🤝 Compartir a un sumiso</h2>
       <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
-      ${subs.length?`
+      ${D.owned.length?`
       <label class="small">Sumiso en propiedad</label>
-      <select id="sh_sub">${subs.map(s=>`<option value="${s.id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
+      <select id="sh_sub">${D.owned.map(s=>`<option value="${s.rel_id}">⛓ ${esc(s.name)}</option>`).join('')}</select>
       <label class="small">Dominantes con quienes compartir</label>
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
-        ${doms.map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.display_name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
+        ${D.doms.map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
       </div>
       <label class="small">Condiciones del anexo</label>
       <textarea id="sh_cond" rows="3" placeholder="Ej.: horarios compartidos, protocolos, límites de disciplina…"></textarea>
       <button onclick="createAnnex()">📜 Crear anexo de compartición</button>`:'<p class="small">No tienes sumisos en propiedad.</p>'}
     </div>`;
 
-    const {data:ann}=await db.from('sharing_annexes').select('id, conditions, created_at, submissive_id').eq('owner_id',me).order('created_at',{ascending:false});
-    if(ann&&ann.length){
-      const members=await membersOf(ann.map(a=>a.id));
-      const ids=[];ann.forEach(a=>ids.push(a.submissive_id));members.forEach(m=>ids.push(m.dominant_id));
-      await loadNames(ids);
+    if(D.my_annexes.length){
       html+='<div class="card"><h2 style="margin-top:0;">📜 Mis anexos como Dueña</h2>';
-      ann.forEach(a=>{
-        html+=`<div class="item"><b>⛓ ${esc(nameOf(a.submissive_id))}</b>
+      D.my_annexes.forEach(a=>{
+        html+=`<div class="item"><b>⛓ ${esc(a.sub_name)}</b>
           ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}
           <div class="small">Creado: ${new Date(a.created_at).toLocaleString()}</div>`;
-        members.filter(m=>m.annex_id===a.id).forEach(m=>{
+        (a.members||[]).forEach(m=>{
           html+=`<div style="margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;">
-            ♛ ${esc(nameOf(m.dominant_id))} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'activa':'terminada'}</span>
-            ${dates(m)}
+            ♛ ${esc(m.dom_name)} <span class="tag ${m.status}">${tag(m.status)}</span>${dates(m)}
             ${m.status!=='ended'?`<button class="danger" style="margin-top:6px;" onclick="removeMember('${m.id}')">🚫 Dejar de compartir con ella</button>`:''}
           </div>`;
         });
@@ -114,56 +80,39 @@ async function render(){
     }
   }
 
-  const {data:pendM}=await db.from('sharing_members').select('id, annex_id, status').eq('dominant_id',me).eq('status','pending');
-  if(pendM&&pendM.length){
-    const annx=await annexesOf(pendM.map(m=>m.annex_id));
-    const ids=[];annx.forEach(a=>ids.push(a.owner_id,a.submissive_id));
-    await loadNames(ids);
-    html+='<div class="card"><h2 style="margin-top:0;">✍ Anexos por firmar</h2>';
-    pendM.forEach(m=>{
-      const a=annx.find(x=>x.id===m.annex_id)||{};
-      html+=`<div class="item"><b>⛓ ${esc(nameOf(a.submissive_id))}</b> · ofrecido por ♛ ${esc(nameOf(a.owner_id))}
-        ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:'<p class="small">Sin condiciones especiales.</p>'}
-        <button onclick="sign('${m.id}')">✍ Firmar anexo (acepto ser también su Dueña)</button>
+  if(D.pending.length){
+    html+='<div class="card"><h2 style="margin-top:0;">✍ Anexos por firmar ('+D.pending.length+')</h2>';
+    D.pending.forEach(m=>{
+      html+=`<div class="item"><b>⛓ ${esc(m.sub_name)}</b> · ofrecido por ♛ ${esc(m.owner_name)}
+        ${m.conditions?`<div class="cond">${esc(m.conditions)}</div>`:'<p class="small">Sin condiciones especiales.</p>'}
+        <button onclick="sign('${m.member_id}')">✍ Firmar anexo (acepto ser también su Dueña)</button>
       </div>`;
     });
     html+='</div>';
   }
 
-  const {data:actM}=await db.from('sharing_members').select('id, annex_id, status, signed_at, ended_at').eq('dominant_id',me).eq('status','active');
-  if(actM&&actM.length){
-    const annx=await annexesOf(actM.map(m=>m.annex_id));
-    const ids=[];annx.forEach(a=>ids.push(a.owner_id,a.submissive_id));
-    await loadNames(ids);
+  if(D.active.length){
     html+='<div class="card"><h2 style="margin-top:0;">♛ Sumisos que comparto</h2>';
-    actM.forEach(m=>{
-      const a=annx.find(x=>x.id===m.annex_id)||{};
-      html+=`<div class="item"><b>⛓ ${esc(nameOf(a.submissive_id))}</b> · Dueña del contrato: ♛ ${esc(nameOf(a.owner_id))}
-        ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}
-        ${dates(m)}
-        <button class="danger" style="margin-top:6px;" onclick="leave('${m.id}')">🕊 Deshacer anexo (romper mi vínculo)</button>
+    D.active.forEach(m=>{
+      html+=`<div class="item"><b>⛓ ${esc(m.sub_name)}</b> · Dueña del contrato: ♛ ${esc(m.owner_name)}
+        ${m.conditions?`<div class="cond">${esc(m.conditions)}</div>`:''}${dates(m)}
+        <button class="danger" style="margin-top:6px;" onclick="leave('${m.member_id}')">🕊 Deshacer anexo (romper mi vínculo)</button>
       </div>`;
     });
     html+='</div>';
   }
 
-  if(role==='submissive'){
-    const {data:mine}=await db.from('sharing_annexes').select('id, conditions, created_at, owner_id').eq('submissive_id',me).order('created_at',{ascending:false});
-    if(mine&&mine.length){
-      const members=await membersOf(mine.map(a=>a.id));
-      const ids=[];mine.forEach(a=>ids.push(a.owner_id));members.forEach(m=>ids.push(m.dominant_id));
-      await loadNames(ids);
-      html+='<div class="card"><h2 style="margin-top:0;">🗂 Anexos sobre mí (archivo)</h2>';
-      mine.forEach(a=>{
-        html+=`<div class="item"><b>Dueña del contrato:</b> ♛ ${esc(nameOf(a.owner_id))}
-          ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}`;
-        members.filter(m=>m.annex_id===a.id).forEach(m=>{
-          html+=`<div style="margin:6px 0;">♛ ${esc(nameOf(m.dominant_id))} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'me comparte':'terminada'}</span>${dates(m)}</div>`;
-        });
-        html+='</div>';
+  if(D.role==='submissive'&&D.about_me.length){
+    html+='<div class="card"><h2 style="margin-top:0;">🗂 Anexos sobre mí (archivo)</h2>';
+    D.about_me.forEach(a=>{
+      html+=`<div class="item"><b>Dueña del contrato:</b> ♛ ${esc(a.owner_name)}
+        ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}`;
+      (a.members||[]).forEach(m=>{
+        html+=`<div style="margin:6px 0;">♛ ${esc(m.dom_name)} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'me comparte':'terminada'}</span>${dates(m)}</div>`;
       });
       html+='</div>';
-    }
+    });
+    html+='</div>';
   }
 
   content.innerHTML=html||'<div class="card"><p class="small">No hay anexos de compartición en tu historia.</p></div>';
@@ -197,7 +146,11 @@ async function removeMember(id){
   if(!data||!data.ok)return alert(data?.error||'Error');
   await render();
 }
-init();
+(async()=>{
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){document.getElementById('content').innerHTML='<h2>Inicia sesión primero</h2>';return;}
+  await render();
+})();
 </script>
 </body>
 </html>
