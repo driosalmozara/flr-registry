@@ -92,8 +92,8 @@ async function render() {
       <div class="card lockcard">
         <h2 style="margin-top:0;">👑 Cerrojo de aprobación de Dominantes</h2>
         <p class="small">
-          <b>Cerrojo echado (por defecto):</b> toda Dominante nueva espera aprobación del Staff.<br>
-          <b>Cerrojo abierto:</b> las Diosas entran activas al instante al registrarse.
+          <b>Cerrojo echado (por defecto):</b> toda Dominante nueva entra como <b>pendiente de verificación</b>: usa la casa pero no puede tener sumisos hasta que una Moderadora o Administradora la verifique.<br>
+          <b>Cerrojo abierto:</b> las Diosas quedan verificadas con plenos derechos al ser aprobadas como usuarias.
         </p>
         <p>Estado actual: <span class="badge">${domLocked ? '🔒 APROBACIÓN REQUERIDA' : '🔓 ENTRADA LIBRE DE DIOSAS'}</span></p>
         <button onclick="setDomLock(${!domLocked})">${domLocked ? '🔓 Abrir (activas al instante)' : '🔒 Echar (requerir aprobación)'}</button>
@@ -102,6 +102,25 @@ async function render() {
     html += `<div class="card lockcard"><p class="small">Estado del cerrojo: <span class="badge">${locked ? '🔒 CERRADO' : '🔓 ABIERTO'}</span> · Solo las Administradoras pueden moverlo.</p></div>`;
   }
 
+    const { data: unverified } = await db.from('profiles')
+    .select('id, display_name, created_at')
+    .eq('role', 'dominant').eq('approved', true).eq('dom_verified', false)
+    .order('created_at', { ascending: true });
+
+  html += `<div class="card"><h2 style="margin-top:0;">👑 Dominantes pendientes de verificación (${(unverified || []).length})</h2>`;
+  if (!unverified || unverified.length === 0) {
+    html += '<p class="small">No hay Dominantes esperando verificación.</p>';
+  } else {
+    unverified.forEach(u => {
+      html += `
+        <div class="item">
+          <h3 style="margin:0 0 6px;">♛ ${esc(u.display_name)}</h3>
+          <p class="small">Entró a la casa: ${new Date(u.created_at).toLocaleString()} · Aprobada como usuaria, pendiente de verificación como Dominante.</p>
+          <button onclick="verifyDom('${u.id}')">👑 Verificar como Dominante</button>
+        </div>`;
+    });
+  }
+  html += '</div>';
   html += `
     <div class="card">
       <h2 style="margin-top:0;">⏳ Solicitudes en la antecámara (${(pending || []).length})</h2>`;
@@ -131,7 +150,13 @@ async function setLock(on) {
   await render();
 }
 
-async function approve(id) {
+async function approve(id) {async function verifyDom(id) {
+  if (!confirm('¿Verificar a esta Dominante con plenos privilegios?')) return;
+  const { data } = await db.rpc('verify_dominant', { target_id: id });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo verificar.');
+  alert('👑 Dominante verificada. Ya tiene plenos privilegios.');
+  await render();
+}
   const { data } = await db.rpc('approve_member', { target_id: id });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo aprobar.');
   alert('✅ Miembro aprobado. Recibirá la notificación de bienvenida.');
