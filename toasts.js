@@ -490,6 +490,14 @@ function getClient(){
       ['cesiones.html', '⚖ Cesiones'],
       ['subastas.html', '🔨 Subastas']
     ]},
+    { title: 'Carnet de Sumiso en Propiedad', items: [
+      ['carnet.html', '🪪 Carnet'],
+      ['verificar.html', '🔍 Verificar carnet']
+    ]},
+    { title: 'Galería', items: [
+      ['galeria.html', '📸 Galería de relación'],
+      ['mi-galeria.html', '🖼 Galería personal']
+    ]},
     ['contacto.html', '📬 Contacto con el Staff'],
     ['donaciones.html', '♛ Colaboración voluntaria'],
     ['terminos.html', 'Términos']
