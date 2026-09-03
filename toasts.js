@@ -484,18 +484,12 @@ function getClient(){
     ['disponible.html', 'Disponibilidad'],
     ['notificaciones.html', 'Notificaciones'],
     ['avatar.html', 'Mi avatar'],
-    ['disciplina.html', 'Disciplina'],
-    ['contrato.html', 'Contrato'],
-    { title: 'Carnet de Sumiso en Propiedad', items: [
-      ['carnet.html', '🪪 Carnet'],
-      ['verificar.html', '🔍 Verificar carnet']
+    { title: 'Gestión de sumisos en propiedad', items: [
+      ['disciplina.html', '⚖ Disciplina'],
+      ['contrato.html', '📜 Contrato'],
+      ['cesiones.html', '⚖ Cesiones'],
+      ['subastas.html', '🔨 Subastas']
     ]},
-    { title: 'Galería', items: [
-      ['galeria.html', '📸 Galería de relación'],
-      ['mi-galeria.html', '🖼 Galería personal']
-    ]},
-    ['cesiones.html', 'Cesiones'],
-    ['subastas.html', 'Subastas'],
     ['contacto.html', '📬 Contacto con el Staff'],
     ['donaciones.html', '♛ Colaboración voluntaria'],
     ['terminos.html', 'Términos']
