@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Compartir Sumisos — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+select,input,textarea{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.danger{background:#7f1d1d;color:#fff}button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
+.tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
+.tag.pending{border:1px solid #f59e0b;color:#f59e0b}.tag.active{border:1px solid var(--gold);color:var(--gold)}
+.tag.ended{border:1px solid #71717a;color:#a1a1aa}
+.cond{background:rgba(212,175,55,.07);border:1px solid rgba(212,175,55,.3);border-radius:10px;padding:10px;margin:8px 0;white-space:pre-wrap}
+label.dom{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header><h1 style="margin:0;">🤝 Compartir Sumisos</h1><div><a class="navlink" href="index.html">Inicio</a></div></header>
+<main><div id="content" class="card">Cargando...</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let me=null,role=null;
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function dates(m){
+  let s='';
+  if(m.signed_at)s+='Inicio: <b>'+new Date(m.signed_at).toLocaleString()+'</b>';
+  if(m.ended_at)s+=' · Término: <b>'+new Date(m.ended_at).toLocaleString()+'</b>';
+  return s?'<div class="small" style="margin-top:4px;">🗓 '+s+'</div>':'';
+}
+async function init(){
+  const content=document.getElementById('content');
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){content.innerHTML='<h2>Inicia sesión primero</h2>';return;}
+  me=session.user.id;
+  const {data:p}=await db.from('profiles').select('role').eq('id',me).maybeSingle();
+  role=p?p.role:null;
+  await render();
+}
+async function render(){
+  const content=document.getElementById('content');
+  let html='';
+
+  if(role==='dominant'){
+    const [subs,doms]=await Promise.all([
+      db.from('relationships').select('id, profiles!relationships_submissive_id_fkey(id, display_name)').eq('dominant_id',me).eq('status','confirmed'),
+      db.from('profiles').select('id, display_name').eq('role','dominant').neq('id',me).order('display_name')
+    ]);
+    html+=`<div class="card"><h2 style="margin-top:0;">🤝 Compartir a un sumiso</h2>
+      <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
+      ${subs&&subs.length?`
+      <label class="small">Sumiso en propiedad</label>
+      <select id="sh_sub">${subs.map(s=>`<option value="${s.id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
+      <label class="small">Dominantes con quienes compartir</label>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
+        ${(doms||[]).map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.display_name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
+      </div>
+      <label class="small">Condiciones del anexo</label>
+      <textarea id="sh_cond" rows="3" placeholder="Ej.: horarios compartidos, protocolos, límites de disciplina…"></textarea>
+      <button onclick="createAnnex()">📜 Crear anexo de compartición</button>`:'<p class="small">No tienes sumisos en propiedad.</p>'}
+    </div>`;
+
+    const {data:ann}=await db.from('sharing_annexes')
+      .select('*, sub:profiles!sharing_annexes_submissive_id_fkey(display_name), members:sharing_members(*, dom:profiles!sharing_members_dominant_id_fkey(display_name))')
+      .eq('owner_id',me).order('created_at',{ascending:false});
+    if(ann&&ann.length){
+      html+='<div class="card"><h2 style="margin-top:0;">📜 Mis anexos como Dueña</h2>';
+      ann.forEach(a=>{
+        html+=`<div class="item"><b>⛓ ${esc(a.sub?.display_name||'')}</b>
+          ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}
+          <div class="small">Creado: ${new Date(a.created_at).toLocaleString()}</div>`;
+        (a.members||[]).forEach(m=>{
+          html+=`<div style="margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;">
+            ♛ ${esc(m.dom?.display_name||'')} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'activa':'terminada'}</span>
+            ${dates(m)}
+            ${m.status!=='ended'?`<button class="danger" style="margin-top:6px;" onclick="removeMember('${m.id}')">🚫 Dejar de compartir con ella</button>`:''}
+          </div>`;
+        });
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+  }
+
+  const {data:pend}=await db.from('sharing_members')
+    .select('*, annex:sharing_annexes(*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), sub:profiles!sharing_annexes_submissive_id_fkey(display_name))')
+    .eq('dominant_id',me).eq('status','pending');
+  if(pend&&pend.length){
+    html+='<div class="card"><h2 style="margin-top:0;">✍ Anexos por firmar</h2>';
+    pend.forEach(m=>{
+      html+=`<div class="item"><b>⛓ ${esc(m.annex?.sub?.display_name||'')}</b> · ofrecido por ♛ ${esc(m.annex?.owner?.display_name||'')}
+        ${m.annex?.conditions?`<div class="cond">${esc(m.annex.conditions)}</div>`:'<p class="small">Sin condiciones especiales.</p>'}
+        <button onclick="sign('${m.id}')">✍ Firmar anexo (acepto ser también su Dueña)</button>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  const {data:act}=await db.from('sharing_members')
+    .select('*, annex:sharing_annexes(*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), sub:profiles!sharing_annexes_submissive_id_fkey(display_name))')
+    .eq('dominant_id',me).eq('status','active');
+  if(act&&act.length){
+    html+='<div class="card"><h2 style="margin-top:0;">♛ Sumisos que comparto</h2>';
+    act.forEach(m=>{
+      html+=`<div class="item"><b>⛓ ${esc(m.annex?.sub?.display_name||'')}</b> · Dueña del contrato: ♛ ${esc(m.annex?.owner?.display_name||'')}
+        ${m.annex?.conditions?`<div class="cond">${esc(m.annex.conditions)}</div>`:''}
+        ${dates(m)}
+        <button class="danger" style="margin-top:6px;" onclick="leave('${m.id}')">🕊 Deshacer anexo (romper mi vínculo)</button>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  if(role==='submissive'){
+    const {data:mine}=await db.from('sharing_annexes')
+      .select('*, owner:profiles!sharing_annexes_owner_id_fkey(display_name), members:sharing_members(*, dom:profiles!sharing_members_dominant_id_fkey(display_name))')
+      .eq('submissive_id',me).order('created_at',{ascending:false});
+    if(mine&&mine.length){
+      html+='<div class="card"><h2 style="margin-top:0;">🗂 Anexos sobre mí (archivo)</h2>';
+      mine.forEach(a=>{
+        html+=`<div class="item"><b>Dueña del contrato:</b> ♛ ${esc(a.owner?.display_name||'')}
+          ${a.conditions?`<div class="cond">${esc(a.conditions)}</div>`:''}`;
+        (a.members||[]).forEach(m=>{
+          html+=`<div style="margin:6px 0;">♛ ${esc(m.dom?.display_name||'')} <span class="tag ${m.status}">${m.status==='pending'?'por firmar':m.status==='active'?'me comparte':'terminada'}</span>${dates(m)}</div>`;
+        });
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+  }
+
+  content.innerHTML=html||'<div class="card"><p class="small">No hay anexos de compartición en tu historia.</p></div>';
+}
+async function createAnnex(){
+  const rel=document.getElementById('sh_sub').value;
+  const ids=[...document.querySelectorAll('.sh_dom:checked')].map(c=>c.value);
+  const cond=document.getElementById('sh_cond').value;
+  if(!ids.length)return alert('Elige al menos una Dominante.');
+  const {data}=await db.rpc('create_sharing_annex',{rel_id:rel,dom_ids:ids,conditions:cond});
+  if(!data||!data.ok)return alert(data?.error||'Error');
+  alert('📜 Anexo creado. Las Dominantes invitadas recibirán la notificación para firmarlo.');
+  await render();
+}
+async function sign(id){
+  if(!confirm('Al firmar pasarás a ser también Dueña de este sumiso, con todas las atribuciones. ¿Continuar?'))return;
+  const {data}=await db.rpc('sign_sharing_annex',{member_id:id});
+  if(!data||!data.ok)return alert(data?.error||'Error');
+  alert('✍ Anexo firmado. Ya compartes al sumiso.');
+  await render();
+}
+async function leave(id){
+  if(!confirm('¿Deshacer este anexo respecto de ti?\n\nTu vínculo con el sumiso se romperá y quedará archivado con fecha de término.'))return;
+  const {data}=await db.rpc('leave_sharing_annex',{member_id:id});
+  if(!data||!data.ok)return alert(data?.error||'Error');
+  await render();
+}
+async function removeMember(id){
+  if(!confirm('¿Dejar de compartir al sumiso con esta Dominante?\n\nSu vínculo se romperá de inmediato y quedará archivado.'))return;
+  const {data}=await db.rpc('remove_sharing_member',{member_id:id});
+  if(!data||!data.ok)return alert(data?.error||'Error');
+  await render();
+}
+init();
+</script>
+</body>
+</html>
