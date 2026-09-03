@@ -482,7 +482,6 @@ function getClient(){
   var OTHERS = [
     ['muro.html', 'Muro'],
     // disponible.html eliminado: ahora vive dentro del Salón y de Mi perfil
-    ['notificaciones.html', 'Notificaciones'],
     ['avatar.html', 'Mi avatar'],
     { title: 'Gestión de sumisos en propiedad', items: [
       ['disciplina.html', '⚖ Disciplina'],
@@ -504,13 +503,22 @@ function getClient(){
     ['terminos.html', 'Términos']
   ];
   var flags = { staff: false, admin: false };
-  var lock = false, scheduled = false;
+  var bellClient = null, bellUid = null;
+  function refreshBell(client, me){
+    client.from('notifications').select('*', { count: 'exact', head: true })
+      .eq('user_id', me).eq('read', false)
+      .then(function(r){
+        var b = document.getElementById('qbell');
+        if (!b) return;
+        if ((r.count || 0) > 0) b.classList.add('qbell-glow'); else b.classList.remove('qbell-glow');
+      });
+  }  var lock = false, scheduled = false;
   var currentWrap = null;
   var st = document.createElement('style');
   st.textContent =
     '.qnav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}' +
     '.qwrap{position:relative;display:inline-block}' +
-    '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
+    '.qbell-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);animation:glowPulse 2.2s ease-in-out infinite}' +    '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
     '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;min-width:220px;max-height:min(75vh,580px);overflow-y:auto;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
     '.qmenu.open{display:flex}' +
     '.qmenu a{padding:6px 10px;border-radius:8px;font-size:13px;display:block}' +
@@ -553,6 +561,13 @@ function getClient(){
     nav.className = 'qnav';
     nav.innerHTML = '';
     PRIMARY.forEach(function(p){ nav.appendChild(makeLink(p[0], p[1])); });
+    var bell = document.createElement('a');
+    bell.href = 'notificaciones.html';
+    bell.id = 'qbell';
+    bell.title = 'Notificaciones';
+    bell.textContent = '🔔';
+    bell.style.cssText = 'font-size:17px;text-decoration:none;padding:4px 7px;border-radius:10px;';
+    nav.appendChild(bell);
     var wrap = document.createElement('div'); wrap.className = 'qwrap';
     var btn = document.createElement('button'); btn.className = 'qbtn'; btn.innerHTML = '☰ Más';
     var menu = document.createElement('div'); menu.className = 'qmenu';
@@ -597,7 +612,7 @@ function getClient(){
       h1.title = 'Ir al Muro';
       h1.onclick = function(){ location.href = 'muro.html'; };
     }
-    setTimeout(function(){ lock = false; }, 120);
+    setTimeout(function(){ lock = false; if (bellClient) refreshBell(bellClient, bellUid); }, 120);
   }
   function schedule(){
     if (lock || scheduled) return;
@@ -621,7 +636,13 @@ function getClient(){
       var mod = await client.from('app_moderators').select('user_id').eq('user_id', uid).maybeSingle();
       flags.admin = !!adm.data;
       flags.staff = !!(adm.data || mod.data);
+      bellClient = client; bellUid = uid;
       rebuild();
+      refreshBell(client, uid);
+      client.channel('bell-glow-' + uid)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid }, function(){ refreshBell(client, uid); })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid }, function(){ refreshBell(client, uid); })
+        .subscribe();
     });
     var header = document.querySelector('header');
     if (header && window.MutationObserver) {
