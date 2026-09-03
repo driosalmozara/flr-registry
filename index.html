@@ -664,6 +664,17 @@
       if (currentProfile && currentProfile.dom_verified === false) {
         html += '<div class="card" style="border-color:#f59e0b;"><h2 style="margin-top:0;">⏳ Pendiente de verificación</h2><p class="small">Tu cuenta de Dominante está activa pero el Staff aún no la verifica. Puedes usar la casa con normalidad; mientras tanto no podrás tener sumisos ni recibir solicitudes.</p></div>';
       }
+            const { data: pendAnn } = await db.from('sharing_members')
+        .select('id, annex:sharing_annexes(sub:profiles!sharing_annexes_submissive_id_fkey(display_name), owner:profiles!sharing_annexes_owner_id_fkey(display_name))')
+        .eq('dominant_id', currentUser.id).eq('status', 'pending');
+      if (pendAnn && pendAnn.length) {
+        html += '<div class="card" style="border-color:#f59e0b;"><h2 style="margin-top:0;">🤝 Anexos de compartición por firmar (' + pendAnn.length + ')</h2>';
+        pendAnn.forEach(a => {
+          html += `<div class="item"><b>⛓ ${escapeHtml(a.annex?.sub?.display_name || '')}</b> · ofrecido por ♛ ${escapeHtml(a.annex?.owner?.display_name || '')}
+            <br><button onclick="window.location.href='compartir.html'" style="margin-top:8px;">✍ Revisar y firmar</button></div>`;
+        });
+        html += '</div>';
+      }
 
       const received = (requests || []).filter(r => r.initiated_by === 'submissive');
       const sent     = (requests || []).filter(r => r.initiated_by === 'dominant');
