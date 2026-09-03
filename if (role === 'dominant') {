@@ -281,7 +281,10 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    async function domLockIsOn() {
+    async function domLockIsOn() {    async function regLockIsOn() {
+      const { data } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
+      return !!(data && data.value === '1');
+    }
       const { data } = await db.from('app_settings').select('value').eq('key', 'lock_dominant_approval').maybeSingle();
       return !data || data.value === '1';
     }
@@ -462,13 +465,16 @@
       if (profileError) return alert('Perfil: ' + profileError.message);
 
       if (role === 'dominant') {
-        const lockOn = await domLockIsOn();
-        if (lockOn) {
+        const regOn = await regLockIsOn();
+        if (regOn) {
           await db.auth.signOut();
-          alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
+          alert('👑 Registro recibido.\n\nTu entrada a la casa será revisada por el Staff. Recibirás una notificación.');
           window.location.href = 'index.html';
         } else {
-          alert('👑 Bienvenida, Diosa. Tu cuenta está activa desde este instante.');
+          const domOn = await domLockIsOn();
+          alert(domOn
+            ? '👑 Bienvenida a la casa.\n\nQuedas como Dominante PENDIENTE DE VERIFICACIÓN: puedes usar la plataforma, pero no tener sumisos hasta que el Staff te verifique.'
+            : '👑 Bienvenida, Diosa. Tu cuenta está activa con plenos derechos desde este instante.');
           window.location.reload();
         }
       } else {
@@ -490,13 +496,16 @@
       });
       if (error) return alert('Perfil: ' + error.message);
       if (role === 'dominant') {
-        const lockOn = await domLockIsOn();
-        if (lockOn) {
+        const regOn = await regLockIsOn();
+        if (regOn) {
           await db.auth.signOut();
-          alert('👑 Registro recibido.\n\nTu cuenta con privilegios de Dominante será revisada y aprobada por el Staff de la página. Recibirás una notificación cuando esté activa.');
+          alert('👑 Registro recibido.\n\nTu entrada a la casa será revisada por el Staff. Recibirás una notificación.');
           window.location.href = 'index.html';
         } else {
-          alert('👑 Bienvenida, Diosa. Tu cuenta está activa desde este instante.');
+          const domOn = await domLockIsOn();
+          alert(domOn
+            ? '👑 Bienvenida a la casa.\n\nQuedas como Dominante PENDIENTE DE VERIFICACIÓN: puedes usar la plataforma, pero no tener sumisos hasta que el Staff te verifique.'
+            : '👑 Bienvenida, Diosa. Tu cuenta está activa con plenos derechos desde este instante.');
           window.location.reload();
         }
       } else {
@@ -625,6 +634,10 @@
 
       let html = '';
 
+      if (currentProfile && currentProfile.dom_verified === false) {
+        html += '<div class="card" style="border-color:#f59e0b;"><h2 style="margin-top:0;">⏳ Pendiente de verificación</h2><p class="small">Tu cuenta de Dominante está activa pero el Staff aún no la verifica. Puedes usar la casa con normalidad; mientras tanto no podrás tener sumisos ni recibir solicitudes.</p></div>';
+      }
+
       const received = (requests || []).filter(r => r.initiated_by === 'submissive');
       const sent     = (requests || []).filter(r => r.initiated_by === 'dominant');
 
@@ -642,8 +655,8 @@
               </div>
               <p class="small">Edad: ${escapeHtml(String(profile.age || ''))}</p>
               <p class="small">${escapeHtml(profile.bio || '')}</p>
-              <button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
-              <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>
+              ${currentProfile.dom_verified !== false ? `<button onclick="respondRequest('${req.id}', 'confirmed')">Aceptar</button>
+              <button class="danger" onclick="respondRequest('${req.id}', 'rejected')">Rechazar</button>` : '<p class="small" style="color:#f59e0b;">⏳ No puedes aceptar sumisos hasta ser verificada por el Staff.</p>'}
               <button class="secondary" onclick="messageSub('${req.submissive_id}')">💬 Mensaje</button>
             </div>`;
         });
@@ -836,7 +849,7 @@
 
       if (!rel) {
         const { data: dominants, error: domError } = await db.from('profiles')
-          .select('id, display_name, bio').eq('role', 'dominant').order('display_name');
+          .select('id, display_name, bio').eq('role', 'dominant').eq('dom_verified', true).order('display_name');
         if (domError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(domError.message)}</div>`; return; }
         html += '<div class="card"><h2>Solicitar Dominante</h2>';
         if (!dominants || dominants.length === 0) {
