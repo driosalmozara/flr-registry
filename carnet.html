@@ -187,6 +187,14 @@ async function loadCard(relId) {
   const activeChastity = (chastityAll || []).find(c => c.submissive_id === rel.submissive_id);
   const chastityDays = activeChastity ? chastityDaysCalc(activeChastity.since) : null;
 
+    let sharedNames = [];
+  const { data: shAnn } = await db.from('sharing_annexes').select('id').eq('submissive_id', rel.submissive_id);
+  if (shAnn && shAnn.length) {
+    const { data: shm } = await db.from('sharing_members')
+      .select('status, dom:profiles!sharing_members_dominant_id_fkey(display_name)')
+      .in('annex_id', shAnn.map(a => a.id)).eq('status', 'active');
+    sharedNames = (shm || []).map(m => m.dom?.display_name).filter(Boolean);
+  }
   const verifyUrl = window.location.origin + '/verificar.html?code=' + encodeURIComponent(card.verification_code || '');
   const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(verifyUrl);
 
@@ -218,7 +226,8 @@ async function loadCard(relId) {
         <div class="line"><span>Sumiso:</span> <b>${escapeHtml(record.slave_name || 'Sin nombre')}</b></div>
         <div class="line"><span>Nº registro:</span> <b>${escapeHtml(record.registration_number)}</b></div>
         <div class="line"><span>Pertenece a:</span> <b>♛ ${escapeHtml(rel?.profiles?.display_name || 'Dominante')}</b></div>
-        <div class="line"><span>Desde:</span> <b>${escapeHtml(record.collar_date || '')}</b> · <span>Nivel:</span> <b>${escapeHtml(record.obedience_level || '')}</b></div>
+        ${activeTransfer ? `<div class="line transfer">⚖ Cedido a: ♛ ${escapeHtml(activeTransfer.to_profile?.display_name || '')}</div>` : ''}
+        ${sharedNames.length ? `<div class="line transfer">🤝 Compartido con: ${sharedNames.map(n => '♛ ' + escapeHtml(n)).join(' · ')}</div>` : ''}        <div class="line"><span>Desde:</span> <b>${escapeHtml(record.collar_date || '')}</b> · <span>Nivel:</span> <b>${escapeHtml(record.obedience_level || '')}</b></div>
         <div class="line"><span>Carnet:</span> <b>${escapeHtml(card.card_number)}</b> · <span>Código:</span> <b>${escapeHtml(card.verification_code || '')}</b></div>
         ${transferLine}
         ${chastityLine}
