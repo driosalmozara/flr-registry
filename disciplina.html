@@ -147,17 +147,15 @@ async function createNotification(relId,type,title){
 
 async function applyMuzzle(relId){
   if(!confirm('¿Aplicar MORDAZA? El sumiso quedará silenciado hasta que la levantes.'))return;
-  const {data:entry,error}=await db.from('discipline_entries').insert({relationship_id:relId,entry_type:'muzzle',title:'Mordaza',description:'Castigo de silencio.',severity:5,category:'silencio',status:'pending',visible_to_submissive:true,created_by:me.id}).select().single();
-  if(error)return alert(error.message);
-  await db.from('relationships').update({is_muzzled:true,muzzled_at:new Date().toISOString(),muzzled_by_entry_id:entry.id}).eq('id',relId);
+  const {data}=await db.rpc('dom_muzzle',{rel_id:relId,on_val:true});
+  if(!data||!data.ok)return alert(data?.error||'Error');
   await createNotification(relId,'muzzle','Mordaza');
   window.location.reload();
 }
 async function liftMuzzle(relId){
   if(!confirm('¿Levantar la mordaza?'))return;
-  await db.from('relationships').update({is_muzzled:false,muzzled_at:null,muzzled_by_entry_id:null}).eq('id',relId);
-  const {data:rel}=await db.from('relationships').select('muzzled_by_entry_id').eq('id',relId).maybeSingle();
-  if(rel&&rel.muzzled_by_entry_id)await db.from('discipline_entries').update({status:'fulfilled',lifted_at:new Date().toISOString()}).eq('id',rel.muzzled_by_entry_id);
+  const {data}=await db.rpc('dom_muzzle',{rel_id:relId,on_val:false});
+  if(!data||!data.ok)return alert(data?.error||'Error');
   window.location.reload();
 }
 
@@ -180,7 +178,10 @@ async function liftChastity(relId){
 
 async function renderDominant(){
   const content=document.getElementById('content');
-  const {data:subs,error}=await db.from('relationships').select('id,dominant_id,is_muzzled,muzzled_at,muzzled_by_entry_id,profiles!relationships_submissive_id_fkey(display_name)').in('submissive_id',ids).eq('status','confirmed');  if(error){content.innerHTML='<p class="small">Error: '+escapeHtml(error.message)+'</p>';return;}
+  const {data:domIds}=await db.rpc('my_dominion_ids');
+  const ids=domIds||[];
+  if(!ids.length){content.innerHTML='<h2>Sin sumisos confirmados</h2>';return;}
+  const {data:subs,error}=await db.from('relationships').select('id,dominant_id,is_muzzled,muzzled_at,muzzled_by_entry_id,profiles!relationships_submissive_id_fkey(display_name)').in('submissive_id',ids).eq('status','confirmed');
   if(!subs||!subs.length){content.innerHTML='<h2>Sin sumisos confirmados</h2>';return;}
   const {data:entries}=await db.from('discipline_entries').select('*').in('relationship_id',subs.map(s=>s.id)).order('created_at',{ascending:false});
   let html='';
