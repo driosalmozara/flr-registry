@@ -150,16 +150,18 @@ async function setLock(on) {
   await render();
 }
 
-async function approve(id) {async function verifyDom(id) {
+async function approve(id) {
+  const { data } = await db.rpc('approve_member', { target_id: id });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo aprobar.');
+  alert('✅ Miembro aprobado. Recibirá la notificación de bienvenida.');
+  await render();
+}
+
+async function verifyDom(id) {
   if (!confirm('¿Verificar a esta Dominante con plenos privilegios?')) return;
   const { data } = await db.rpc('verify_dominant', { target_id: id });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo verificar.');
   alert('👑 Dominante verificada. Ya tiene plenos privilegios.');
-  await render();
-}
-  const { data } = await db.rpc('approve_member', { target_id: id });
-  if (!data || !data.ok) return alert(data?.error || 'No se pudo aprobar.');
-  alert('✅ Miembro aprobado. Recibirá la notificación de bienvenida.');
   await render();
 }
 
