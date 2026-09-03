@@ -492,6 +492,8 @@ function getClient(){
     ['mi-galeria.html', 'Galería personal'],
     ['cesiones.html', 'Cesiones'],
     ['subastas.html', 'Subastas'],
+    ['contacto.html', '📬 Contacto con el Staff'],
+    ['donaciones.html', '♛ Colaboración voluntaria'],
     ['terminos.html', 'Términos']
   ];
   var flags = { staff: false, admin: false };
