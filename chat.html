@@ -564,22 +564,7 @@ async function deleteMsg(id) {
   await loadMessages();
 }
 
-async function chatMuteToggle(id, shouldMute) {function domMuteAsk(id, on) {
-  openModal(`<h2 style="margin-top:0;">${on ? '🔇 Silenciar' : '🔊 Devolver la voz'} a ${esc(nameFor(id))}</h2>
-    <p class="small">Elige el alcance de tu decisión:</p>
-    <button onclick="domMuteDo('${id}', ${on}, 'room')">Solo en esta sala</button>
-    <button onclick="domMuteDo('${id}', ${on}, 'all')">En todas las salas</button>
-    <button class="secondary" onclick="closeModal()">Cancelar</button>`);
-}
-async function domMuteDo(id, on, scope) {
-  closeModal();
-  const rpc = scope === 'room'
-    ? await db.rpc('dom_room_mute', { sub_id: id, room_id: currentRoomId, on_val: on })
-    : await db.rpc('dom_global_mute', { sub_id: id, on_val: on });
-  if (!rpc.data || !rpc.data.ok) return alert(rpc.data?.error || 'Error');
-  await loadRoomBans();
-  await renderPage();
-}
+async function chatMuteToggle(id, shouldMute) {
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   if (shouldMute) {
     const { error } = await db.from('profiles').update({
@@ -590,6 +575,24 @@ async function domMuteDo(id, on, scope) {
     const { data } = await db.rpc('lift_chat_mute', { target_user_id: id, lifter_role: myRole });
     if (!data || !data.ok) return alert(data?.error || 'No se pudo levantar.');
   }
+  await renderPage();
+}
+
+function domMuteAsk(id, on) {
+  openModal(`<h2 style="margin-top:0;">${on ? '🔇 Silenciar' : '🔊 Devolver la voz'} a ${esc(nameFor(id))}</h2>
+    <p class="small">Elige el alcance de tu decisión:</p>
+    <button onclick="domMuteDo('${id}', ${on}, 'room')">Solo en esta sala</button>
+    <button onclick="domMuteDo('${id}', ${on}, 'all')">En todas las salas</button>
+    <button class="secondary" onclick="closeModal()">Cancelar</button>`);
+}
+
+async function domMuteDo(id, on, scope) {
+  closeModal();
+  const rpc = scope === 'room'
+    ? await db.rpc('dom_room_mute', { sub_id: id, room_id: currentRoomId, on_val: on })
+    : await db.rpc('dom_global_mute', { sub_id: id, on_val: on });
+  if (!rpc.data || !rpc.data.ok) return alert(rpc.data?.error || 'Error');
+  await loadRoomBans();
   await renderPage();
 }
 
