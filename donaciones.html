@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Colaboración voluntaria — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:800px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.cost-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--line)}
+.cost-row:last-child{border-bottom:none}
+.cost-row b{color:var(--gold)}
+.cost-total{display:flex;justify-content:space-between;padding:14px 0;margin-top:10px;border-top:2px solid var(--gold);font-size:16px}
+.cost-total b{color:var(--gold);font-size:18px}
+.donate-btn{display:inline-block;background:linear-gradient(180deg,#e6c664,#b48a2a);color:#14100a;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:16px;box-shadow:0 10px 30px rgba(212,175,55,.35);margin:14px 6px 14px 0;transition:.2s}
+.donate-btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(212,175,55,.5)}
+.crown-big{text-align:center;font-size:64px;color:var(--gold);text-shadow:0 0 30px rgba(212,175,55,.5);margin:10px 0}
+.note{background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3);border-radius:12px;padding:14px;margin-top:16px;font-size:14px;line-height:1.6}
+.note b{color:var(--gold)}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Colaboración voluntaria</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div class="card" style="text-align:center;">
+    <div class="crown-big">♛</div>
+    <h2 style="margin-top:0;">Mantener viva la casa</h2>
+    <p style="color:#cfc6bb;font-size:15px;line-height:1.7;max-width:600px;margin:10px auto;">
+      Queendomland es una plataforma viva: cada muro, cada carnet, cada notificación y cada corona que brilla en tu teléfono tiene un costo real detrás. Esta página explica con total transparencia qué cuesta mantener la casa encendida — y ofrece a quien lo desee la forma de colaborar voluntariamente.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>💰 Costos reales de la plataforma</h2>
+    <p class="small">Estos son los servicios que mantienen Queendomland operativa 24/7:</p>
+
+    <div class="cost-row"><span>🌐 <b>Dominio</b> — queendomland.com</span><span>~ $15 / año</span></div>
+    <div class="cost-row"><span>☁️ <b>Vercel</b> — Hosting y despliegue automático</span><span>$0 – $20 / mes</span></div>
+    <div class="cost-row"><span>🗄 <b>Supabase</b> — Base de datos, autenticación, storage y push</span><span>$0 – $25 / mes</span></div>
+    <div class="cost-row"><span>🛡 <b>Cloudflare</b> — DNS, SSL y protección DDoS</span><span>Gratis</span></div>
+    <div class="cost-row"><span>🎬 <b>GIPHY</b> — API de GIFs para chat y mensajes</span><span>Gratis</span></div>
+    <div class="cost-row"><span>⚙️ <b>Funciones serverless</b> — Endpoints para cesiones, liberaciones, etc.</span><span>Incluido</span></div>
+
+    <div class="cost-total">
+      <span>Costo estimado anual</span>
+      <b>$15 – $550 USD</b>
+    </div>
+
+    <p class="small" style="margin-top:12px;">La plataforma puede funcionar en su versión gratuita, pero cuando crece el número de miembros, imágenes y notificaciones, los límites se alcanzan y hay que escalar a planes de pago.</p>
+  </div>
+
+  <div class="card" style="text-align:center;">
+    <h2 style="margin-top:0;">💛 Colaborar con la casa</h2>
+    <p style="color:#cfc6bb;font-size:15px;line-height:1.7;max-width:600px;margin:10px auto;">
+      <b>Toda colaboración es 100% voluntaria</b> — el acceso, los carnets, los contratos y todas las funciones son completamente gratuitos para todos los miembros. Si la casa te ha dado valor y deseas colaborar con su mantenimiento, puedes hacerlo a través de <b>Throne</b> (plataforma segura de donaciones en dólares estadounidenses).
+    </p>
+
+    <a href="https://throne.com/TU-USUARIO" target="_blank" class="donate-btn">♛ Colaborar vía Throne</a>
+
+    <div class="note">
+      <p style="margin:0 0 8px;"><b>¿Por qué Throne?</b></p>
+      <p style="margin:0;">Throne permite donar de forma anónima si lo deseas, en dólares estadounidenses (USD), con métodos de pago internacionales y sin exponer datos personales. Es la plataforma que usan creadores y comunidades privadas en todo el mundo.</p>
+    </div>
+
+    <p class="small" style="margin-top:20px;">
+      · Cada aporte, sin importar su tamaño, mantiene la corona encendida.<br>
+      · Si no puedes colaborar, tu presencia en la casa ya es suficiente. ♛
+    </p>
+  </div>
+</main>
+</body>
+</html>
