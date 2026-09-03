@@ -64,7 +64,7 @@ async function render(){
 
   if(role==='dominant'){
     const [subsRes,domsRes]=await Promise.all([
-      db.from('relationships').select('submissive_id, profiles!relationships_submissive_id_fkey(display_name)').eq('dominant_id',me).eq('status','confirmed'),
+      db.from('relationships').select('id, submissive_id, profiles!relationships_submissive_id_fkey(display_name)').eq('dominant_id',me).eq('status','confirmed'),
       db.from('profiles').select('id, display_name').eq('role','dominant').neq('id',me).order('display_name')
     ]);
     const subs=subsRes.data||[];
@@ -73,7 +73,7 @@ async function render(){
       <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
       ${subs.length?`
       <label class="small">Sumiso en propiedad</label>
-      <select id="sh_sub">${subs.map(s=>`<option value="${s.submissive_id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
+      <select id="sh_sub">${subs.map(s=>`<option value="${s.id}">⛓ ${esc(s.profiles?.display_name||'')}</option>`).join('')}</select>
       <label class="small">Dominantes con quienes compartir</label>
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
         ${doms.map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.display_name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
