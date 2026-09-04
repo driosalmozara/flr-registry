@@ -63,7 +63,64 @@ function iconFor(n){
   return '📎';
 }
 loadFAQInto(db, document.getElementById('faqbox'));
-async function init(){
+async function init(){let editingId = null;
+async function initAdmin(){
+  const {data:{session}} = await db.auth.getSession();
+  if(!session) return;
+  const {data:adm} = await db.from('app_admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(!adm) return;
+  document.getElementById('faq-admin').style.display = 'block';
+  await renderFAQList();
+}
+async function renderFAQList(){
+  const {data} = await db.from('faq_entries').select('*').order('sort_order').order('created_at');
+  const list = document.getElementById('faq-list');
+  if(!data || !data.length){
+    list.innerHTML = '<p class="small">No hay preguntas todavía.</p>';
+    document.getElementById('import-btn').style.display = 'inline-block';
+  } else {
+    document.getElementById('import-btn').style.display = 'none';
+    list.innerHTML = data.map(e => `<div class="res"><span>❓ <b>${esc(e.title)}</b></span>
+      <span><button class="secondary" onclick="editFAQ('${e.id}')">✏ Editar</button>
+      <button class="danger" onclick="deleteFAQ('${e.id}')">🗑</button></span></div>`).join('');
+  }
+}
+function newFAQ(){ editingId=null; document.getElementById('faq-title').value=''; document.getElementById('faq-body').value=''; document.getElementById('faq-editor').style.display='block'; }
+function cancelFAQ(){ document.getElementById('faq-editor').style.display='none'; }
+async function editFAQ(id){
+  const {data} = await db.from('faq_entries').select('*').eq('id',id).maybeSingle();
+  if(!data) return;
+  editingId = id;
+  document.getElementById('faq-title').value = data.title;
+  document.getElementById('faq-body').value = data.body;
+  document.getElementById('faq-editor').style.display = 'block';
+}
+async function saveFAQ(){
+  const title = document.getElementById('faq-title').value.trim();
+  const body = document.getElementById('faq-body').value.trim();
+  if(!title || !body) return alert('Completa pregunta y respuesta.');
+  const op = editingId
+    ? await db.from('faq_entries').update({ title, body, updated_at: new Date().toISOString() }).eq('id', editingId)
+    : await db.from('faq_entries').insert({ title, body });
+  if(op.error) return alert(op.error.message);
+  cancelFAQ();
+  await renderFAQList();
+  await loadFAQInto(db, document.getElementById('faqbox'));
+}
+async function deleteFAQ(id){
+  if(!confirm('¿Eliminar esta pregunta de la casa?')) return;
+  const {error} = await db.from('faq_entries').delete().eq('id',id);
+  if(error) return alert(error.message);
+  await renderFAQList();
+  await loadFAQInto(db, document.getElementById('faqbox'));
+}
+async function importBase(){
+  for(let i=0;i<window.FAQ_DATA.length;i++){
+    await db.from('faq_entries').insert({ title: window.FAQ_DATA[i].q, body: window.FAQ_DATA[i].a, sort_order: i+1 });
+  }
+  await renderFAQList();
+  await loadFAQInto(db, document.getElementById('faqbox'));
+}
   const {data:{session}}=await db.auth.getSession();
   let isAdmin=false;
   if(session){
@@ -72,6 +129,7 @@ async function init(){
   }
   if(isAdmin)document.getElementById('res-admin').style.display='block';
   await loadResources(isAdmin);
+  await initAdmin();
 }
 async function loadResources(isAdmin){
   const box=document.getElementById('reslist');
