@@ -1,6 +1,10 @@
 <!doctype html>
 <html lang="es">
 <head>
+  <script>
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__deferredInstall = e; });
+  window.addEventListener('appinstalled', function(){ try{ localStorage.setItem('flr_pwa_installed','1'); }catch(e){} });
+</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Queendomland</title>
@@ -434,6 +438,9 @@
       }
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
+      if (remember && loginData && loginData.user && !localStorage.getItem('flr_bio_cred')) {
+        await offerBioEnroll(loginData.user, email, password);
+      }
       window.location.href = 'muro.html';
     }
 
@@ -1158,6 +1165,26 @@
     }
     bioAvailable().then(function(ok){ var r=document.getElementById('bio-row'); if(r && ok) r.style.display='flex'; });
 
+        async function offerBioEnroll(user, email, password){
+      if (localStorage.getItem('flr_bio_cred')) return;
+      if (!(await bioAvailable())) return;
+      var st = document.createElement('style');
+      st.textContent = '#bio-gate{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(8,5,9,.9);padding:20px}#bio-gate .bio-card{max-width:420px;width:100%;background:rgba(13,10,14,.95);border:1px solid rgba(212,175,55,.55);border-radius:18px;padding:30px 24px;text-align:center}#bio-gate .bio-ico{font-size:48px}#bio-gate h2{color:#d4af37;margin:8px 0 6px}#bio-gate button{display:block;width:100%;margin:8px 0 0}';
+      document.head.appendChild(st);
+      var ov = document.createElement('div');
+      ov.id = 'bio-gate';
+      ov.innerHTML = '<div class="bio-card"><div class="bio-ico">🔓</div><h2>Desbloqueo biométrico</h2><p class="small">¿Quieres entrar la próxima vez con tu huella o rostro, sin escribir la contraseña?</p><button id="bio-yes">🔓 Activar biometría</button><button id="bio-no" class="secondary">Ahora no</button></div>';
+      document.body.appendChild(ov);
+      document.getElementById('bio-yes').onclick = async function(){
+        try{
+          localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email: email, password: password })))));
+          await enrollBiometric({ id: user.id, email: email, name: email.split('@')[0] });
+          alert('✅ Biometría activada. La próxima vez entrarás con tu huella o rostro.');
+        }catch(e){ alert('No se pudo activar: ' + (e.message || e)); }
+        ov.remove();
+      };
+      document.getElementById('bio-no').onclick = function(){ ov.remove(); };
+    }
     if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
       document.getElementById('loading').innerHTML = `
         <h2>Falta configurar Supabase</h2>
@@ -1180,109 +1207,86 @@
   </script>
 
   <script>
-  /* ══ INSTALAR EN DISPOSITIVO MÓVIL ══ */
+  /* ══ INSTALAR EN DISPOSITIVO MÓVIL (v2) ══ */
   (function(){
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
-    const isAndroid = /Android/i.test(ua);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    var ua = navigator.userAgent;
+    function isAndroid(){ return /Android/i.test(ua); }
+    function isIOS(){ return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+    function isSafari(){ return /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua); }
+    function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
 
-    window.addEventListener('beforeinstallprompt', function(e){
-      e.preventDefault();
-      deferredInstallPrompt = e;
-    });
-
-    function shouldShowButton(){
-      if (isStandalone) return false;
-      if (isAndroid) return true;
-      if (isIOS && isSafari) return true;
-      if (/Chrome|Edg/.test(ua) && !/Mobile/.test(ua)) return true;
-      return false;
-    }
-
-    if (shouldShowButton()) {
-      const b = document.getElementById('install-btn');
+    if (!isStandalone() && (isAndroid() || (isIOS() && isSafari()))) {
+      var b = document.getElementById('install-btn');
       if (b) b.classList.remove('hidden');
     }
 
+    window.addEventListener('appinstalled', function(){
+      var b = document.getElementById('install-btn');
+      if (b) b.classList.add('hidden');
+      var ov = document.querySelector('.inst-overlay');
+      if (ov) ov.remove();
+      alert('✅ Queendomland instalada con su corona nueva. Búscala en tu pantalla de inicio.');
+    });
+
     window.openInstallModal = function(){
-      const ov = document.createElement('div');
+      var ov = document.createElement('div');
       ov.className = 'inst-overlay';
       ov.onclick = function(e){ if (e.target === ov) ov.remove(); };
-
-      const androidStatus = deferredInstallPrompt
-        ? '<div class="ios-steps" style="margin:0;"><li><b>Pulsa “Instalar ahora”</b> y aparecerá en tu pantalla de inicio.</li></div><button onclick="doAndroidInstall(this)">⬇ Instalar ahora</button>'
-        : '<div class="ios-steps" style="margin:0;"><li>Abre esta página en <b>Chrome</b> o <b>Edge</b>.</li><li>Pulsa el menú <b>⋮</b> (arriba a la derecha).</li><li>Elige <b>“Instalar aplicación”</b> o <b>“Añadir a pantalla de inicio”</b>.</li></div>';
-
       ov.innerHTML = `
         <div class="inst-modal">
+          <button style="float:right;background:transparent;color:#a1a1aa;border:none;font-size:22px;cursor:pointer;line-height:1;" onclick="this.closest('.inst-overlay').remove()">×</button>
           <h3>♛ Lleva la casa en tu bolsillo</h3>
           <p class="sub">Elige tu dispositivo para instalar la aplicación:</p>
           <div class="inst-options">
             <div class="inst-opt" onclick="showAndroidFlow(this)">
-              <div class="ico">🤖</div>
-              <div class="nm">Android</div>
-              <div class="ds">Chrome · Edge</div>
+              <div class="ico">🤖</div><div class="nm">Android</div><div class="ds">Chrome · Edge</div>
             </div>
             <div class="inst-opt" onclick="showIOSFlow(this)">
-              <div class="ico">🍎</div>
-              <div class="nm">iPhone / iPad</div>
-              <div class="ds">Safari</div>
+              <div class="ico">🍎</div><div class="nm">iPhone / iPad</div><div class="ds">Safari</div>
             </div>
           </div>
           <div id="inst-detail"></div>
-          <div class="inst-back">
-            <a onclick="this.closest('.inst-overlay').remove()">← Volver</a>
-          </div>
+          <div class="inst-back"><a onclick="this.closest('.inst-overlay').remove()">← Volver</a></div>
         </div>`;
       document.body.appendChild(ov);
     };
 
     window.showAndroidFlow = function(opt){
-      const modal = opt.closest('.inst-modal');
-      modal.querySelectorAll('.inst-opt').forEach(o => o.style.borderColor = '');
+      var modal = opt.closest('.inst-modal');
+      modal.querySelectorAll('.inst-opt').forEach(function(o){ o.style.borderColor = ''; });
       opt.style.borderColor = 'var(--gold)';
-      const det = modal.querySelector('#inst-detail');
-      det.innerHTML = `
-        <h4 style="margin:18px 0 6px;color:var(--gold);">🤖 Android</h4>
-        <p class="small" style="margin-bottom:10px;">Instala la casa en tu dispositivo. Se abrirá en pantalla completa, sin la barra del navegador.</p>
-        ${androidStatus}
-      `;
+      var det = modal.querySelector('#inst-detail');
+      det.innerHTML = window.__deferredInstall
+        ? '<div class="ios-steps" style="margin:0;"><li>Pulsa <b>Instalar ahora</b>: la corona nueva aparecerá en tu pantalla de inicio como <b>Queendomland</b>.</li></div><button onclick="doAndroidInstall(this)">⬇ Instalar ahora</button>'
+        : '<div class="ios-steps"><li>Toca el menú <b>⋮</b> de Chrome (arriba a la derecha).</li><li>Elige <b>«Instalar aplicación»</b> o <b>«Añadir a pantalla de inicio»</b>.</li><li>Confirma el nombre <b>Queendomland</b>.</li></div>';
     };
 
     window.showIOSFlow = function(opt){
-      const modal = opt.closest('.inst-modal');
-      modal.querySelectorAll('.inst-opt').forEach(o => o.style.borderColor = '');
+      var modal = opt.closest('.inst-modal');
+      modal.querySelectorAll('.inst-opt').forEach(function(o){ o.style.borderColor = ''; });
       opt.style.borderColor = 'var(--gold)';
-      const det = modal.querySelector('#inst-detail');
+      var det = modal.querySelector('#inst-detail');
       det.innerHTML = `
-        <h4 style="margin:18px 0 6px;color:var(--gold);">🍎 iPhone / iPad</h4>
-        <p class="small" style="margin-bottom:10px;">Abre esta página en <b style="color:var(--gold);">Safari</b> y sigue estos pasos:</p>
-        <ol class="ios-steps">
-          <li>Pulsa el botón <b>Compartir ⬆</b> en la barra inferior de Safari.</li>
-          <li>Desliza hacia arriba y elige <b>“Añadir a pantalla de inicio”</b>.</li>
-          <li>Confirma el nombre y pulsa <b>“Añadir”</b>.</li>
-        </ol>
-        <p class="small">La corona aparecerá en tu pantalla de inicio y abrirá la casa en pantalla completa.</p>
-      `;
+        <div class="ios-steps"><li>Abre esta página en <b style="color:var(--gold);">Safari</b>.</li>
+        <li>Pulsa el botón <b>Compartir ⬆</b> de la barra inferior.</li>
+        <li>Elige <b>«Añadir a pantalla de inicio»</b> y confirma.</li></div>
+        <p class="small">La corona aparecerá en tu pantalla de inicio y abrirá la casa en pantalla completa.</p>`;
     };
 
     window.doAndroidInstall = function(btn){
-      if (!deferredInstallPrompt) return;
+      var ev = window.__deferredInstall;
+      if (!ev) return;
       btn.disabled = true;
       btn.textContent = 'Instalando...';
-      deferredInstallPrompt.prompt();
-      deferredInstallPrompt.userChoice.then(function(choice){
+      ev.prompt();
+      ev.userChoice.then(function(choice){
         if (choice.outcome === 'accepted') {
           btn.textContent = '✓ Instalado';
-          const b = document.getElementById('install-btn');
-          if (b) b.classList.add('hidden');
+          window.__deferredInstall = null;
         } else {
           btn.disabled = false;
           btn.textContent = '⬇ Instalar ahora';
         }
-        deferredInstallPrompt = null;
       });
     };
   })();
