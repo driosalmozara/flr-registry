@@ -34,6 +34,19 @@ button.danger{background:#7f1d1d;color:#fff}
     </div>
     <div id="reslist">Cargando...</div>
   </div>
+    <div class="card" id="faq-admin" style="display:none;">
+    <h2 style="margin-top:0;">🛠 Gestión de Preguntas Frecuentes</h2>
+    <p class="small">Crea, edita o elimina las preguntas que ve toda la casa. En la respuesta puedes usar <b>## </b> para subtítulos y <b>- </b> para listas.</p>
+    <div id="faq-list"></div>
+    <button onclick="newFAQ()">＋ Nueva pregunta</button>
+    <button id="import-btn" class="secondary" style="display:none;" onclick="importBase()">📥 Importar preguntas base</button>
+    <div id="faq-editor" style="display:none;margin-top:12px;">
+      <input id="faq-title" placeholder="Pregunta" style="background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px;width:100%;margin:6px 0;"/>
+      <textarea id="faq-body" rows="10" placeholder="Respuesta…" style="background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px;width:100%;margin:6px 0;"></textarea>
+      <button onclick="saveFAQ()">💾 Guardar</button>
+      <button class="secondary" onclick="cancelFAQ()">Cancelar</button>
+    </div>
+  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -49,7 +62,7 @@ function iconFor(n){
   if(/\.(png|jpe?g|gif|webp|svg)$/.test(n))return '🖼';
   return '📎';
 }
-renderFAQAccordion(document.getElementById('faqbox'));
+loadFAQInto(db, document.getElementById('faqbox'));
 async function init(){
   const {data:{session}}=await db.auth.getSession();
   let isAdmin=false;
