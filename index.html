@@ -1159,7 +1159,6 @@
     bioAvailable().then(function(ok){ var r=document.getElementById('bio-row'); if(r && ok) r.style.display='flex'; });
 
     if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
-    if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
       document.getElementById('loading').innerHTML = `
         <h2>Falta configurar Supabase</h2>
         <p>Edita el archivo index.html y reemplaza:</p>
