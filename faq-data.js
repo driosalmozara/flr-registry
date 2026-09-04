@@ -80,12 +80,7 @@ window.faqTextToHtml=function(t){
   if(inList)html+='</ul>';
   return html;
 };
-window.renderFAQAccordion=function(box){
-  if(!box||!window.FAQ_DATA)return;
-  box.innerHTML=window.FAQ_DATA.map(function(it,i){
-    return '<details class="faq-item" id="faq-'+i+'"><summary>'+it.q+'</summary><div class="faq-body">'+window.faqTextToHtml(it.a)+'</div></details>';
-  }).join('');
-};
+
 window.renderFAQAccordion = function(box, items){
   if(!box) return;
   var list = items || window.FAQ_DATA;
