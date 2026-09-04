@@ -1213,8 +1213,14 @@
     function isAndroid(){ return /Android/i.test(ua); }
     function isIOS(){ return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
     function isSafari(){ return /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua); }
-    function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
-
+    function isStandalone(){
+      if (window.matchMedia('(display-mode: standalone)').matches) return true;
+      if (window.matchMedia('(display-mode: minimal-ui)').matches) return true;
+      if (window.matchMedia('(display-mode: fullscreen)').matches) return true;
+      if (window.navigator.standalone === true) return true;
+      try { if (localStorage.getItem('flr_pwa_installed') === '1') return true; } catch(e){}
+      return false;
+    }
     if (!isStandalone() && (isAndroid() || (isIOS() && isSafari()))) {
       var b = document.getElementById('install-btn');
       if (b) b.classList.remove('hidden');
