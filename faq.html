@@ -62,8 +62,14 @@ function iconFor(n){
   if(/\.(png|jpe?g|gif|webp|svg)$/.test(n))return '🖼';
   return '📎';
 }
-loadFAQInto(db, document.getElementById('faqbox'));
-async function init(){let editingId = null;
+async function init(){
+  let editingId = null;
+  try {
+    if (window.loadFAQInto) await window.loadFAQInto(db, document.getElementById('faqbox'));
+    else if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
+  } catch(e) {
+    if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
+  }
 async function initAdmin(){
   const {data:{session}} = await db.auth.getSession();
   if(!session) return;
