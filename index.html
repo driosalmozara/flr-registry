@@ -122,6 +122,11 @@
             ¿No tienes cuenta? <b>Regístrate</b>
           </a>
         </div>
+                <div class="card" style="max-width:480px;margin:16px auto 0;">
+          <h2 style="margin-top:0;">❓ Preguntas frecuentes</h2>
+          <div id="faqbox"></div>
+          <p class="small" style="text-align:center;margin-top:10px;"><a href="faq.html" style="color:var(--gold);font-weight:600;">📚 Bibliografía y recursos de la casa</a></p>
+        </div>      
 
         <div id="register-card-wrapper" class="hidden">
           <div class="card">
@@ -225,6 +230,8 @@
     </section>
   </main>
 
+
+  <script src="faq-data.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
@@ -262,6 +269,7 @@
       'Puerto Rico','Otro'
     ];
 
+        if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
