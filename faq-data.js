@@ -86,4 +86,24 @@ window.renderFAQAccordion=function(box){
     return '<details class="faq-item" id="faq-'+i+'"><summary>'+it.q+'</summary><div class="faq-body">'+window.faqTextToHtml(it.a)+'</div></details>';
   }).join('');
 };
+window.renderFAQAccordion = function(box, items){
+  if(!box) return;
+  var list = items || window.FAQ_DATA;
+  box.innerHTML = list.map(function(it, i){
+    return '<details class="faq-item" id="faq-' + i + '"><summary>' + it.q + '</summary><div class="faq-body">' + window.faqTextToHtml(it.a) + '</div></details>';
+  }).join('');
+};
+
+window.loadFAQInto = async function(db, box){
+  try {
+    const { data } = await db.from('faq_entries').select('title, body')
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    if (data && data.length) {
+      window.renderFAQAccordion(box, data.map(r => ({ q: r.title, a: r.body })));
+      return data.length;
+    }
+  } catch(e) {}
+  window.renderFAQAccordion(box, window.FAQ_DATA);
+  return 0;
+};
 </script>
