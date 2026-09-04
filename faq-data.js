@@ -1,4 +1,4 @@
-<script>
+
 /* ══ Preguntas Frecuentes — contenido compartido ══ */
 (function(){
   var st=document.createElement('style');
@@ -101,4 +101,3 @@ window.loadFAQInto = async function(db, box){
   window.renderFAQAccordion(box, window.FAQ_DATA);
   return 0;
 };
-</script>
