@@ -114,6 +114,10 @@
             <input id="remember" type="checkbox" style="width:auto;margin:0;" checked />
             Recordar contraseña en este dispositivo
           </label>
+                    <label class="small" id="bio-row" style="display:none;gap:8px;align-items:center;margin:0 0 10px;">
+            <input id="bio-enroll" type="checkbox" style="width:auto;margin:0;" />
+            🔓 Activar desbloqueo biométrico (huella / rostro) en este dispositivo
+          </label>
           <button onclick="login()" style="width:100%;">Entrar</button>
           <p class="small" style="margin-top:12px;cursor:pointer;text-decoration:underline;text-align:center;" onclick="forgotPassword()">
             Olvidé mi contraseña
@@ -300,7 +304,7 @@
       const { data: { session } } = await db.auth.getSession();
       currentUser = session?.user || null;
       checkImpersonation(!!currentUser);
-      if (!currentUser) { show('auth'); return; }
+      if (!currentUser) { show('auth'); await maybeOfferBioUnlock(); return; }
       await loadProfileAndRender();
     }
 
@@ -402,7 +406,7 @@
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       const remember = document.getElementById('remember').checked;
-      const { error } = await db.auth.signInWithPassword({ email, password });
+      const { data: loginData, error } = await db.auth.signInWithPassword({ email, password });
       if (error) {
         const msg = (error.message || '').toLowerCase();
         const code = error.code || '';
@@ -422,6 +426,12 @@
         if (remember) localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
         else localStorage.removeItem('flr_cred');
       } catch (e) {}
+      if (document.getElementById('bio-enroll') && document.getElementById('bio-enroll').checked && loginData && loginData.user) {
+        try {
+          localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password })))));
+          await enrollBiometric({ id: loginData.user.id, email, name: email.split('@')[0] });
+        } catch(e) { alert('No se pudo activar la biometría: ' + (e.message || e)); }
+      }
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
       window.location.href = 'muro.html';
@@ -530,7 +540,7 @@
       const j = await r.json().catch(() => ({}));
       if (!r.ok) return alert('Error: ' + (j.error || r.status));
       localStorage.removeItem('flr_cred');
-      alert('Tu cuenta ha sido eliminada. Gracias por participar.');
+      localStorage.removeItem('flr_bio_cred');      alert('Tu cuenta ha sido eliminada. Gracias por participar.');
       window.location.href = 'index.html';
     }
 
@@ -1091,6 +1101,64 @@
       });
     });
 
+        /* ══ BIOMETRÍA WEBAUTHN (huella / rostro) ══ */
+    const BIO_CRED_KEY = 'flr_bio_cred';
+    function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+    function b64ToBuf(b64){ const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i); return u.buffer; }
+    function randomChallenge(){ const a=new Uint8Array(32); crypto.getRandomValues(a); return a.buffer; }
+    async function bioAvailable(){
+      if(!window.PublicKeyCredential) return false;
+      try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
+    }
+    async function enrollBiometric(user){
+      const cred = await navigator.credentials.create({ publicKey:{
+        challenge: randomChallenge(),
+        rp:{ name:'Queendomland', id: location.hostname },
+        user:{ id: new TextEncoder().encode(user.id), name: user.email, displayName: user.name || user.email },
+        pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+        authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+        timeout:60000
+      }});
+      localStorage.setItem(BIO_CRED_KEY, bufToB64(cred.rawId));
+    }
+    async function verifyBiometric(){
+      const idB64 = localStorage.getItem(BIO_CRED_KEY); if(!idB64) return false;
+      const cred = await navigator.credentials.get({ publicKey:{
+        challenge: randomChallenge(),
+        allowCredentials:[{ id: b64ToBuf(idB64), type:'public-key', transports:['internal'] }],
+        userVerification:'required',
+        timeout:60000
+      }});
+      return !!cred;
+    }
+    async function maybeOfferBioUnlock(){
+      const bioId = localStorage.getItem(BIO_CRED_KEY);
+      if(!bioId) return;
+      let saved = null;
+      try{ saved = JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred')||'')))); }catch(e){}
+      if(!saved || !saved.email) return;
+      if(!(await bioAvailable())) return;
+      const st = document.createElement('style');
+      st.textContent = '#bio-gate{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(8,5,9,.9);padding:20px}#bio-gate .bio-card{max-width:420px;width:100%;background:rgba(13,10,14,.95);border:1px solid rgba(212,175,55,.55);border-radius:18px;padding:30px 24px;text-align:center}#bio-gate .bio-ico{font-size:48px}#bio-gate h2{color:#d4af37;margin:8px 0 6px}#bio-gate button{display:block;width:100%;margin:8px 0 0}';
+      document.head.appendChild(st);
+      const ov = document.createElement('div');
+      ov.id = 'bio-gate';
+      ov.innerHTML = '<div class="bio-card"><div class="bio-ico">🔐</div><h2>Desbloquea tu casa</h2><p class="small">Entra como <b>'+escapeHtml(saved.email)+'</b> con tu huella o rostro.</p><button id="bio-go">🔓 Desbloquear con biometría</button><button id="bio-pass" class="secondary">Usar contraseña</button></div>';
+      document.body.appendChild(ov);
+      document.getElementById('bio-go').onclick = async function(){
+        try{
+          const ok = await verifyBiometric();
+          if(!ok) return;
+          const { error } = await db.auth.signInWithPassword({ email: saved.email, password: saved.password });
+          if(error){ alert('Sesión no disponible: '+error.message); ov.remove(); return; }
+          window.location.href = 'muro.html';
+        }catch(e){ ov.remove(); }
+      };
+      document.getElementById('bio-pass').onclick = function(){ ov.remove(); };
+    }
+    bioAvailable().then(function(ok){ var r=document.getElementById('bio-row'); if(r && ok) r.style.display='flex'; });
+
+    if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
     if (SUPABASE_URL === 'TU_SUPABASE_URL' || SUPABASE_ANON_KEY === 'TU_SUPABASE_ANON_KEY') {
       document.getElementById('loading').innerHTML = `
         <h2>Falta configurar Supabase</h2>
