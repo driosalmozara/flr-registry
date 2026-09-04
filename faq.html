@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Preguntas frecuentes — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}main{max-width:860px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.danger{background:#7f1d1d;color:#fff}
+.res{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:#0b0b12}
+.res a{color:var(--gold);text-decoration:none;font-weight:600}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+<script src="faq-data.js"></script>
+</head>
+<body>
+<header><h1 style="margin:0;">❓ Preguntas frecuentes</h1><div><a class="navlink" href="index.html">Inicio</a></div></header>
+<main>
+  <div class="card"><div id="faqbox">Cargando...</div></div>
+  <div class="card">
+    <h2 style="margin-top:0;">📚 Bibliografía y recursos</h2>
+    <p class="small">Documentos, videos, audios e imágenes compartidos por la Administración para la comunidad.</p>
+    <div id="res-admin" style="display:none;margin-bottom:10px;">
+      <input type="file" id="res-file" style="background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px;width:100%;margin:6px 0;"/>
+      <button onclick="uploadResource()">⬆ Subir recurso</button>
+    </div>
+    <div id="reslist">Cargando...</div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function iconFor(n){
+  n=(n||'').toLowerCase();
+  if(/\.pdf$/.test(n))return '📄';
+  if(/\.(mp3|wav|ogg|m4a)$/.test(n))return '🎧';
+  if(/\.(mp4|mov|webm|mkv)$/.test(n))return '🎬';
+  if(/\.(png|jpe?g|gif|webp|svg)$/.test(n))return '🖼';
+  return '📎';
+}
+renderFAQAccordion(document.getElementById('faqbox'));
+async function init(){
+  const {data:{session}}=await db.auth.getSession();
+  let isAdmin=false;
+  if(session){
+    const {data:adm}=await db.from('app_admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
+    isAdmin=!!adm;
+  }
+  if(isAdmin)document.getElementById('res-admin').style.display='block';
+  await loadResources(isAdmin);
+}
+async function loadResources(isAdmin){
+  const box=document.getElementById('reslist');
+  const {data,error}=await db.storage.from('recursos').list();
+  if(error){box.innerHTML='<p class="small">Error: '+esc(error.message)+'</p>';return;}
+  if(!data||!data.length){box.innerHTML='<p class="small">Aún no hay recursos publicados.</p>';return;}
+  box.innerHTML=data.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(f=>{
+    const url=db.storage.from('recursos').getPublicUrl(f.name).data.publicUrl;
+    return `<div class="res"><span>${iconFor(f.name)} <a href="${url}" target="_blank">${esc(f.name.replace(/^\d+_/, ''))}</a></span>
+      ${isAdmin?`<button class="danger" onclick="deleteResource('${esc(f.name)}')">Eliminar</button>`:''}</div>`;
+  }).join('');
+}
+async function uploadResource(){
+  const input=document.getElementById('res-file');
+  const f=input.files[0];if(!f)return alert('Selecciona un archivo.');
+  const path=Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9.\-_]/g,'');
+  const {error}=await db.storage.from('recursos').upload(path,f);
+  if(error)return alert(error.message);
+  alert('📚 Recurso publicado para la comunidad.');
+  input.value='';
+  await loadResources(true);
+}
+async function deleteResource(name){
+  if(!confirm('¿Eliminar este recurso de la biblioteca?'))return;
+  const {error}=await db.storage.from('recursos').remove([name]);
+  if(error)return alert(error.message);
+  await loadResources(true);
+}
+init();
+</script>
+</body>
+</html>
