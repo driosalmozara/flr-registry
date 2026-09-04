@@ -502,7 +502,8 @@ function getClient(){
     ]},
     ['contacto.html', '📬 Contacto con el Staff'],
     ['donaciones.html', '♛ Colaboración voluntaria'],
-    ['terminos.html', 'Términos']
+    ['terminos.html', 'Términos'],
+    ['faq.html', '❓ Preguntas frecuentes']
   ];
   var flags = { staff: false, admin: false };
   var bellClient = null, bellUid = null;
