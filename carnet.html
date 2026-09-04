@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="es"><!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
@@ -168,6 +169,268 @@ async function loadCard(relId) {
   if (!card) { wrap.innerHTML = '<p class="small">La Dominante aún no emite el carnet.</p>'; return; }
 
   const verifyUrl = 
+  const verifyUrl = window.location.origin + '/verificar.html?code=' + encodeURIComponent(card.verification_code || '');
+  const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(verifyUrl);
+
+  let transferLine = '';
+  if (activeTransfer) {
+    const durationText = activeTransfer.duration === 'indefinida' 
+      ? 'Cesión indefinida' 
+      : `Cesión temporal · Retorno: ${new Date(activeTransfer.expires_at).toLocaleDateString()}`;
+    transferLine = `<div class="line transfer">⚖ ${durationText}</div>`;
+  }
+
+  let chastityLine = '';
+  if (activeChastity) {
+    const d = chastityDays;
+    chastityLine = `<div class="line chastity">🔒 CASTIDAD ACTIVA · ${d} día${d === 1 ? '' : 's'} desde ${new Date(activeChastity.since).toLocaleDateString()}</div>`;
+  }
+
+  wrap.innerHTML = `
+    <div id="card">
+      <div class="card-top">
+        <div>
+          <div class="card-title">♛ QUEENDOMLAND</div>
+          <div class="card-sub">Carnet oficial de sumisión</div>
+        </div>
+        <div class="card-top-right">
+          ${subAvatarUrl
+            ? `<img class="card-avatar" src="${escapeHtml(subAvatarUrl)}" onerror="this.outerHTML='<div class=\\'card-avatar empty\\'>⛓</div>'" />`
+            : '<div class="card-avatar empty">⛓</div>'}
+          <img class="qr" src="${qrSrc}" />
+        </div>
+      </div>
+
+      <div>
+        <div class="line"><span>Sumiso:</span> <b>${escapeHtml(record.slave_name || 'Sin nombre')}</b></div>
+        <div class="line"><span>Nº registro:</span> <b>${escapeHtml(record.registration_number)}</b></div>
+        <div class="line"><span>Pertenece a:</span> <b>♛ ${escapeHtml(rel?.profiles?.display_name || 'Dominante')}</b></div>
+        ${activeTransfer ? `<div class="line transfer">⚖ Cedido a: ♛ ${escapeHtml(activeTransfer.to_profile?.display_name || '')}</div>` : ''}
+        ${sharedNames.length ? `<div class="line transfer">🤝 Compartido con: ${sharedNames.map(n => '♛ ' + escapeHtml(n)).join(' · ')}</div>` : ''}        <div class="line"><span>Desde:</span> <b>${escapeHtml(record.collar_date || '')}</b> · <span>Nivel:</span> <b>${escapeHtml(record.obedience_level || '')}</b></div>
+        <div class="line"><span>Carnet:</span> <b>${escapeHtml(card.card_number)}</b> · <span>Código:</span> <b>${escapeHtml(card.verification_code || '')}</b></div>
+        ${transferLine}
+        ${chastityLine}
+      </div>
+
+      <div class="card-foot">
+        Documento consensuado entre adultos · Escanea el QR o verifica el código en ${escapeHtml(window.location.host)}/verificar.html
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <button onclick="window.print()"> Imprimir carnet</button>
+      <button onclick="downloadCardPDF()">⬇ Descargar PDF</button>
+      <p class="small">Consejo: al imprimir, elige orientación horizontal y escala 100%. El tamaño es el de una credencial (85.6 × 54 mm).</p>
+    </div>
+  `;
+}
+
+function chastityDaysCalc(sinceISO){
+  if (!sinceISO) return 0;
+  const ms = Math.max(0, Date.now() - new Date(sinceISO));
+  return Math.floor(ms / 864e5);
+}
+
+async function downloadCardPDF() {
+  const el = document.getElementById('card');
+  const canvas = await html2canvas(el, {
+    scale: 3,
+    backgroundColor: '#0f0f1a',
+    useCORS: true,
+    allowTaint: true
+  });
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 86, 54);
+  pdf.save('carnet-queendomland.pdf');
+}
+init();
+</script>
+  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
+</style>
+</body>
+</html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Carnet — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d;--violet:#7c3aed}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+
+#card{
+  width:85.6mm;
+  height:54mm;
+  background:linear-gradient(135deg,#1a1a2e,#0f0f1a);
+  border:2px solid var(--gold);
+  border-radius:4mm;
+  padding:5mm;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  margin:15px auto;
+}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.card-title{color:var(--gold);font-weight:800;letter-spacing:2px;font-size:11px}
+.card-sub{color:#a1a1aa;font-size:7.5px;margin-top:1mm}
+.qr{width:15mm;height:15mm;background:#fff;border-radius:2mm;padding:1mm}
+  .card-avatar{width:18mm;height:18mm;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold);background:#161625;flex:none}
+.card-avatar.empty{display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:24px;font-weight:700}
+.card-top-right{display:flex;gap:3mm;align-items:center}
+.line{font-size:9px;color:#e5e5e5;margin:1mm 0}
+.line span{color:#a1a1aa}
+.line b{color:#fff}
+.line.transfer{color:var(--gold);font-weight:600;font-size:8px;border-top:1px solid rgba(212,175,55,.3);padding-top:1mm;margin-top:1mm}
+.line.chastity{color:#c4b5fd;font-weight:700;font-size:8.5px;border-top:1px solid rgba(124,58,237,.4);padding-top:1mm;margin-top:1mm;letter-spacing:.04em}
+.card-foot{font-size:6.5px;color:#71717a;border-top:1px solid rgba(212,175,55,.4);padding-top:2mm}
+
+@media print{
+  body *{visibility:hidden}
+  #card, #card *{visibility:visible}
+  #card{position:fixed;left:0;top:0;margin:0}
+}
+</style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">♛ Carnet oficial</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="content" class="card">Cargando...</div>
+</main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let me = null;
+let myProfile = null;
+
+function escapeHtml(v){
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function chastityDays(sinceISO){
+  if (!sinceISO) return null;
+  const ms = Math.max(0, Date.now() - new Date(sinceISO));
+  return Math.floor(ms / 864e5);
+}
+
+async function init() {
+  const content = document.getElementById('content');
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  me = session.user;
+
+  const { data: profile } = await db.from('profiles').select('id, role').eq('id', me.id).maybeSingle();
+  myProfile = profile;
+
+  if (!myProfile) {
+    content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
+    return;
+  }
+
+  const { data: { session: s } } = await db.auth.getSession();
+  if (s) {
+    await fetch('/api/expire-transfers', { method: 'POST', headers: { Authorization: 'Bearer ' + s.access_token } });
+  }
+
+  if (myProfile.role === 'dominant') {
+    const { data: subs } = await db
+      .from('relationships')
+      .select('id, profiles!relationships_submissive_id_fkey(display_name, id)')
+      .eq('dominant_id', me.id)
+      .eq('status', 'confirmed');
+    const { data: shared } = await db.rpc('my_shared_submissives');
+    const sharedSubs = shared || [];
+
+    if ((!subs || subs.length === 0) && sharedSubs.length === 0) {
+      content.innerHTML = '<h2>Sin sumisos confirmados</h2><p class="small">Cuando confirmes un sumiso podrás imprimir su carnet.</p>';
+      return;
+    }
+
+    const firstVal = (subs && subs.length) ? subs[0].id : sharedSubs[0].rel_id;
+    content.innerHTML = `
+      <h2>Elige al sumiso</h2>
+      <select id="pick" onchange="loadCard(this.value)">
+        ${(subs || []).map(s => `<option value="${s.id}">⛓ ${escapeHtml(s.profiles?.display_name || 'Sumiso')}</option>`).join('')}
+        ${sharedSubs.map(s => `<option value="${s.rel_id}">🤝 ${escapeHtml(s.slave_name || s.name || 'Sumiso')} (compartido)</option>`).join('')}
+      </select>
+      <div id="cardwrap"></div>
+    `;
+
+    await loadCard(firstVal);
+  } else {
+    const { data: rel } = await db
+      .from('relationships')
+      .select('id')
+      .eq('submissive_id', me.id)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+
+    if (!rel) {
+      content.innerHTML = '<h2>Sin Dominante confirmada</h2><p class="small">Cuando pertenezcas a una Dominante verás aquí tu carnet.</p>';
+      return;
+    }
+
+    content.innerHTML = '<div id="cardwrap"></div>';
+    await loadCard(rel.id);
+  }
+}
+
+async function loadCard(relId) {
+  const wrap = document.getElementById('cardwrap');
+
+  const { data: V, error: vErr } = await db.rpc('card_view', { p_rel: relId });
+  if (vErr) { wrap.innerHTML = '<p class="small">Error: ' + escapeHtml(vErr.message) + '</p>'; return; }
+  if (!V) { wrap.innerHTML = '<p class="small">No tienes acceso a este carnet.</p>'; return; }
+
+  const record = V.record || null;
+  const card = V.card || null;
+  const rel = { submissive_id: V.submissive_id, profiles: { display_name: V.owner_name } };
+  const subAvatarUrl = V.sub_avatar || '';
+  const activeTransfer = V.transfer || null;
+  const activeChastity = V.chastity || null;
+  const sharedNames = V.shared_names || [];
+  const chastityDays = activeChastity ? chastityDaysCalc(activeChastity.since) : null;
+
+  if (!record) { wrap.innerHTML = '<p class="small">No hay registro todavía.</p>'; return; }
+  if (!card) { wrap.innerHTML = '<p class="small">La Dominante aún no emite el carnet.</p>'; return; }
+
   const verifyUrl = window.location.origin + '/verificar.html?code=' + encodeURIComponent(card.verification_code || '');
   const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(verifyUrl);
 
