@@ -53,6 +53,8 @@ button.danger{background:#7f1d1d;color:#fff}
 const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let editingId = null;
+
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function iconFor(n){
   n=(n||'').toLowerCase();
@@ -62,14 +64,25 @@ function iconFor(n){
   if(/\.(png|jpe?g|gif|webp|svg)$/.test(n))return '🖼';
   return '📎';
 }
+
 async function init(){
-  let editingId = null;
   try {
     if (window.loadFAQInto) await window.loadFAQInto(db, document.getElementById('faqbox'));
     else if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
   } catch(e) {
     if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
   }
+  const {data:{session}}=await db.auth.getSession();
+  let isAdmin=false;
+  if(session){
+    const {data:adm}=await db.from('app_admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
+    isAdmin=!!adm;
+  }
+  if(isAdmin)document.getElementById('res-admin').style.display='block';
+  await loadResources(isAdmin);
+  await initAdmin();
+}
+
 async function initAdmin(){
   const {data:{session}} = await db.auth.getSession();
   if(!session) return;
@@ -78,6 +91,7 @@ async function initAdmin(){
   document.getElementById('faq-admin').style.display = 'block';
   await renderFAQList();
 }
+
 async function renderFAQList(){
   const {data} = await db.from('faq_entries').select('*').order('sort_order').order('created_at');
   const list = document.getElementById('faq-list');
@@ -91,8 +105,10 @@ async function renderFAQList(){
       <button class="danger" onclick="deleteFAQ('${e.id}')">🗑</button></span></div>`).join('');
   }
 }
+
 function newFAQ(){ editingId=null; document.getElementById('faq-title').value=''; document.getElementById('faq-body').value=''; document.getElementById('faq-editor').style.display='block'; }
 function cancelFAQ(){ document.getElementById('faq-editor').style.display='none'; }
+
 async function editFAQ(id){
   const {data} = await db.from('faq_entries').select('*').eq('id',id).maybeSingle();
   if(!data) return;
@@ -101,6 +117,7 @@ async function editFAQ(id){
   document.getElementById('faq-body').value = data.body;
   document.getElementById('faq-editor').style.display = 'block';
 }
+
 async function saveFAQ(){
   const title = document.getElementById('faq-title').value.trim();
   const body = document.getElementById('faq-body').value.trim();
@@ -113,6 +130,7 @@ async function saveFAQ(){
   await renderFAQList();
   await loadFAQInto(db, document.getElementById('faqbox'));
 }
+
 async function deleteFAQ(id){
   if(!confirm('¿Eliminar esta pregunta de la casa?')) return;
   const {error} = await db.from('faq_entries').delete().eq('id',id);
@@ -120,6 +138,7 @@ async function deleteFAQ(id){
   await renderFAQList();
   await loadFAQInto(db, document.getElementById('faqbox'));
 }
+
 async function importBase(){
   for(let i=0;i<window.FAQ_DATA.length;i++){
     await db.from('faq_entries').insert({ title: window.FAQ_DATA[i].q, body: window.FAQ_DATA[i].a, sort_order: i+1 });
@@ -127,16 +146,7 @@ async function importBase(){
   await renderFAQList();
   await loadFAQInto(db, document.getElementById('faqbox'));
 }
-  const {data:{session}}=await db.auth.getSession();
-  let isAdmin=false;
-  if(session){
-    const {data:adm}=await db.from('app_admins').select('user_id').eq('user_id',session.user.id).maybeSingle();
-    isAdmin=!!adm;
-  }
-  if(isAdmin)document.getElementById('res-admin').style.display='block';
-  await loadResources(isAdmin);
-  await initAdmin();
-}
+
 async function loadResources(isAdmin){
   const box=document.getElementById('reslist');
   const {data,error}=await db.storage.from('recursos').list();
@@ -148,6 +158,7 @@ async function loadResources(isAdmin){
       ${isAdmin?`<button class="danger" onclick="deleteResource('${esc(f.name)}')">Eliminar</button>`:''}</div>`;
   }).join('');
 }
+
 async function uploadResource(){
   const input=document.getElementById('res-file');
   const f=input.files[0];if(!f)return alert('Selecciona un archivo.');
@@ -158,12 +169,14 @@ async function uploadResource(){
   input.value='';
   await loadResources(true);
 }
+
 async function deleteResource(name){
   if(!confirm('¿Eliminar este recurso de la biblioteca?'))return;
   const {error}=await db.storage.from('recursos').remove([name]);
   if(error)return alert(error.message);
   await loadResources(true);
 }
+
 init();
 </script>
 </body>
