@@ -269,7 +269,7 @@
       'Puerto Rico','Otro'
     ];
 
-        if (window.renderFAQAccordion) window.renderFAQAccordion(document.getElementById('faqbox'));
+        if (window.loadFAQInto && typeof db !== 'undefined') window.loadFAQInto(db, document.getElementById('faqbox'));
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
