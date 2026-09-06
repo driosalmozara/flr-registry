@@ -58,16 +58,40 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 #emoji-panel .emo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 #emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
 #emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
-@media (max-width:600px){#irc{flex-direction:column;height:auto}#side{width:100%;max-height:160px}#msgs{height:300px}.nick-row{grid-template-columns:1fr}#rooms-bar{overflow-x:auto;flex-wrap:nowrap}}
-  @media (max-width:640px){
-  #inputrow{flex-wrap:wrap}
-  #msg{order:2;flex:1 1 auto;min-width:0}
-  #sendbtn{order:2}
-  #inputrow button{padding:8px 12px;font-size:14px}
-  button{padding:8px 12px;font-size:14px}
-  #msgs{font-size:12px}
-  .room-tab{font-size:12px;padding:5px 9px}
-  #emoji-panel{width:min(320px,92vw)}
+@media (max-width:760px){
+  body{font-size:14px}
+  header{padding:10px 14px}
+  header h1{font-size:20px}
+  main{padding:10px}
+  .card{padding:12px;margin-bottom:10px}
+  #rooms-bar{overflow-x:auto;flex-wrap:nowrap;padding:6px;margin-bottom:8px}
+  .room-tab{font-size:11px;padding:4px 8px;flex:none;white-space:nowrap}
+  #irc{flex-direction:column;height:calc(100vh - 180px);gap:6px}
+  #side{width:100%;max-height:none;order:2;flex:none}
+  #side.collapsed{display:none}
+  #side .card{padding:10px;margin:0}
+  #ptitle{font-size:14px;margin:0 0 6px}
+  .prow{padding:3px 4px;font-size:12px}
+  .prow span{font-size:12px}
+  .prow button{font-size:10px;padding:0 3px}
+  #main{order:1;min-height:0;flex:1}
+  #msgs{font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:13px;padding:8px;height:100%;min-height:0}
+  .line{margin:2px 0;padding:4px 6px;line-height:1.4;border-radius:6px;background:rgba(22,22,37,.5)}
+  .time{font-size:11px;margin-right:4px}
+  #inputrow{gap:4px;margin-top:6px;flex-wrap:nowrap}
+  #msg{padding:8px 10px;font-size:14px}
+  #inputrow button{padding:6px 10px;font-size:13px}
+  #emoji-btn, #gif-btn{padding:6px 8px;font-size:14px}
+  #emoji-panel{width:calc(100vw - 20px);max-width:320px}
+  .nick-row{grid-template-columns:1fr;gap:6px}
+  /* Ocultar tarjetas superiores pesadas en móvil, salvo la de identidad compacta */
+  .card:not(.notranslate):not(#content > .card){display:none}
+  #content > .card > h3:first-child{font-size:15px;margin-top:0}
+  #content > .card > p{font-size:12px}
+  #toggle-side{display:inline-block}
+}
+@media (min-width:761px){
+  #toggle-side{display:none}
 }
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
@@ -370,16 +394,14 @@ async function renderPage() {
 
   html += `
     <div id="rooms-bar"></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <button id="toggle-side" onclick="document.getElementById('side').classList.toggle('collapsed')" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;">👥 Participantes</button>
+    </div>
     <div id="irc" class="notranslate" translate="no">
       <div id="side" class="card">
         <h3 id="ptitle">Participantes (${people.length})</h3>
         <div id="plist"></div>
       </div>
-      <div id="main">
-        <div id="msgs"></div>
-        <div id="inputrow"></div>
-      </div>
-    </div>
   `;
 
   content.innerHTML = html;
