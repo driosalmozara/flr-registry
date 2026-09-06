@@ -65,7 +65,7 @@ async function init() {
 
   me = session.user.id;
 
-  const { data: profile } = await db.from('profiles').select('id, role, avatar_url').eq('id', me).maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role, avatar_url, autonomy').eq('id', me).maybeSingle();
   myProfile = profile;
 
   if (!myProfile) {
@@ -78,15 +78,32 @@ async function init() {
 
   let html = '';
 
+  let hasOwner = false;
+  let isAutonomous = !!myProfile.autonomy;
+  if (myProfile.role === 'submissive') {
+    const { data: rel } = await db.from('relationships')
+      .select('id')
+      .eq('submissive_id', me)
+      .eq('status', 'confirmed')
+      .maybeSingle();
+    hasOwner = !!rel;
+  }
+
   html += `
     <div class="card">
       <h2>Tu avatar</h2>
       <div style="text-align:center;">
         <img class="avatar" id="myAvatar" src="${esc(myProfile.avatar_url || '')}" />
         <br/><br/>
-        <input type="file" id="myFile" accept="image/*" />
-        <br/>
-        <button onclick="uploadMyAvatar()">Cambiar mi avatar</button>
+        ${!hasOwner || isAutonomous ? `
+          <input type="file" id="myFile" accept="image/*" />
+          <br/>
+          <button onclick="uploadMyAvatar()">Cambiar mi avatar</button>
+          ${isAutonomous && hasOwner ? '<p class="small" style="color:#4ade80;margin-top:10px;">🕊 Tu Dueña te mantiene con autonomía: puedes cambiar tu avatar.</p>' : ''}
+          ${!hasOwner ? '' : ''}
+        ` : `
+          <p class="small" style="color:#fbbf24;margin-top:10px;">⚠ Tu Dominante gestiona tu avatar. Contacta con ella si deseas cambios.</p>
+        `}
       </div>
     </div>
   `;
