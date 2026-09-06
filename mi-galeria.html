@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Galería — Supremacía Femenina</title>
+<title>Galería personal — Queendomland</title>
 <style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
@@ -60,7 +60,7 @@ async function init(){
   const { data:{session} } = await db.auth.getSession();
   if(!session){ content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
-  const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
+  const { data: profile } = await db.from('profiles').select('id, role, display_name, autonomy').eq('id', me).maybeSingle();
   myProfile = profile;
   if(!myProfile){ content.innerHTML = '<h2>Completa tu perfil primero</h2>'; return; }
   await renderManage();
@@ -99,6 +99,8 @@ async function renderManage(){
   const content = document.getElementById('content');
   const rel = await myOwnership();
   const owned = !!rel;
+  const isAutonomous = !!myProfile.autonomy;
+  const needApproval = owned && !isAutonomous;
 
   const [photos, reqs] = await Promise.all([
     db.from('gallery_photos').select('*').eq('owner_id', me).order('created_at', { ascending: false }),
@@ -106,11 +108,15 @@ async function renderManage(){
   ]);
 
   let html = `<h2 style="margin-top:0;">🖼 Mi galería</h2><div class="card">`;
-  html += owned
-    ? `<p class="small">Tu galería la gestiona ♛ ${esc(rel.profiles?.display_name || 'tu Dominante')}. Sube imágenes y ella decidirá si se aprueban y si son públicas.</p>`
-    : `<p class="small">Sube imágenes y elige cuáles se ven en el registro público.</p>`;
+  if (owned && isAutonomous) {
+    html += `<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía: gestionas tu galería personal libremente.</p>`;
+  } else if (owned) {
+    html += `<p class="small">Tu galería la gestiona ♛ ${esc(rel.profiles?.display_name || 'tu Dominante')}. Sube imágenes y ella decidirá si se aprueban y si son públicas.</p>`;
+  } else {
+    html += `<p class="small">Sube imágenes y elige cuáles se ven en el registro público.</p>`;
+  }
   html += `<input type="file" id="up_own" accept="image/*" onchange="uploadOwn(this)"/>`;
-  html += photoGrid(photos.data || [], owned ? 'locked' : 'manage');
+  html += photoGrid(photos.data || [], needApproval ? 'locked' : 'manage');
   html += `</div>`;
 
   if (owned && (reqs.data || []).length) {
@@ -173,9 +179,10 @@ async function uploadFile(file, folder){
 async function uploadOwn(input){
   const file = input.files[0]; if(!file) return;
   const rel = await myOwnership();
+  const isAutonomous = !!myProfile.autonomy;
   try {
     const url = await uploadFile(file, me);
-    if (rel) {
+    if (rel && !isAutonomous) {
       const { error } = await db.from('gallery_requests').insert({ submissive_id: me, action: 'add', photo_url: url });
       if (error) return alert(error.message);
       await notify(rel.dominant_id, 'gallery_request', '🖼 Solicitud de galería', `${myProfile.display_name} pidió agregar una imagen a su galería.`);
@@ -213,6 +220,14 @@ async function delPhoto(id){
 }
 
 async function requestRemove(id){
+  const isAutonomous = !!myProfile.autonomy;
+  if (isAutonomous || !(await myOwnership())) {
+    // Sumiso autónomo o libre: elimina directamente
+    const { error } = await db.from('gallery_photos').delete().eq('id', id);
+    if (error) return alert(error.message);
+    window.location.reload();
+    return;
+  }
   const { error } = await db.from('gallery_requests').insert({ submissive_id: me, action: 'remove', photo_id: id });
   if (error) return alert(error.message);
   const rel = await myOwnership();
