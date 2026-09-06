@@ -132,11 +132,15 @@ async function init() {
   myProfile = profile;
   if (!myProfile) { content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
 
-  const [sf, mf, cf, ow, cmods] = await Promise.all([
+  const [sf, mf, cf, ow, cmods, adm, mod] = await Promise.all([
     db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'), db.rpc('am_i_chatmod'),
     db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id')
+    db.from('app_chat_mods').select('user_id'),
+    db.from('app_admins').select('user_id'),
+    db.from('app_moderators').select('user_id')
   ]);
+  adminIds = new Set((adm.data||[]).map(x=>x.user_id));
+  modIds = new Set((mod.data||[]).map(x=>x.user_id));
   isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cf.data;
   ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
   chatModIds = new Set((cmods.data || []).map(x => x.user_id));
@@ -399,7 +403,7 @@ function renderParticipants() {
     return `
       <div class="prow">
         <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : '#d4d4d8'}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Perro Guardián">⛓‍🦺</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}${roomMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO EN ESTA SALA)</span>' : ''}
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${staffIcons(p.id)}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}${roomMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO EN ESTA SALA)</span>' : ''}
         </span>
         <span>
           ${canMute ? `<button class="p-act" title="${chatMuted ? 'Devolver la voz' : 'Silenciar'}" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
@@ -503,7 +507,7 @@ async function loadMessages() {
     return `
       <div class="line">
         <span class="time">[${hh}]</span>
-        <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
+        <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>${staffIcons(m.user_id)}
         ${esc(bodyText)}
         ${att}
         ${canDel ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
