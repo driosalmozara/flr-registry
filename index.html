@@ -162,12 +162,17 @@
               <option value="submissive">⛓ Sumiso</option>
               <option value="dominant">♛ Dominante</option>
             </select>
-            <select id="reg-gender">
-              <option value="hombre">Hombre</option>
-              <option value="mujer">Mujer</option>
-            </select>
+            <label class="small">Género</label>
+            <select id="reg-gender" onchange="toggleDetail(this.value,'reg-gender-detail')"></select>
+            <input id="reg-gender-detail" style="display:none;" placeholder="Detalla tu género" />
             <input id="reg-display" placeholder="Nombre público" />
-            <input id="reg-age" type="number" min="18" placeholder="Edad (18+)" />
+            <label class="small">Fecha de nacimiento (dd/mm/aaaa)</label>
+            <input id="reg-birth" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" />
+            <label class="small">Orientación</label>
+            <select id="reg-orientation" onchange="toggleDetail(this.value,'reg-orientation-detail')"></select>
+            <input id="reg-orientation-detail" style="display:none;" placeholder="Detalla tu orientación" />
+            <label class="small">Rol en la dinámica</label>
+            <select id="reg-playrole"></select>
             <select id="reg-country">
               <option value="">País de residencia...</option>
             </select>
@@ -221,12 +226,17 @@
         <option value="submissive">⛓ Sumiso</option>
         <option value="dominant">♛ Dominante</option>
       </select>
-      <select id="setup-gender">
-        <option value="hombre">Hombre</option>
-        <option value="mujer">Mujer</option>
-      </select>
+      <label class="small">Género</label>
+      <select id="setup-gender" onchange="toggleDetail(this.value,'setup-gender-detail')"></select>
+      <input id="setup-gender-detail" style="display:none;" placeholder="Detalla tu género" />
       <input id="setup-display" placeholder="Nombre público" />
-      <input id="setup-age" type="number" min="18" placeholder="Edad (18+)" />
+      <label class="small">Fecha de nacimiento (dd/mm/aaaa)</label>
+      <input id="setup-birth" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" />
+      <label class="small">Orientación</label>
+      <select id="setup-orientation" onchange="toggleDetail(this.value,'setup-orientation-detail')"></select>
+      <input id="setup-orientation-detail" style="display:none;" placeholder="Detalla tu orientación" />
+      <label class="small">Rol en la dinámica</label>
+      <select id="setup-playrole"></select>
       <select id="setup-country">
         <option value="">País de residencia...</option>
       </select>
@@ -268,6 +278,40 @@
     let currentProfile = null;
     let deferredInstallPrompt = null;
     let profileLocked = false;
+
+    const GENDERS_SUB = ['Hombre','Mujer','Hombre Travesti','Hombre Transexual','Mujer Transexual','Hombre Transgénero','Mujer Transgénero','No Binario','Intersexual','Otro'];
+    const GENDERS_DOM = ['Mujer','Mujer Transexual','Mujer Transgénero'];
+    const ROLES_SUB = ['Sumiso/Esclavo','Switch'];
+    const ROLES_DOM = ['Dominante','Switch'];
+
+    function maskDate(input){
+      let v = input.value.replace(/\D/g,'').slice(0,8);
+      let out = v;
+      if (v.length > 4) out = v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+      else if (v.length > 2) out = v.slice(0,2)+'/'+v.slice(2);
+      input.value = out;
+    }
+    function parseDateDMY(str){
+      const m = (str||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return null;
+      const d=+m[1], mo=+m[2], y=+m[3];
+      const dt = new Date(y, mo-1, d);
+      if (dt.getDate()!==d || dt.getMonth()!==mo-1 || dt.getFullYear()!==y) return null;
+      return dt;
+    }
+    function ageFrom(dt){
+      const now = new Date();
+      let a = now.getFullYear()-dt.getFullYear();
+      const md = now.getMonth()-dt.getMonth();
+      if (md<0 || (md===0 && now.getDate()<dt.getDate())) a--;
+      return a;
+    }
+    function toISO(dt){ return dt.toISOString().split('T')[0]; }
+    function fromISO(iso){ if(!iso) return ''; const p=iso.split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : ''; }
+    function genderOptions(role, cur){ return (role==='dominant'?GENDERS_DOM:GENDERS_SUB).map(g=>`<option value="${g}" ${cur===g?'selected':''}>${g}</option>`).join(''); }
+    function orientationOptions(role, cur){ const l = role==='dominant'?['Heterosexual','Lesbiana','Bisexual','Otro']:['Heterosexual','Homosexual','Bisexual','Otro']; return l.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join(''); }
+    function roleOptions(role, cur){ return (role==='dominant'?ROLES_DOM:ROLES_SUB).map(r=>`<option value="${r}" ${cur===r?'selected':''}>${r}</option>`).join(''); }
+    function toggleDetail(value, detailId){ const d=document.getElementById(detailId); if(d) d.style.display = (value==='Otro')?'block':'none'; }
 
     const COUNTRIES = [
       'Afganistán','Albania','Alemania','Andorra','Angola','Antigua y Barbuda','Arabia Saudita','Argelia','Argentina','Armenia','Australia','Austria','Azerbaiyán',
@@ -323,162 +367,168 @@
       return !!(data && data.value === '1');
     }
     async function loadContacts() {
-  const { data } = await db.from('member_contacts').select('*').eq('user_id', currentUser.id).order('created_at');
-  window.myContacts = data || [];
-  renderContactsList();
-}
+      const { data } = await db.from('member_contacts').select('*').eq('user_id', currentUser.id).order('created_at');
+      window.myContacts = data || [];
+      renderContactsList();
+    }
 
-function renderContactsList() {
-  const socialList = document.getElementById('social-contacts-list');
-  const directList = document.getElementById('direct-contacts-list');
-  
-  const socials = window.myContacts.filter(c => c.contact_type === 'social');
-  const directs = window.myContacts.filter(c => c.contact_type !== 'social');
-  
-  if (socials.length === 0) {
-    socialList.innerHTML = '<p class="small">No has agregado redes sociales.</p>';
-  } else {
-    socialList.innerHTML = socials.map(c => {
-      const platform = c.platform === 'custom' ? c.custom_platform : c.platform;
-      const icon = getSocialIcon(c.platform);
-      return `
-        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
-          <span>${icon}</span>
-          <b style="min-width:80px;">${platform}:</b>
-          <span style="flex:1;">${escapeHtml(c.value)}</span>
-          ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
-        </div>
-      `;
-    }).join('');
-  }
-  
-  if (directs.length === 0) {
-    directList.innerHTML = '<p class="small">No has agregado datos de contacto.</p>';
-  } else {
-    directList.innerHTML = directs.map(c => {
-      const icon = getContactIcon(c.contact_type);
-      const display = c.contact_type === 'phone' || c.contact_type === 'whatsapp' 
-        ? `${c.country_code} ${c.value}` 
-        : c.value;
-      return `
-        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
-          <span>${icon}</span>
-          <b style="min-width:80px;">${c.contact_type}:</b>
-          <span style="flex:1;">${escapeHtml(display)}</span>
-          ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
-        </div>
-      `;
-    }).join('');
-  }
-}
+    function renderContactsList() {
+      const socialList = document.getElementById('social-contacts-list');
+      const directList = document.getElementById('direct-contacts-list');
+      
+      const socials = window.myContacts.filter(c => c.contact_type === 'social');
+      const directs = window.myContacts.filter(c => c.contact_type !== 'social');
+      
+      if (socials.length === 0) {
+        socialList.innerHTML = '<p class="small">No has agregado redes sociales.</p>';
+      } else {
+        socialList.innerHTML = socials.map(c => {
+          const platform = c.platform === 'custom' ? c.custom_platform : c.platform;
+          const icon = getSocialIcon(c.platform);
+          return `
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
+              <span>${icon}</span>
+              <b style="min-width:80px;">${platform}:</b>
+              <span style="flex:1;">${escapeHtml(c.value)}</span>
+              ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+      
+      if (directs.length === 0) {
+        directList.innerHTML = '<p class="small">No has agregado datos de contacto.</p>';
+      } else {
+        directList.innerHTML = directs.map(c => {
+          const icon = getContactIcon(c.contact_type);
+          const display = c.contact_type === 'phone' || c.contact_type === 'whatsapp' 
+            ? `${c.country_code} ${c.value}` 
+            : c.value;
+          return `
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
+              <span>${icon}</span>
+              <b style="min-width:80px;">${c.contact_type}:</b>
+              <span style="flex:1;">${escapeHtml(display)}</span>
+              ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
 
-function getSocialIcon(platform) {
-  const icons = {
-    facebook: '📘',
-    instagram: '📷',
-    x: '🐦',
-    threads: '🧵',
-    tiktok: '🎵',
-    snapchat: '👻',
-    linkedin: '💼',
-    custom: '🌐'
-  };
-  return icons[platform] || '🌐';
-}
+    function getSocialIcon(platform) {
+      const icons = {
+        facebook: '📘',
+        instagram: '📷',
+        x: '🐦',
+        threads: '🧵',
+        tiktok: '🎵',
+        snapchat: '👻',
+        linkedin: '💼',
+        custom: '🌐'
+      };
+      return icons[platform] || '🌐';
+    }
 
-function getContactIcon(type) {
-  const icons = {
-    phone: '📞',
-    whatsapp: '💬',
-    telegram: '✈️',
-    email: '📧'
-  };
-  return icons[type] || '📱';
-}
+    function getContactIcon(type) {
+      const icons = {
+        phone: '📞',
+        whatsapp: '💬',
+        telegram: '✈️',
+        email: '📧'
+      };
+      return icons[type] || '📱';
+    }
 
-async function addSocialContact() {
-  if (profileLocked) return;
-  const platform = document.getElementById('social-platform-select').value;
-  if (!platform) return alert('Selecciona una red social.');
-  
-  let customPlatform = null;
-  if (platform === 'custom') {
-    customPlatform = prompt('Nombre de la red social:');
-    if (!customPlatform) return;
-  }
-  
-  const value = prompt(`Usuario o enlace de ${platform === 'custom' ? customPlatform : platform}:`);
-  if (!value) return;
-  
-  const { error } = await db.from('member_contacts').insert({
-    user_id: currentUser.id,
-    contact_type: 'social',
-    platform,
-    custom_platform: customPlatform,
-    value
-  });
-  
-  if (error) return alert('Error: ' + error.message);
-  await loadContacts();
-  alert('Red social agregada.');
-}
+    async function addSocialContact() {
+      if (profileLocked) return;
+      const platform = document.getElementById('social-platform-select').value;
+      if (!platform) return alert('Selecciona una red social.');
+      
+      let customPlatform = null;
+      if (platform === 'custom') {
+        customPlatform = prompt('Nombre de la red social:');
+        if (!customPlatform) return;
+      }
+      
+      const value = prompt(`Usuario o enlace de ${platform === 'custom' ? customPlatform : platform}:`);
+      if (!value) return;
+      
+      const { error } = await db.from('member_contacts').insert({
+        user_id: currentUser.id,
+        contact_type: 'social',
+        platform,
+        custom_platform: customPlatform,
+        value
+      });
+      
+      if (error) return alert('Error: ' + error.message);
+      await loadContacts();
+      alert('Red social agregada.');
+    }
 
-async function addDirectContact() {
-  if (profileLocked) return;
-  const type = document.getElementById('contact-type-select').value;
-  if (!type) return alert('Selecciona un tipo de contacto.');
-  
-  let country_code = null;
-  let value = '';
-  
-  if (type === 'phone' || type === 'whatsapp') {
-    country_code = prompt('Código de país (ej: +52, +34, +1):');
-    if (!country_code) return;
-    value = prompt('Número de teléfono:');
-    if (!value) return;
-  } else if (type === 'email') {
-    value = prompt('Correo electrónico:');
-    if (!value || !value.includes('@')) return alert('Correo inválido.');
-  } else {
-    value = prompt('Usuario o enlace:');
-    if (!value) return;
-  }
-  
-  const { error } = await db.from('member_contacts').insert({
-    user_id: currentUser.id,
-    contact_type: type,
-    value,
-    country_code
-  });
-  
-  if (error) return alert('Error: ' + error.message);
-  await loadContacts();
-  alert('Dato de contacto agregado.');
-}
+    async function addDirectContact() {
+      if (profileLocked) return;
+      const type = document.getElementById('contact-type-select').value;
+      if (!type) return alert('Selecciona un tipo de contacto.');
+      
+      let country_code = null;
+      let value = '';
+      
+      if (type === 'phone' || type === 'whatsapp') {
+        country_code = prompt('Código de país (ej: +52, +34, +1):');
+        if (!country_code) return;
+        value = prompt('Número de teléfono:');
+        if (!value) return;
+      } else if (type === 'email') {
+        value = prompt('Correo electrónico:');
+        if (!value || !value.includes('@')) return alert('Correo inválido.');
+      } else {
+        value = prompt('Usuario o enlace:');
+        if (!value) return;
+      }
+      
+      const { error } = await db.from('member_contacts').insert({
+        user_id: currentUser.id,
+        contact_type: type,
+        value,
+        country_code
+      });
+      
+      if (error) return alert('Error: ' + error.message);
+      await loadContacts();
+      alert('Dato de contacto agregado.');
+    }
 
-async function deleteContact(id) {
-  if (!confirm('¿Eliminar este contacto?')) return;
-  const { error } = await db.from('member_contacts').delete().eq('id', id);
-  if (error) return alert('Error: ' + error.message);
-  await loadContacts();
-  alert('Contacto eliminado.');
-}
+    async function deleteContact(id) {
+      if (!confirm('¿Eliminar este contacto?')) return;
+      const { error } = await db.from('member_contacts').delete().eq('id', id);
+      if (error) return alert('Error: ' + error.message);
+      await loadContacts();
+      alert('Contacto eliminado.');
+    }
 
-async function saveVisibility() {
-  const available_public = document.getElementById('vis_avail').checked;
-  const show_avatar_public = document.getElementById('vis_ava').checked;
-  const show_social_public = document.getElementById('vis_social').checked;
-  const show_contact_public = document.getElementById('vis_contact').checked;
-  const show_about_public = document.getElementById('vis_about').checked;
+    async function saveVisibility() {
+      const available_public = document.getElementById('vis_avail').checked;
+      const show_avatar_public = document.getElementById('vis_ava').checked;
+      const show_social_public = document.getElementById('vis_social').checked;
+      const show_contact_public = document.getElementById('vis_contact').checked;
+      const show_about_public = document.getElementById('vis_about').checked;
+      const show_age_public = document.getElementById('vis_age').checked;
+      const show_birthday_public = document.getElementById('vis_bday').checked;
+      const show_gender_public = document.getElementById('vis_gender').checked;
+      const show_orientation_public = document.getElementById('vis_orient').checked;
+      const show_playrole_public = document.getElementById('vis_playrole').checked;
+      
+      const { error } = await db.from('profiles')
+        .update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public })
+        .eq('id', currentUser.id);
+        
+      if (error) return alert(error.message);
+      alert('Visibilidad actualizada.');
+      window.location.reload();
+    }
 
-  const { error } = await db.from('profiles')
-    .update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public })
-    .eq('id', currentUser.id);
-
-  if (error) return alert(error.message);
-  alert('Visibilidad actualizada.');
-  window.location.reload();
-}
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
@@ -621,23 +671,23 @@ async function saveVisibility() {
       window.location.href = 'muro.html';
     }
 
-        function roleGenderSync(prefix) {
+    function roleGenderSync(prefix) {
       const role = document.getElementById(prefix + '-role').value;
       const g = document.getElementById(prefix + '-gender');
-      if (!g) return;
-      if (role === 'dominant') {
-        g.value = 'mujer';
-        g.disabled = true;
-      } else {
-        g.disabled = false;
-        if (!g.value) g.value = 'hombre';
-      }
+      const o = document.getElementById(prefix + '-orientation');
+      const r = document.getElementById(prefix + '-playrole');
+      if (g) { g.innerHTML = genderOptions(role, g.value); toggleDetail(g.value, prefix+'-gender-detail'); }
+      if (o) { o.innerHTML = orientationOptions(role, o.value); toggleDetail(o.value, prefix+'-orientation-detail'); }
+      if (r) { r.innerHTML = roleOptions(role, r.value); }
     }
-        async function register() {
+
+    async function register() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('reg-role').value;
       const display_name = document.getElementById('reg-display').value.trim();
-      const age = Number(document.getElementById('reg-age').value);
+      const bdt = parseDateDMY(document.getElementById('reg-birth').value);
+      if (!bdt) return alert('Fecha de nacimiento inválida. Usa dd/mm/aaaa.');
+      const age = ageFrom(bdt);
       const country = document.getElementById('reg-country').value;
       const email = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
@@ -649,7 +699,7 @@ async function saveVisibility() {
 
       if (!display_name || !email || !password) return alert('Completa los campos obligatorios.');
       if (!country) return alert('Selecciona tu país.');
-      if (!age || age < 18) return alert('Debes ser mayor de 18.');
+      if (age < 18) return alert('Debes ser mayor de 18 años.');
       if (!consent) return alert('Debes aceptar la declaración de mayoría de edad.');
 
       const { data, error } = await db.auth.signUp({ email, password });
@@ -663,6 +713,14 @@ async function saveVisibility() {
         p_lang: lang, p_gender: gender
       });
       if (profileError) return alert('Perfil: ' + profileError.message);
+
+      await db.from('profiles').update({
+        birth_date: toISO(bdt), age,
+        gender_detail: gender==='Otro' ? ((document.getElementById('reg-gender-detail').value||'').trim()||null) : null,
+        orientation: document.getElementById('reg-orientation').value,
+        orientation_detail: document.getElementById('reg-orientation').value==='Otro' ? ((document.getElementById('reg-orientation-detail').value||'').trim()||null) : null,
+        play_role: document.getElementById('reg-playrole').value
+      }).eq('id', data.user.id);
 
       if (role === 'dominant') {
         const regOn = await regLockIsOn();
@@ -686,15 +744,27 @@ async function saveVisibility() {
       if (!db) return alert('Configura Supabase primero.');
       const role = document.getElementById('setup-role').value;
       const display_name = document.getElementById('setup-display').value.trim();
-      const age = Number(document.getElementById('setup-age').value);
+      const bdt = parseDateDMY(document.getElementById('setup-birth').value);
+      if (!bdt) return alert('Fecha de nacimiento inválida. Usa dd/mm/aaaa.');
+      const age = ageFrom(bdt);
       const country = document.getElementById('setup-country').value;
-      if (!display_name || !age || age < 18) return alert('Completa nombre y edad 18+.');
+      if (!display_name || !age || age < 18) return alert('Completa nombre y fecha de nacimiento 18+.');
+      const gender = document.getElementById('setup-gender').value;
       const { error } = await db.rpc('register_profile', {
         p_id: currentUser.id, p_role: role, p_display_name: display_name, p_age: age, p_country: country,
         p_social_links: null, p_social_links_public: false,
-        p_lang: document.getElementById('setup-lang').value, p_gender: document.getElementById('setup-gender').value
+        p_lang: document.getElementById('setup-lang').value, p_gender: gender
       });
       if (error) return alert('Perfil: ' + error.message);
+
+      await db.from('profiles').update({
+        birth_date: toISO(bdt), age,
+        gender_detail: gender==='Otro' ? ((document.getElementById('setup-gender-detail').value||'').trim()||null) : null,
+        orientation: document.getElementById('setup-orientation').value,
+        orientation_detail: document.getElementById('setup-orientation').value==='Otro' ? ((document.getElementById('setup-orientation-detail').value||'').trim()||null) : null,
+        play_role: document.getElementById('setup-playrole').value
+      }).eq('id', currentUser.id);
+
       if (role === 'dominant') {
         const regOn = await regLockIsOn();
         if (regOn) {
@@ -760,17 +830,20 @@ async function saveVisibility() {
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
           <textarea id="profile-bio" rows="3" ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio || '')}</textarea>
-                    <label class="small">Sobre mí: Mis Gustos, Fetiches y Otros</label>
+          <label class="small">Sobre mí: Mis Gustos, Fetiches y Otros</label>
           <p class="small" style="margin:0 0 6px;">Describe con libertad lo que te gusta, tus fetiches, preferencias y cualquier detalle que quieras compartir. Extensión libre.</p>
           <textarea id="profile-bio-ext" rows="8" placeholder="Aquí puedes escribir con toda libertad sobre tus gustos, fetiches, límites suaves, fantasías, prácticas favoritas, juguetes, protocolos preferidos, dinámicas que te atraen..." ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio_extended || '')}</textarea>
-                  <label class="small">Género</label>
-          ${currentProfile.role === 'dominant'
-            ? `<select id="profile-gender" disabled><option value="mujer" selected>Mujer</option></select>`
-            : `<select id="profile-gender" ${isLocked ? 'disabled' : ''}>
-                <option value="hombre" ${currentProfile.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
-                <option value="mujer" ${currentProfile.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
-              </select>`}
-                   <label class="small">Idioma preferido</label>
+          <label class="small">Fecha de nacimiento (dd/mm/aaaa)</label>
+          <input id="profile-birth" value="${fromISO(currentProfile.birth_date)}" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" ${isLocked ? 'disabled' : ''} />
+          <label class="small">Género</label>
+          <select id="profile-gender" onchange="toggleDetail(this.value,'profile-gender-detail')" ${isLocked ? 'disabled' : ''}>${genderOptions(currentProfile.role, currentProfile.gender)}</select>
+          <input id="profile-gender-detail" style="display:${currentProfile.gender==='Otro'?'block':'none'};" value="${escapeHtml(currentProfile.gender_detail||'')}" placeholder="Detalla tu género" ${isLocked ? 'disabled' : ''} />
+          <label class="small">Orientación</label>
+          <select id="profile-orientation" onchange="toggleDetail(this.value,'profile-orientation-detail')" ${isLocked ? 'disabled' : ''}>${orientationOptions(currentProfile.role, currentProfile.orientation)}</select>
+          <input id="profile-orientation-detail" style="display:${currentProfile.orientation==='Otro'?'block':'none'};" value="${escapeHtml(currentProfile.orientation_detail||'')}" placeholder="Detalla tu orientación" ${isLocked ? 'disabled' : ''} />
+          <label class="small">Rol en la dinámica</label>
+          <select id="profile-playrole" ${isLocked ? 'disabled' : ''}>${roleOptions(currentProfile.role, currentProfile.play_role)}</select>
+          <label class="small">Idioma preferido</label>
           <select id="profile-lang" ${isLocked ? 'disabled' : ''}>
             ${[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']].map(l => `<option value="${l[0]}" ${currentProfile.lang === l[0] ? 'selected' : ''}>${l[1]}</option>`).join('')}
           </select>
@@ -819,7 +892,6 @@ async function saveVisibility() {
         </div>
       `;
 
-      // Sección de Visibilidad y Privacidad
       const visibilityCard = `
         <div class="card">
           <h2>👁 Visibilidad y Privacidad</h2>
@@ -840,6 +912,30 @@ async function saveVisibility() {
             <input type="checkbox" id="vis_contact" ${currentProfile.show_contact_public ? 'checked' : ''} />
             Mostrar mis datos de contacto en el Salón
           </label>
+          <label>
+            <input type="checkbox" id="vis_about" ${currentProfile.show_about_public ? 'checked' : ''} />
+            Mostrar mi "Sobre mí" en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_age" ${currentProfile.show_age_public ? 'checked' : ''} />
+            Mostrar mi edad en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_bday" ${currentProfile.show_birthday_public ? 'checked' : ''} />
+            Mostrar mi cumpleaños (día y mes) en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_gender" ${currentProfile.show_gender_public ? 'checked' : ''} />
+            Mostrar mi género en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_orient" ${currentProfile.show_orientation_public ? 'checked' : ''} />
+            Mostrar mi orientación en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_playrole" ${currentProfile.show_playrole_public ? 'checked' : ''} />
+            Mostrar mi rol en el Salón
+          </label>
           <button onclick="saveVisibility()">Guardar visibilidad</button>
         </div>
       `;
@@ -850,20 +946,28 @@ async function saveVisibility() {
     async function saveMyProfile() {
       const display_name = document.getElementById('profile-display').value.trim();
       const bio = document.getElementById('profile-bio').value.trim();
-      const bio_extended = document.getElementById('profile-bio-ext').value.trim();
+      const bio_extended = (document.getElementById('profile-bio-ext')||{value:''}).value;
       const country = document.getElementById('profile-country').value;
       if (!display_name) return alert('Escribe tu nombre público.');
       if (!country) return alert('Selecciona un país.');
       const lang = document.getElementById('profile-lang').value;
-      const gender = currentProfile.role === 'dominant' ? 'mujer' : document.getElementById('profile-gender').value;
-      const { error } = await db.from('profiles')
-        .update({ display_name, bio, bio_extended: bio_extended || null, country, lang, gender })
-        .eq('id', currentUser.id);
+      const bdt = parseDateDMY(document.getElementById('profile-birth').value);
+      if (!bdt) return alert('Fecha de nacimiento inválida. Usa dd/mm/aaaa.');
+      const age = ageFrom(bdt);
+      if (age < 18) return alert('Debes ser mayor de 18 años.');
+      const gender = document.getElementById('profile-gender').value;
+      const orientation = document.getElementById('profile-orientation').value;
+      const { error } = await db.from('profiles').update({
+        display_name, bio, bio_extended: bio_extended||null, country, lang,
+        birth_date: toISO(bdt), age,
+        gender, gender_detail: gender==='Otro' ? ((document.getElementById('profile-gender-detail').value||'').trim()||null) : null,
+        orientation, orientation_detail: orientation==='Otro' ? ((document.getElementById('profile-orientation-detail').value||'').trim()||null) : null,
+        play_role: document.getElementById('profile-playrole').value
+      }).eq('id', currentUser.id);
       if (error) return alert(error.message);
       alert('Perfil actualizado.');
       window.location.reload();
     }
-    
 
     async function renderDominant() {
       const dashboard = document.getElementById('dashboard');
@@ -875,11 +979,11 @@ async function saveVisibility() {
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, autonomy)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
-            const { data: shared } = await db.rpc('my_shared_submissives');
+      const { data: shared } = await db.rpc('my_shared_submissives');
       const sharedSubs = shared || [];
       let records = [];
       let cards = [];
@@ -1003,22 +1107,31 @@ async function saveVisibility() {
               Mostrar su avatar en el Salón de miembros
             </label>`;
 
-                        html += `<label class="small" style="margin-top:10px;">Género</label>`;
-            html += `<select id="pgender_${sub.submissive_id}">
-              <option value="hombre" ${sub.profiles?.gender === 'hombre' ? 'selected' : ''}>Hombre</option>
-              <option value="mujer" ${sub.profiles?.gender === 'mujer' ? 'selected' : ''}>Mujer</option>
-            </select>`;
             html += `<label class="small" style="margin-top:10px;">🌎 País de residencia</label>`;
             html += `<select id="pcountry_${sub.submissive_id}">
               <option value="">Seleccionar...</option>
               ${COUNTRIES.map(c => `<option value="${c}" ${sub.profiles?.country === c ? 'selected' : ''}>${c}</option>`).join('')}
             </select>`;
-            html += `<label class="small" style="margin-top:10px;">📖 Sobre mí: Sus Gustos, Fetiches y Otros</label>`;
-            html += `<textarea id="pbioext_${sub.submissive_id}" rows="6" placeholder="Escribe aquí los gustos, fetiches y preferencias del sumiso...">${escapeHtml(sub.profiles?.bio_extended || '')}</textarea>`;
+            html += `<label class="small" style="margin-top:10px;">🎂 Fecha de nacimiento (siempre visible para ti)</label>`;
+            html += `<input id="pbirth_${sub.submissive_id}" value="${fromISO(sub.profiles?.birth_date)}" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" />`;
+            html += `<p class="small">Edad actual: <b>${sub.profiles?.age ?? '—'}</b> años</p>`;
+            html += `<label class="small">Género</label>`;
+            html += `<select id="pgender_${sub.submissive_id}" onchange="toggleDetail(this.value,'pgenderdetail_${sub.submissive_id}')">${genderOptions('submissive', sub.profiles?.gender)}</select>`;
+            html += `<input id="pgenderdetail_${sub.submissive_id}" style="display:${sub.profiles?.gender==='Otro'?'block':'none'};" value="${escapeHtml(sub.profiles?.gender_detail||'')}" placeholder="Detalle" />`;
+            html += `<label class="small">Orientación</label>`;
+            html += `<select id="porient_${sub.submissive_id}" onchange="toggleDetail(this.value,'porientdetail_${sub.submissive_id}')">${orientationOptions('submissive', sub.profiles?.orientation)}</select>`;
+            html += `<input id="porientdetail_${sub.submissive_id}" style="display:${sub.profiles?.orientation==='Otro'?'block':'none'};" value="${escapeHtml(sub.profiles?.orientation_detail||'')}" placeholder="Detalle" />`;
+            html += `<label class="small">Rol en la dinámica</label>`;
+            html += `<select id="prole_${sub.submissive_id}">${roleOptions('submissive', sub.profiles?.play_role)}</select>`;
             html += `<label class="small" style="margin-top:10px;">👁 Visibilidad en el Salón</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="psocialpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_social_public ? 'checked' : ''}> Mostrar sus redes sociales</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pcontactpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_contact_public ? 'checked' : ''}> Mostrar sus datos de contacto</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="paboutpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_about_public ? 'checked' : ''}> Mostrar su "Sobre mí" en el Salón</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pagepub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_age_public ? 'checked' : ''}> Mostrar su edad</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pbdaypub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_birthday_public ? 'checked' : ''}> Mostrar su cumpleaños</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pgenderpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_gender_public ? 'checked' : ''}> Mostrar su género</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="porientpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_orientation_public ? 'checked' : ''}> Mostrar su orientación</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="prolepub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_playrole_public ? 'checked' : ''}> Mostrar su rol</label>`;
             html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar datos y visibilidad</button>`;
             html += `<div style="margin-top:10px;"><b class="small">📱 Redes y contactos de tu sumiso:</b><div id="subcontacts_${sub.submissive_id}"><p class="small">Pulsa 🔄 para verlos.</p></div>
               <button class="secondary" onclick="loadSubContacts('${sub.submissive_id}')">🔄 Ver</button>
@@ -1095,13 +1208,31 @@ async function saveVisibility() {
 
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
+      const bdt = parseDateDMY(document.getElementById('pbirth_' + submissiveId).value);
+      if (!bdt) return alert('Fecha de nacimiento inválida. Usa dd/mm/aaaa.');
+      const age = ageFrom(bdt);
+      if (age < 18) return alert('El sumiso debe ser mayor de 18 años.');
       const gender = document.getElementById('pgender_' + submissiveId).value;
-      const bio_extended = document.getElementById('pbioext_' + submissiveId).value.trim();
+      const orientation = document.getElementById('porient_' + submissiveId).value;
       const show_social_public = document.getElementById('psocialpub_' + submissiveId).checked;
       const show_contact_public = document.getElementById('pcontactpub_' + submissiveId).checked;
       const show_about_public = document.getElementById('paboutpub_' + submissiveId).checked;
+      const show_age_public = document.getElementById('pagepub_' + submissiveId).checked;
+      const show_birthday_public = document.getElementById('pbdaypub_' + submissiveId).checked;
+      const show_gender_public = document.getElementById('pgenderpub_' + submissiveId).checked;
+      const show_orientation_public = document.getElementById('porientpub_' + submissiveId).checked;
+      const show_playrole_public = document.getElementById('prolepub_' + submissiveId).checked;
       const { error } = await db.from('profiles')
-        .update({ country, gender, bio_extended: bio_extended || null, show_social_public, show_contact_public, show_about_public })
+        .update({ 
+          country, 
+          birth_date: toISO(bdt), age,
+          gender, 
+          gender_detail: gender==='Otro' ? ((document.getElementById('pgenderdetail_' + submissiveId).value||'').trim()||null) : null,
+          orientation,
+          orientation_detail: orientation==='Otro' ? ((document.getElementById('porientdetail_' + submissiveId).value||'').trim()||null) : null,
+          play_role: document.getElementById('prole_' + submissiveId).value,
+          show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public 
+        })
         .eq('id', submissiveId);
       if (error) return alert(error.message);
       alert('Datos y visibilidad del sumiso actualizados.');
@@ -1277,16 +1408,17 @@ async function saveVisibility() {
       window.location.reload();
     }
 
-        roleGenderSync('reg');
+    roleGenderSync('reg');
     roleGenderSync('setup');
-        // ══ TOUR GUIADO ══
+
     let tourSteps = [], tourIdx = 0;
 
     function buildTourSteps() {
       const dom = currentProfile.role === 'dominant';
       const steps = [
         { sel: 'header h1', t: 'Bienvenida a la casa', x: 'Esto es Queendomland: un espacio privado, simbólico y consensuado entre adultos. Te enseño cada botón.' },
-{ sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'Contempla a las Dominantes y sumisos de la casa, sus carnets y galerías. Cada miembro controla su visibilidad desde el Salón o desde "Mi perfil".' },        { sel: 'a[href="muro.html"]', t: 'Muro de la casa', x: 'Publica textos, imágenes, videos y archivos al estilo red social: reacciona con 👍 ❤️ 👎 😡, comenta y responde a comentarios. Toda publicación pasa por aprobación del Staff — y también de tu Dueña, si eres sumiso de su propiedad.' },
+        { sel: 'a[href="registro-publico.html"]', t: 'Salón de miembros', x: 'Contempla a las Dominantes y sumisos de la casa, sus carnets y galerías. Cada miembro controla su visibilidad desde el Salón o desde "Mi perfil".' },
+        { sel: 'a[href="muro.html"]', t: 'Muro de la casa', x: 'Publica textos, imágenes, videos y archivos al estilo red social: reacciona con 👍 ❤️ 👎 😡, comenta y responde a comentarios. Toda publicación pasa por aprobación del Staff — y también de tu Dueña, si eres sumiso de su propiedad.' },
         { sel: 'a[href="verificar.html"]', t: 'Verificar carnet', x: 'Escribe el código de un carnet (o escanea su QR) para comprobar si es válido o fue revocado.' },
         { sel: 'a[href="chat.html"]', t: 'Chat y salas', x: 'Además del salón general hay salas públicas, privadas y de Staff: crea la tuya, usa emojis, GIFs y adjuntos. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
@@ -1386,6 +1518,7 @@ async function saveVisibility() {
       const t = document.getElementById('tour-tip'); if (t) t.remove();
       try { await db.from('profiles').update({ tour_done: true }).eq('id', currentUser.id); } catch(e) {}
     }
+
     ['reg-country', 'setup-country'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) COUNTRIES.forEach(c => {
@@ -1395,7 +1528,6 @@ async function saveVisibility() {
       });
     });
 
-        /* ══ BIOMETRÍA WEBAUTHN (huella / rostro) ══ */
     const BIO_CRED_KEY = 'flr_bio_cred';
     function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
     function b64ToBuf(b64){ const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i); return u.buffer; }
@@ -1452,7 +1584,7 @@ async function saveVisibility() {
     }
     bioAvailable().then(function(ok){ var r=document.getElementById('bio-row'); if(r && ok) r.style.display='flex'; });
 
-        async function offerBioEnroll(user, email, password){
+    async function offerBioEnroll(user, email, password){
       if (localStorage.getItem('flr_bio_cred')) return;
       if (!(await bioAvailable())) return;
       var st = document.createElement('style');
@@ -1489,12 +1621,13 @@ async function saveVisibility() {
         }
       } catch (e) {}
       if (window.loadFAQInto) window.loadFAQInto(db, document.getElementById('faqbox'));
+      roleGenderSync('reg');
+      roleGenderSync('setup');
       init();
     }
   </script>
 
   <script>
-  /* ══ INSTALAR EN DISPOSITIVO MÓVIL (v2) ══ */
   (function(){
     var ua = navigator.userAgent;
     function isAndroid(){ return /Android/i.test(ua); }
@@ -1603,7 +1736,6 @@ body{top:0!important}
 #impbar.hidden{display:none!important}
 </style>
   <style>
-/* ══ Telón de la puerta de entrada ══ */
 body.view-login{
   background:
     linear-gradient(rgba(8,5,9,.72), rgba(8,5,9,.9)),
@@ -1637,7 +1769,6 @@ body.view-login #login{
 })();
 </script>
   <script>
-/* ══ Mi cuenta: correo y contraseña con jerarquía ══ */
 (function(){
   function getProfile(){ return (typeof currentProfile !== 'undefined') ? currentProfile : null; }
 
@@ -1717,7 +1848,6 @@ body.view-login #login{
 })();
 </script>
   <script>
-/* ══ Ocultar apodo de admin a miembros que no son Staff ══ */
 (function(){
   async function hideIfNotStaff(){
     for (var i = 0; i < 80; i++) {
