@@ -130,13 +130,17 @@ async function init() {
   if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
 
-  const [sf, mf, bl, mz, subs, cm] = await Promise.all([
+  const [sf, mf, bl, mz, subs, cm, adm, mod] = await Promise.all([
     db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'),
     db.from('muro_blocks').select('*').eq('user_id', me).maybeSingle(),
     db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle(),
     db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id').eq('user_id', me).maybeSingle()
+    db.from('app_chat_mods').select('user_id').eq('user_id', me).maybeSingle(),
+    db.from('app_admins').select('user_id'),
+    db.from('app_moderators').select('user_id')
   ]);
+  adminIds = new Set((adm.data||[]).map(x=>x.user_id));
+  modIds = new Set((mod.data||[]).map(x=>x.user_id));
   isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cm.data;
   myBlock = bl.data;
   myMuzzled = !!(mz.data && mz.data.is_muzzled);
@@ -292,7 +296,7 @@ async function render() {
               ? '<div class="ava" style="display:flex;align-items:center;justify-content:center;color:#f59e0b;">🛡</div>'
               : `<img class="ava" src="${esc(p.author?.avatar_url || '')}" onerror="this.style.visibility='hidden'"/>`)}
           <div>
-            ${p.post_as === 'anon' ? '' : `<b style="color:${p.post_as === 'staff' ? '#f59e0b' : (p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${p.post_as === 'staff' ? '🛡 Staff Queendomland' : (p.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(p.author?.display_name || '?')}</b>`}
+            ${p.post_as === 'anon' ? '' : `<b style="color:${p.post_as === 'staff' ? '#f59e0b' : (p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${p.post_as === 'staff' ? '🛡 Staff Queendomland' : (p.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(p.author?.display_name || '?')}</b>${p.post_as === 'user' ? staffIcons(p.author_id) : ''}`}
             <div class="small">${hh(p.created_at)} ${badge}${p.pinned_by ? ' · 📌 fijada' : ''}</div>
           </div>
         </div>
@@ -327,7 +331,7 @@ function commentHTML(c, all) {
   const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id);
   return `
     <div style="margin:8px 0;">
-      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
+      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b>${c.comment_as === 'user' ? staffIcons(c.author_id) : ''} <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
       <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
       ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
       ${rbar('comment', c.id, true)}
