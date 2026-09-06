@@ -26,7 +26,7 @@ button.danger{background:#7f1d1d;color:#fff}
 </head>
 <body>
 <header>
-    <h1 style="margin:0;">♛ Contrato de esclavitud</h1>
+    <h1 style="margin:0;">♛ Contrato de sumisión</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
@@ -40,7 +40,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function makeDefaultText(domName, subName) {
-  return `CONTRATO DE ESCLAVITUD
+  return `CONTRATO DE SUMISIÓN
 FECHA: ${new Date().toLocaleDateString()}
 PARTES CONTRACTUALES
 LA DOMINANTE (en adelante "La Dueña o Ama"):
@@ -57,25 +57,8 @@ CLÁUSULA I: DECLARACIÓN DE CONSENTIMIENTO
 
 CLÁUSULA II: CESIÓN DE DERECHOS, POSESIONES Y VOLUNTAD
 2.1 Cesión de Voluntad: El Esclavo cede su capacidad de decisión autónoma a La Dueña, quien podrá dictar reglas, órdenes, prohibiciones y directrices sobre todos los aspectos de su vida.
-2.2 Cesión de Posesiones: El Esclavo pone a disposición de La Dueña todas sus posesiones materiales presentes y futuras, incluyendo pero no limitándose a:
-Bienes inmuebles y muebles
-Vehículos
-Cuentas bancarias e inversiones
-Ingresos y salarios
-Dispositivos electrónicos y comunicaciones
-Vestimenta y objetos personales
-2.3 Cesión de Derechos: El Esclavo renuncia voluntariamente al ejercicio autónomo de los siguientes derechos durante la vigencia del contrato:
-Derecho a tomar decisiones sin aprobación previa
-Derecho a disponer libremente de sus posesiones
-Derecho a gestionar sus finanzas personales
-Derecho a controlar su tiempo y agenda
-Derecho a mantener privacidad de comunicaciones
-Derecho a decidir sobre su apariencia personal
-Cualquier otro derecho que La Dueña considere necesario regular
-
-CLÁUSULA DE CESIÓN. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. La Dominante receptora podrá rechazar la cesión, en cuyo caso el sumiso retornará automáticamente a su Dominante de origen sin que medie penalidad alguna. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
-
-CLÁUSULA DE SUBASTA. La Dominante podrá poner al Esclavo en subasta pública dentro de la plataforma, ofertándolo a otras Dominantes que deseen pujar por él. El Esclavo consiente expresamente esta facultad como manifestación de la cesión de voluntad establecida en la Cláusula II. Una vez adjudicada la subasta a la mejor puja, el Esclavo quedará marcado con la condición de "Subastado" hasta que se complete la cesión formal a la Dominante ganadora mediante el procedimiento de la Cláusula de Cesión. La Dominante adjudicataria asumirá todos los derechos y obligaciones sobre el Esclavo a partir del momento de la firma del correspondiente anexo de cesión. Todo ello sin perjuicio del derecho del Esclavo a revocar su consentimiento en cualquier momento conforme a los Términos y Consentimiento.
+2.2 Cesión de Posesiones: El Esclavo pone a disposición de La Dueña todas sus posesiones materiales presentes y futuras, incluyendo pero no limitándose a: bienes inmuebles y muebles, vehículos, cuentas bancarias e inversiones, ingresos y salarios, dispositivos electrónicos y comunicaciones, vestimenta y objetos personales.
+2.3 Cesión de Derechos: El Esclavo renuncia voluntariamente al ejercicio autónomo de los siguientes derechos durante la vigencia del contrato: derecho a tomar decisiones sin aprobación previa, a disponer libremente de sus posesiones, a gestionar sus finanzas personales, a controlar su tiempo y agenda, a mantener privacidad de comunicaciones (salvo cuando se conceda autonomía conforme a la Cláusula XI), a decidir sobre su apariencia personal, y cualquier otro derecho que La Dueña considere necesario regular.
 
 CLÁUSULA III: OBLIGACIONES DEL ESCLAVO
 3.1 Obedecer todas las órdenes, reglas y directrices emitidas por La Dueña sin cuestionamiento ni demora injustificada.
@@ -84,7 +67,7 @@ CLÁUSULA III: OBLIGACIONES DEL ESCLAVO
 3.4 Solicitar permiso previamente para cualquier acción no expresamente autorizada.
 3.5 Mantener su apariencia física, vestimenta y aseo personal según las directrices de La Dueña.
 3.6 Cumplir con todas las tareas, protocolos y castigos asignados.
-3.7 Aceptar la supervisión total de sus comunicaciones (mensajes, correos, llamadas, redes sociales).
+3.7 Aceptar la supervisión total de sus comunicaciones (mensajes, correos, llamadas, redes sociales), salvo cuando La Dueña conceda autonomía conforme a la Cláusula XI, en cuyo caso los mensajes privados quedarán fuera de su supervisión.
 3.8 Entregar a La Dueña el control de sus finanzas, entregando todos sus ingresos y solicitando asignaciones para gastos.
 3.9 Renunciar a cualquier relación romántica o sexual ajena a la dinámica establecida.
 3.10 Proteger la reputación e integridad de La Dueña en todo momento.
@@ -93,30 +76,27 @@ CLÁUSULA IV: DERECHOS Y PRERROGATIVAS DE LA DUEÑA
 4.1 Ejercer control absoluto sobre El Esclavo en todos los aspectos de su vida.
 4.2 Emitir, modificar o revocar reglas según su criterio.
 4.3 Disponer libremente de todas las posesiones del Esclavo.
-4.4 Supervisar todas las comunicaciones y actividades del Esclavo.
-4.5 Asignar tareas, castigos, recompensas y protocolos.
+4.4 Supervisar todas las comunicaciones y actividades del Esclavo, salvo lo dispuesto en la Cláusula XI respecto a la autonomía.
+4.5 Asignar tareas, castigos, recompensas y protocolos, incluyendo mordazas, castidad y otras formas de disciplina.
 4.6 Controlar la agenda, tiempo y movimientos del Esclavo.
-4.7 Determinar la apariencia, vestimenta y presentación personal del Esclavo.
+4.7 Determinar la apariencia, vestimenta y presentación personal del Esclavo, incluyendo su avatar en la plataforma.
 4.8 Autorizar o denegar permisos para cualquier actividad.
 4.9 Mantener registros de comportamiento, cumplimiento y progreso del Esclavo.
 4.10 Poner al Esclavo en subasta pública y cederlo a otra Dominante conforme a las cláusulas correspondientes.
-4.11 Cualquier otra prerrogativa que La Dueña considere necesaria para el ejercicio de su dominio.
+4.11 Gestionar la galería de relación, que incluye las imágenes y documentos de la dinámica común.
+4.12 Conceder o revocar autonomía al Esclavo conforme a la Cláusula XI.
+4.13 Cualquier otra prerrogativa que La Dueña considere necesaria para el ejercicio de su dominio.
 
 CLÁUSULA V: LÍMITES Y SALVAGUARDAS
 5.1 Palabra de Seguridad: Se establece la palabra "_________" como palabra de seguridad que, al ser pronunciada por El Esclavo, detiene inmediatamente cualquier actividad.
-5.2 Límites Absolutos: Las siguientes actividades quedan expresamente excluidas:
-Cualquier práctica que ponga en riesgo la vida
-Actividades ilegales
-Daño físico permanente
-Marcado corporal permanente sin consentimiento específico
-Cualquier otra actividad que ambas partes acuerden por escrito
+5.2 Límites Absolutos: Las siguientes actividades quedan expresamente excluidas: cualquier práctica que ponga en riesgo la vida, actividades ilegales, daño físico permanente, marcado corporal permanente sin consentimiento específico, y cualquier otra actividad que ambas partes acuerden por escrito.
 5.3 Salud: El Esclavo deberá mantener controles médicos regulares y La Dueña respetará tratamientos médicos necesarios.
 5.4 Seguridad: Ninguna disposición del presente contrato será interpretada para autorizar prácticas que pongan en riesgo la integridad física o psicológica de manera permanente.
-5.5 Derechos Fundamentales: Este contrato no puede anular derechos fundamentales protegidos por ley, incluyendo pero no limitándose a:
-Derecho a la integridad física
-Derecho a atención médica de emergencia
-Derechos laborales básicos
-Libertad de pensamiento (aunque no su expresión)
+5.5 Derechos Fundamentales: Este contrato no puede anular derechos fundamentales protegidos por ley, incluyendo pero no limitándose a: derecho a la integridad física, derecho a atención médica de emergencia, derechos laborales básicos y libertad de pensamiento (aunque no su expresión).
+
+CLÁUSULA DE CESIÓN. La Dominante podrá ceder a su sumiso a otra Dominante de la plataforma, sin necesidad de autorización del sumiso, con carácter indefinido o temporal. La cesión modificará automáticamente el contrato y el carnet, que quedarán listos para la firma de la Dominante receptora. En la cesión temporal, transcurrida la fecha máxima el sumiso retornará automáticamente a su Dominante de origen, sin requerirse la firma de esta, restaurándose contrato y carnet de pleno derecho. Las condiciones especiales que la Dominante cedente haga constar en nota quedarán incorporadas como condiciones del anexo de cesión que deberá firmar la nueva Dominante. La Dominante receptora podrá rechazar la cesión, en cuyo caso el sumiso retornará automáticamente a su Dominante de origen sin que medie penalidad alguna. Las Dominantes que firmen anexos de cesión o compartición NO tendrán acceso al interruptor de autonomía (Cláusula XI): solo la Dueña del contrato vigente puede concederla o revocarla. Todo ello sin perjuicio del derecho de cualquier miembro a revocar su consentimiento y causar baja conforme a los Términos y Consentimiento.
+
+CLÁUSULA DE SUBASTA. La Dominante podrá poner al Esclavo en subasta pública dentro de la plataforma, ofertándolo a otras Dominantes que deseen pujar por él. El Esclavo consiente expresamente esta facultad como manifestación de la cesión de voluntad establecida en la Cláusula II. Una vez adjudicada la subasta a la mejor puja, el Esclavo quedará marcado con la condición de "Subastado" hasta que se complete la cesión formal a la Dominante ganadora mediante el procedimiento de la Cláusula de Cesión. La Dominante adjudicataria asumirá todos los derechos y obligaciones sobre el Esclavo a partir del momento de la firma del correspondiente anexo de cesión. Todo ello sin perjuicio del derecho del Esclavo a revocar su consentimiento en cualquier momento conforme a los Términos y Consentimiento.
 
 CLÁUSULA VI: VIGENCIA Y RENOVACIÓN
 6.1 El presente contrato entra en vigor en la fecha de su firma y tendrá una duración de _________ (especificar: indefinida, un año, seis meses, etc.).
@@ -141,10 +121,39 @@ CLÁUSULA IX: DISPOSICIONES GENERALES
 9.3 Las partes reconocen que mantienen su autonomía legal y pueden acudir a las autoridades en caso de emergencia.
 9.4 Cualquier modificación al presente contrato deberá realizarse por escrito y firmada por ambas partes.
 9.5 En caso de disputa sobre la interpretación del contrato, ambas partes buscarán resolverla mediante diálogo directo o mediación.
-9.6 El cumplimiento de las normas de la plataforma será velado por el Staff, compuesto por Administradoras y Moderadoras, cuyas atribuciones se describen en los Términos y Consentimiento.
+9.6 El cumplimiento de las normas de la plataforma será velado por el Staff, compuesto por Administradoras y Moderadoras (exclusivamente Dominantes) y Perros Guardianes (sumisos con función colaborativa sobre sumisos sin Dueña), cuyas atribuciones se describen en los Términos y Consentimiento.
 
 CLÁUSULA X: DECLARACIÓN FINAL
-Ambas partes declaran haber leído, comprendido y aceptado libremente todas las cláusulas del presente contrato. Reconocen que esta dinámica se basa en el consentimiento informado, el respeto mutuo y la confianza recíproca.`;
+Ambas partes declaran haber leído, comprendido y aceptado libremente todas las cláusulas del presente contrato. Reconocen que esta dinámica se basa en el consentimiento informado, el respeto mutuo y la confianza recíproca.
+
+CLÁUSULA XI: AUTONOMÍA DEL SUMISO
+11.1 La Dueña del contrato vigente podrá, a su entera discreción, conceder al Esclavo un grado de autonomía mediante el interruptor habilitado en la plataforma. La autonomía puede ser activada o revocada en cualquier momento, sin necesidad de justificación ni de firma adicional.
+11.2 Mientras la autonomía esté activa, el Esclavo recupera las siguientes facultades:
+• Edición de su propio perfil público (nombre, bio, país, idioma, redes sociales).
+• Cambio de su avatar personal.
+• Gestión completa de su galería personal (subir, publicar y eliminar imágenes propias).
+• Privacidad de sus mensajes privados, que quedarán fuera de la supervisión de La Dueña.
+11.3 La autonomía NO afecta las facultades irrenunciables de La Dueña, que conserva siempre:
+• El control total de la disciplina (castigos, mordazas, castidad, silencios).
+• El derecho a ceder, compartir o subastar al Esclavo.
+• La gestión de la galería de relación.
+• El control del perfil de sumiso (nombre de sumiso, nivel de obediencia, notas, visibilidad pública).
+11.4 Al revocarse la autonomía, el Esclavo retorna a dependencia completa de La Dueña conforme al resto de cláusulas de este contrato.
+11.5 Las Dominantes que firmen anexos de cesión o compartición NO tienen acceso al interruptor de autonomía: solo la Dueña del contrato vigente puede concederla o revocarla.
+
+CLÁUSULA XII: JERARQUÍA Y PRECEDENCIA FEMENINA
+12.1 El presente contrato se suscribe dentro de la casa Queendomland, regida por el principio de precedencia femenina: en esta comunidad el género femenino está siempre por sobre el género masculino.
+12.2 Orden de precedencia en la casa, de mayor a menor rango:
+1. ♛ Dominantes verificadas
+2. 👑 Dominantes No verificadas
+3. ⛓ Sumisas libres
+4. ⛓ Sumisos libres
+5. ⛓ Sumisas en propiedad
+6. ⛓ Sumisos en propiedad
+12.3 Principio de precedencia femenina: toda mujer precede a todo hombre de su mismo rango en encuentros, protocolos y ceremonias. Una sumisa libre está por encima de un sumiso libre por el solo hecho de ser mujer; una sumisa en propiedad precede a un sumiso en propiedad.
+12.4 La ginarquía (gobierno femenino) no es una costumbre de la casa: es su constitución. Las categorías de Staff con autoridad plena (Administradoras y Moderadoras) están compuestas exclusivamente por Dominantes (mujeres).
+12.5 El Esclavo reconoce y acepta esta jerarquía como parte esencial de su cesión de voluntad, comprometiéndose a honrarla en todo acto dentro de la plataforma.`;
+}
 }
 
 let me = null;
@@ -420,7 +429,7 @@ async function downloadContractPDF(id) {
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(16);
-  pdf.text('CONTRATO DE ESCLAVITUD', 40, 60);
+  pdf.text('CONTRATO DE SUMISIÓN', 40, 60);
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
