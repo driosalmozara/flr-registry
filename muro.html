@@ -47,6 +47,8 @@ button.mini:hover{color:#dc2626 !important}
 #emojipop span{cursor:pointer;font-size:19px;text-align:center;border-radius:8px}
 #emojipop span:hover{background:rgba(212,175,55,.15)}
 .hidden{display:none}
+  .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
+.staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -68,8 +70,17 @@ const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😢','😭','😡
 
 let me = null, isSuper = false, isMod = false, isChatMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
 let reactions = [];
+let adminIds = new Set(), modIds = new Set();
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+let chatModIds = new Set();
+function staffIcons(userId){
+  let s = '';
+  if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
+  if (modIds.has(userId)) s += '<span class="staff-ico mod" title="Moderadora">M</span>';
+  if (chatModIds.has(userId)) s += '<span class="staff-ico" title="Perro Guardián">🐕‍🦺</span>';
+  return s;
+}
 function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
   function mediaHTML(p){
   if (!p.media_url) return '';
@@ -135,12 +146,12 @@ async function init() {
     db.from('muro_blocks').select('*').eq('user_id', me).maybeSingle(),
     db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle(),
     db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id').eq('user_id', me).maybeSingle(),
+    db.from('app_chat_mods').select('user_id'),
     db.from('app_admins').select('user_id'),
     db.from('app_moderators').select('user_id')
   ]);
   adminIds = new Set((adm.data||[]).map(x=>x.user_id));
-  modIds = new Set((mod.data||[]).map(x=>x.user_id));
+  modIds = new Set((mod.data||[]).map(x=>x.user_id));  chatModIds = new Set((cm.data||[]).map(x=>x.user_id));
   isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cm.data;
   myBlock = bl.data;
   myMuzzled = !!(mz.data && mz.data.is_muzzled);
@@ -344,7 +355,7 @@ function commentHTML(c, all) {
       </div>
       ${replies.map(r => `
         <div class="reply">
-          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b> <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
+          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b>${r.comment_as === 'user' ? staffIcons(r.author_id) : ''} <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
           <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
           ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
           ${rbar('comment', r.id, true)}
