@@ -84,6 +84,14 @@ async function init(){
   const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
   (recs||[]).forEach(r => { if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
 
+    const [adm, mod, cm] = await Promise.all([
+    db.from('app_admins').select('user_id'),
+    db.from('app_moderators').select('user_id'),
+    db.from('app_chat_mods').select('user_id')
+  ]);
+  adminIds = new Set((adm.data||[]).map(x=>x.user_id));
+  modIds = new Set((mod.data||[]).map(x=>x.user_id));
+  chatModIds = new Set((cm.data||[]).map(x=>x.user_id));
   const ids = allProfiles.map(p => p.id);
   if (ids.length) {
     const { data: contacts } = await db.from('member_contacts').select('*').in('user_id', ids).order('created_at');
@@ -164,7 +172,7 @@ function cardHTML(p, info){
       ${showAva
         ? `<img class="ava" src="${esc(p.avatar_url||'')}" onerror="this.outerHTML='<div class=&quot;ava empty&quot;>♛</div>'"/>`
         : `<div class="ava empty">👤</div>`}
-      <div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">${info.group==='dom'?'♛ ':'⛓ '}${esc(p.display_name)}</b></div>
+      <div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">${info.group==='dom'?'♛ ':'⛓ '}${esc(p.display_name)}</b>${staffIcons(p.id)}</div>
       ${info.group==='owned' && info.rec?.slave_name ? `<div style="text-align:center;" class="small">como <b>${esc(info.rec.slave_name)}</b></div>` : ''}
       ${info.group==='owned' && ownerName ? `<div style="text-align:center;" class="small">♛ de <b>${esc(ownerName)}</b></div>` : ''}
       <div style="text-align:center;">${roleBadge}</div>
