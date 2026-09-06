@@ -83,6 +83,8 @@ button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold
   #emoji-panel{width:calc(100vw - 20px);max-width:320px}
   .nick-row{grid-template-columns:1fr;gap:6px}
 }
+  .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
+.staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -110,8 +112,15 @@ let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [];
 let ownedSet = new Set(), chatModIds = new Set();
 let rooms = [], currentRoomId = null, chatChannel = null;
-
+let adminIds = new Set(), modIds = new Set();
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function staffIcons(userId){
+  let s = '';
+  if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
+  if (modIds.has(userId)) s += '<span class="staff-ico mod" title="Moderadora">M</span>';
+  if (chatModIds.has(userId)) s += '<span class="staff-ico" title="Perro Guardián">🐕‍🦺</span>';
+  return s;
+}
 
 function nameFor(id, fallback) {
   const a = assignedNicks.find(x => x.target_user_id === id);
