@@ -71,6 +71,13 @@ let reactions = [];
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
+  function mediaHTML(p){
+  if (!p.media_url) return '';
+  if (p.media_type === 'image') return `<div class="media"><img src="${esc(p.media_url)}"/></div>`;
+  if (p.media_type === 'video') return `<div class="media"><video src="${esc(p.media_url)}" controls style="max-width:100%;border-radius:10px;margin:6px 0;"></video></div>`;
+  if (p.media_type === 'audio') return `<div class="media"><audio src="${esc(p.media_url)}" controls style="width:100%;margin:6px 0;"></audio></div>`;
+  return `<div class="media"><a href="${esc(p.media_url)}" target="_blank" style="color:var(--gold);">📄 Archivo adjunto</a></div>`;
+}
 
 function rCounts(tid){
   const o = { like:0, love:0, down:0, angry:0 };
@@ -247,7 +254,8 @@ async function render() {
       html += `
         <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#0b0b12;">
           <p class="small" style="margin:0 0 6px;"><b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b> · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}</p>
-          <p style="margin:0 0 6px;white-space:pre-wrap;">${esc((p.body || '').slice(0, 220))}</p>
+          <p style="margin:0 0 6px;white-space:pre-wrap;">${esc(p.body || '')}</p>
+          ${mediaHTML(p)}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
             ${p.status === 'owner_pending' && mySubIds.has(p.author_id) ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
@@ -273,12 +281,7 @@ async function render() {
     if (p.status === 'owner_pending') badge = '<span class="badge wait">⏳ espera a su Dueña</span>';
     if (p.status === 'rejected') badge = '<span class="badge no">❌ rechazada</span>';
 
-    let media = '';
-    if (p.media_url) {
-      if (p.media_type === 'image') media = `<div class="media"><img src="${esc(p.media_url)}"/></div>`;
-      else if (p.media_type === 'video') media = `<div class="media"><video src="${esc(p.media_url)}" controls></video></div>`;
-      else media = `<div class="media"><a href="${esc(p.media_url)}" target="_blank" style="color:var(--gold);">📄 Archivo adjunto</a></div>`;
-    }
+    const media = mediaHTML(p);
 
     html += `
       <div class="post">
@@ -367,7 +370,7 @@ async function submitPost() {
     const { error } = await db.storage.from('muro').upload(path, pendingFile);
     if (error) return alert(error.message);
     url = db.storage.from('muro').getPublicUrl(path).data.publicUrl;
-    type = pendingFile.type.startsWith('image') ? 'image' : pendingFile.type.startsWith('video') ? 'video' : 'file';
+    type = pendingFile.type.startsWith('image') ? 'image' : pendingFile.type.startsWith('video') ? 'video' : pendingFile.type.startsWith('audio') ? 'audio' : 'file';
   }
   const { data } = await db.rpc('muro_submit', { p_body: body, p_media_url: url, p_media_type: type, p_allow_comments: allow, p_as: as });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
