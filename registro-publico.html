@@ -35,6 +35,8 @@ input,select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-r
 details.about{margin-top:4px}
 details.about summary{cursor:pointer;color:var(--gold);font-size:13px;font-weight:600}
 details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px;line-height:1.6}
+  .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
+.staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -66,13 +68,20 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
-
+let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
 function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
 function dayMonth(iso){ const p=(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : ''; }
 function getSocialIcon(pl){ const i={facebook:'📘',instagram:'📷',x:'🐦',threads:'🧵',tiktok:'🎵',snapchat:'👻',linkedin:'💼',custom:'🌐'}; return i[pl]||'🌐'; }
 function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
+  function staffIcons(userId){
+  let s = '';
+  if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
+  if (modIds.has(userId)) s += '<span class="staff-ico mod" title="Moderadora">M</span>';
+  if (chatModIds.has(userId)) s += '<span class="staff-ico" title="Perro Guardián">🐕‍🦺</span>';
+  return s;
+}
 
 async function init(){
   const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified').order('display_name').limit(500);
