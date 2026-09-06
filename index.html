@@ -321,6 +321,162 @@
       const { data } = await db.from('app_settings').select('value').eq('key', 'lock_registration').maybeSingle();
       return !!(data && data.value === '1');
     }
+    async function loadContacts() {
+  const { data } = await db.from('member_contacts').select('*').eq('user_id', currentUser.id).order('created_at');
+  window.myContacts = data || [];
+  renderContactsList();
+}
+
+function renderContactsList() {
+  const socialList = document.getElementById('social-contacts-list');
+  const directList = document.getElementById('direct-contacts-list');
+  
+  const socials = window.myContacts.filter(c => c.contact_type === 'social');
+  const directs = window.myContacts.filter(c => c.contact_type !== 'social');
+  
+  if (socials.length === 0) {
+    socialList.innerHTML = '<p class="small">No has agregado redes sociales.</p>';
+  } else {
+    socialList.innerHTML = socials.map(c => {
+      const platform = c.platform === 'custom' ? c.custom_platform : c.platform;
+      const icon = getSocialIcon(c.platform);
+      return `
+        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
+          <span>${icon}</span>
+          <b style="min-width:80px;">${platform}:</b>
+          <span style="flex:1;">${escapeHtml(c.value)}</span>
+          ${!isLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+  
+  if (directs.length === 0) {
+    directList.innerHTML = '<p class="small">No has agregado datos de contacto.</p>';
+  } else {
+    directList.innerHTML = directs.map(c => {
+      const icon = getContactIcon(c.contact_type);
+      const display = c.contact_type === 'phone' || c.contact_type === 'whatsapp' 
+        ? `${c.country_code} ${c.value}` 
+        : c.value;
+      return `
+        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
+          <span>${icon}</span>
+          <b style="min-width:80px;">${c.contact_type}:</b>
+          <span style="flex:1;">${escapeHtml(display)}</span>
+          ${!isLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function getSocialIcon(platform) {
+  const icons = {
+    facebook: '📘',
+    instagram: '📷',
+    x: '🐦',
+    threads: '🧵',
+    tiktok: '🎵',
+    snapchat: '👻',
+    linkedin: '💼',
+    custom: '🌐'
+  };
+  return icons[platform] || '🌐';
+}
+
+function getContactIcon(type) {
+  const icons = {
+    phone: '📞',
+    whatsapp: '💬',
+    telegram: '✈️',
+    email: '📧'
+  };
+  return icons[type] || '📱';
+}
+
+async function addSocialContact() {
+  if (isLocked) return;
+  const platform = document.getElementById('social-platform-select').value;
+  if (!platform) return alert('Selecciona una red social.');
+  
+  let customPlatform = null;
+  if (platform === 'custom') {
+    customPlatform = prompt('Nombre de la red social:');
+    if (!customPlatform) return;
+  }
+  
+  const value = prompt(`Usuario o enlace de ${platform === 'custom' ? customPlatform : platform}:`);
+  if (!value) return;
+  
+  const { error } = await db.from('member_contacts').insert({
+    user_id: currentUser.id,
+    contact_type: 'social',
+    platform,
+    custom_platform: customPlatform,
+    value
+  });
+  
+  if (error) return alert('Error: ' + error.message);
+  await loadContacts();
+  alert('Red social agregada.');
+}
+
+async function addDirectContact() {
+  if (isLocked) return;
+  const type = document.getElementById('contact-type-select').value;
+  if (!type) return alert('Selecciona un tipo de contacto.');
+  
+  let country_code = null;
+  let value = '';
+  
+  if (type === 'phone' || type === 'whatsapp') {
+    country_code = prompt('Código de país (ej: +52, +34, +1):');
+    if (!country_code) return;
+    value = prompt('Número de teléfono:');
+    if (!value) return;
+  } else if (type === 'email') {
+    value = prompt('Correo electrónico:');
+    if (!value || !value.includes('@')) return alert('Correo inválido.');
+  } else {
+    value = prompt('Usuario o enlace:');
+    if (!value) return;
+  }
+  
+  const { error } = await db.from('member_contacts').insert({
+    user_id: currentUser.id,
+    contact_type: type,
+    value,
+    country_code
+  });
+  
+  if (error) return alert('Error: ' + error.message);
+  await loadContacts();
+  alert('Dato de contacto agregado.');
+}
+
+async function deleteContact(id) {
+  if (!confirm('¿Eliminar este contacto?')) return;
+  const { error } = await db.from('member_contacts').delete().eq('id', id);
+  if (error) return alert('Error: ' + error.message);
+  await loadContacts();
+  alert('Contacto eliminado.');
+}
+
+async function saveVisibility() {
+  const available_public = document.getElementById('vis_avail').checked;
+  const show_avatar_public = document.getElementById('vis_ava').checked;
+  const show_social_public = document.getElementById('vis_social').checked;
+  const show_contact_public = document.getElementById('vis_contact').checked;
+  
+  const { error } = await db.from('profiles')
+    .update({ available_public, show_avatar_public, show_social_public, show_contact_public })
+    .eq('id', currentUser.id);
+    
+  if (error) return alert(error.message);
+  alert('Visibilidad actualizada.');
+  window.location.reload();
+}
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const { data: { session } } = await db.auth.getSession();
@@ -616,12 +772,41 @@
             <option value="">Seleccionar...</option>
             ${countryOptions}
           </select>
-          <label class="small">Redes sociales / contacto</label>
-          <input id="profile-social" value="${escapeHtml(currentProfile.social_links || '')}" ${isLocked ? 'disabled' : ''} />
-          <label class="small">
-            <input type="checkbox" id="profile-social-public" style="width:auto;margin-right:6px;" ${currentProfile.social_links_public ? 'checked' : ''} ${isLocked ? 'disabled' : ''} />
-            Mostrar mi país y redes en el Salón de miembros
-          </label>
+          <div class="card" style="background:#0f0f1a;border:1px solid var(--line);padding:16px;">
+            <h3 style="margin-top:0;">📱 Mis Redes Sociales</h3>
+            <p class="small">Agrega tus perfiles en redes sociales. Puedes tener múltiples cuentas de la misma red.</p>
+            <div id="social-contacts-list"></div>
+            <div style="margin-top:12px;">
+              <select id="social-platform-select" style="width:auto;min-width:150px;" ${isLocked ? 'disabled' : ''}>
+                <option value="">Seleccionar red...</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="x">X (Twitter)</option>
+                <option value="threads">Threads</option>
+                <option value="tiktok">TikTok</option>
+                <option value="snapchat">Snapchat</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="custom">Otra red...</option>
+              </select>
+              <button onclick="addSocialContact()" ${isLocked ? 'disabled' : ''}>+ Agregar</button>
+            </div>
+          </div>
+
+          <div class="card" style="background:#0f0f1a;border:1px solid var(--line);padding:16px;margin-top:16px;">
+            <h3 style="margin-top:0;">📞 Mis Datos de Contacto</h3>
+            <p class="small">Agrega tus medios de contacto directo.</p>
+            <div id="direct-contacts-list"></div>
+            <div style="margin-top:12px;">
+              <select id="contact-type-select" style="width:auto;min-width:150px;" ${isLocked ? 'disabled' : ''}>
+                <option value="">Seleccionar tipo...</option>
+                <option value="phone">Teléfono</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="telegram">Telegram</option>
+                <option value="email">Correo electrónico</option>
+              </select>
+              <button onclick="addDirectContact()" ${isLocked ? 'disabled' : ''}>+ Agregar</button>
+            </div>
+          </div>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
           <button class="secondary" onclick="startTour()">🎬 Ver tour</button>
         </div>
@@ -640,6 +825,14 @@
             <input type="checkbox" id="vis_ava" ${currentProfile.show_avatar_public ? 'checked' : ''} />
             Mostrar mi avatar en el Salón
           </label>
+          <label>
+            <input type="checkbox" id="vis_social" ${currentProfile.show_social_public ? 'checked' : ''} />
+            Mostrar mis redes sociales en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_contact" ${currentProfile.show_contact_public ? 'checked' : ''} />
+            Mostrar mis datos de contacto en el Salón
+          </label>
           <button onclick="saveVisibility()">Guardar visibilidad</button>
         </div>
       `;
@@ -651,14 +844,12 @@
       const display_name = document.getElementById('profile-display').value.trim();
       const bio = document.getElementById('profile-bio').value.trim();
       const country = document.getElementById('profile-country').value;
-      const social_links = document.getElementById('profile-social').value.trim();
-      const social_links_public = document.getElementById('profile-social-public').checked;
       if (!display_name) return alert('Escribe tu nombre público.');
       if (!country) return alert('Selecciona un país.');
             const lang = document.getElementById('profile-lang').value;
       const gender = currentProfile.role === 'dominant' ? 'mujer' : document.getElementById('profile-gender').value;
       const { error } = await db.from('profiles')
-        .update({ display_name, bio, country, lang, gender, social_links: social_links || null, social_links_public })
+        .update({ display_name, bio, country, lang, gender,  })
         .eq('id', currentUser.id);
       if (error) return alert(error.message);
       alert('Perfil actualizado.');
@@ -905,7 +1096,7 @@
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
             const gender = document.getElementById('pgender_' + submissiveId).value;
       const { error } = await db.from('profiles')
-        .update({ country, gender, social_links: social_links || null, social_links_public })
+        .update({ country, gender,  })
         .eq('id', submissiveId);
       if (error) return alert(error.message);
       alert('País y redes del sumiso actualizados.');
