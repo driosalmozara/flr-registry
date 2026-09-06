@@ -566,7 +566,7 @@
       if (currentProfile.role === 'submissive') {
         const { data: rel } = await db.from('relationships').select('id')
           .eq('submissive_id', currentUser.id).eq('status', 'confirmed').maybeSingle();
-        if (rel) isLocked = true;
+        if (rel) isLocked = !currentProfile.autonomy;
       }
 
       const countryOptions = COUNTRIES.map(c =>
@@ -577,6 +577,7 @@
                <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
+          ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
           <label class="small">Nombre público</label>
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
@@ -666,7 +667,7 @@
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, autonomy)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -762,6 +763,10 @@
 
           html += `<div class="item">`;
           html += `<div class="rowitem">${avatarHTML(sub.profiles?.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3></div>`;
+          html += `<label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;cursor:pointer;">
+  <input type="checkbox" style="width:auto;margin:0;" ${sub.profiles?.autonomy ? 'checked' : ''} onchange="setAutonomy('${sub.submissive_id}', this.checked)" />
+  🕊 Autonomía del sumiso
+</label>`;
 
           if (sub.profiles?.auctioned) {
             html += `<p class="small" style="color:#dc2626;">🔨 Subastado — pendiente de cesión</p>`;
@@ -868,7 +873,13 @@
       alert('Registro guardado.');
     }
 
-    async function saveSubProfile(submissiveId) {
+    async function saveSubProfile(submissiveId) {async function setAutonomy(subId, on) {
+  const { data } = await db.rpc('set_sub_autonomy', { sub_id: subId, on_val: on });
+  if (!data || !data.ok) { alert(data?.error || 'Error'); window.location.reload(); return; }
+  alert(on
+    ? '🕊 Autonomía concedida. El sumiso recupera la edición de su perfil, avatar y galería personal; sus mensajes privados quedan fuera de tu supervisión. La disciplina, cesiones y comparticiones siguen siendo tuyas.'
+    : '⛓ Autonomía revocada. El sumiso vuelve a dependencia completa de su Dueña.');
+}
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
@@ -961,6 +972,7 @@
         html += `<div class="card">
           <h2>Estado confirmado</h2>
           <p>Perteneces a <b>♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
+          ${currentProfile.autonomy ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
           ${record ? `
             <p>Nº registro: <b>${escapeHtml(record.registration_number)}</b></p>
             <p>Nombre de sumiso: <b>${escapeHtml(record.slave_name || 'Aún no asignado')}</b></p>
