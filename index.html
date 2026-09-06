@@ -873,13 +873,15 @@
       alert('Registro guardado.');
     }
 
-    async function saveSubProfile(submissiveId) {async function setAutonomy(subId, on) {
-  const { data } = await db.rpc('set_sub_autonomy', { sub_id: subId, on_val: on });
-  if (!data || !data.ok) { alert(data?.error || 'Error'); window.location.reload(); return; }
-  alert(on
-    ? '🕊 Autonomía concedida. El sumiso recupera la edición de su perfil, avatar y galería personal; sus mensajes privados quedan fuera de tu supervisión. La disciplina, cesiones y comparticiones siguen siendo tuyas.'
-    : '⛓ Autonomía revocada. El sumiso vuelve a dependencia completa de su Dueña.');
-}
+    async function setAutonomy(subId, on) {
+      const { data } = await db.rpc('set_sub_autonomy', { sub_id: subId, on_val: on });
+      if (!data || !data.ok) { alert(data?.error || 'Error'); window.location.reload(); return; }
+      alert(on
+        ? '🕊 Autonomía concedida. El sumiso recupera la edición de su perfil, avatar y galería personal; sus mensajes privados quedan fuera de tu supervisión. La disciplina, cesiones y comparticiones siguen siendo tuyas.'
+        : '⛓ Autonomía revocada. El sumiso vuelve a dependencia completa de su Dueña.');
+    }
+
+    async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
       const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
