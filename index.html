@@ -266,6 +266,7 @@
     let db = null;
     let currentUser = null;
     let currentProfile = null;
+    let profileLocked = false;
     let deferredInstallPrompt = null;
 
     const COUNTRIES = [
@@ -345,7 +346,7 @@ function renderContactsList() {
           <span>${icon}</span>
           <b style="min-width:80px;">${platform}:</b>
           <span style="flex:1;">${escapeHtml(c.value)}</span>
-          ${!isLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+          ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
         </div>
       `;
     }).join('');
@@ -364,7 +365,7 @@ function renderContactsList() {
           <span>${icon}</span>
           <b style="min-width:80px;">${c.contact_type}:</b>
           <span style="flex:1;">${escapeHtml(display)}</span>
-          ${!isLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
+          ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
         </div>
       `;
     }).join('');
@@ -396,7 +397,7 @@ function getContactIcon(type) {
 }
 
 async function addSocialContact() {
-  if (isLocked) return;
+  if (profileLocked) return;
   const platform = document.getElementById('social-platform-select').value;
   if (!platform) return alert('Selecciona una red social.');
   
@@ -423,7 +424,7 @@ async function addSocialContact() {
 }
 
 async function addDirectContact() {
-  if (isLocked) return;
+  if (profileLocked) return;
   const type = document.getElementById('contact-type-select').value;
   if (!type) return alert('Selecciona un tipo de contacto.');
   
@@ -524,6 +525,7 @@ async function saveVisibility() {
       else await renderSubmissive();
 
       await renderMyProfile();
+      await loadContacts();
 
       if (!currentProfile.tour_done) offerTour();
     }
@@ -742,6 +744,7 @@ async function saveVisibility() {
           .eq('submissive_id', currentUser.id).eq('status', 'confirmed').maybeSingle();
         if (rel) isLocked = !currentProfile.autonomy;
       }
+      profileLocked = isLocked;
 
       const countryOptions = COUNTRIES.map(c =>
         `<option value="${c}" ${currentProfile.country === c ? 'selected' : ''}>${c}</option>`
@@ -856,16 +859,7 @@ async function saveVisibility() {
       window.location.reload();
     }
     
-    async function saveVisibility() {
-      const available_public = document.getElementById('vis_avail').checked;
-      const show_avatar_public = document.getElementById('vis_ava').checked;
-      const { error } = await db.from('profiles')
-        .update({ available_public, show_avatar_public })
-        .eq('id', currentUser.id);
-      if (error) return alert(error.message);
-      alert('Visibilidad actualizada.');
-      window.location.reload();
-    }
+
     async function renderDominant() {
       const dashboard = document.getElementById('dashboard');
       dashboard.innerHTML = '<div class="card">Cargando panel...</div>';
@@ -1014,13 +1008,14 @@ async function saveVisibility() {
               <option value="">Seleccionar...</option>
               ${COUNTRIES.map(c => `<option value="${c}" ${sub.profiles?.country === c ? 'selected' : ''}>${c}</option>`).join('')}
             </select>`;
-            html += `<label class="small">📱 Redes sociales / contacto</label>`;
-            html += `<input id="psocial_${sub.submissive_id}" value="${escapeHtml(sub.profiles?.social_links || '')}" />`;
-            html += `<label class="small">
-              <input type="checkbox" id="psocialpublic_${sub.submissive_id}" style="width:auto; margin-right:6px;" ${sub.profiles?.social_links_public ? 'checked' : ''}>
-              Mostrar país y redes en el Salón de miembros
-            </label>`;
-            html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar país y redes</button>`;
+            html += `<label class="small" style="margin-top:10px;">👁 Visibilidad en el Salón</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="psocialpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_social_public ? 'checked' : ''}> Mostrar sus redes sociales</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pcontactpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_contact_public ? 'checked' : ''}> Mostrar sus datos de contacto</label>`;
+            html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar país y visibilidad</button>`;
+            html += `<div style="margin-top:10px;"><b class="small">📱 Redes y contactos de tu sumiso:</b><div id="subcontacts_${sub.submissive_id}"><p class="small">Pulsa 🔄 para verlos.</p></div>
+              <button class="secondary" onclick="loadSubContacts('${sub.submissive_id}')">🔄 Ver</button>
+              <button class="secondary" onclick="addSubSocial('${sub.submissive_id}')">+ Red social</button>
+              <button class="secondary" onclick="addSubDirect('${sub.submissive_id}')">+ Contacto</button></div>`;
 
             html += `<div class="row" style="margin-top:10px;">`;
             html += `<button onclick="saveRecord('${record.relationship_id}')">Guardar</button>`;
@@ -1092,14 +1087,73 @@ async function saveVisibility() {
 
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
-      const social_links = document.getElementById('psocial_' + submissiveId).value.trim();
-      const social_links_public = document.getElementById('psocialpublic_' + submissiveId).checked;
-            const gender = document.getElementById('pgender_' + submissiveId).value;
+      const gender = document.getElementById('pgender_' + submissiveId).value;
+      const show_social_public = document.getElementById('psocialpub_' + submissiveId).checked;
+      const show_contact_public = document.getElementById('pcontactpub_' + submissiveId).checked;
       const { error } = await db.from('profiles')
-        .update({ country, gender,  })
+        .update({ country, gender, show_social_public, show_contact_public })
         .eq('id', submissiveId);
       if (error) return alert(error.message);
-      alert('País y redes del sumiso actualizados.');
+      alert('País y visibilidad del sumiso actualizados.');
+    }
+
+    async function loadSubContacts(subId) {
+      const { data } = await db.from('member_contacts').select('*').eq('user_id', subId).order('created_at');
+      const box = document.getElementById('subcontacts_' + subId);
+      if (!box) return;
+      const list = data || [];
+      if (!list.length) { box.innerHTML = '<p class="small">Sin contactos registrados.</p>'; return; }
+      box.innerHTML = list.map(c => {
+        const label = c.contact_type === 'social' ? (c.platform === 'custom' ? c.custom_platform : c.platform) : c.contact_type;
+        const display = (c.contact_type === 'phone' || c.contact_type === 'whatsapp') ? `${c.country_code || ''} ${c.value}` : c.value;
+        const icon = c.contact_type === 'social' ? getSocialIcon(c.platform) : getContactIcon(c.contact_type);
+        return `<div style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
+          <span>${icon}</span>
+          <b class="small" style="min-width:70px;">${escapeHtml(label)}:</b>
+          <span class="small" style="flex:1;">${escapeHtml(display)}</span>
+          <button class="danger" style="padding:2px 8px;font-size:11px;" onclick="deleteSubContact('${c.id}','${subId}')">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    async function addSubSocial(subId) {
+      const platform = prompt('Red social (facebook, instagram, x, threads, tiktok, snapchat, linkedin u otro nombre):');
+      if (!platform) return;
+      const known = ['facebook','instagram','x','threads','tiktok','snapchat','linkedin'];
+      const isKnown = known.includes(platform.toLowerCase());
+      const value = prompt(`Usuario o enlace de ${platform}:`);
+      if (!value) return;
+      const { error } = await db.from('member_contacts').insert({
+        user_id: subId, contact_type: 'social',
+        platform: isKnown ? platform.toLowerCase() : 'custom',
+        custom_platform: isKnown ? null : platform,
+        value
+      });
+      if (error) return alert('Error: ' + error.message);
+      await loadSubContacts(subId);
+    }
+
+    async function addSubDirect(subId) {
+      const type = prompt('Tipo de contacto (phone, whatsapp, telegram, email):');
+      if (!type) return;
+      let country_code = null;
+      if (type === 'phone' || type === 'whatsapp') {
+        country_code = prompt('Código de país (ej: +52):');
+        if (!country_code) return;
+      }
+      const value = prompt(type === 'email' ? 'Correo electrónico:' : 'Número o usuario:');
+      if (!value) return;
+      if (type === 'email' && !value.includes('@')) return alert('Correo inválido.');
+      const { error } = await db.from('member_contacts').insert({ user_id: subId, contact_type: type, value, country_code });
+      if (error) return alert('Error: ' + error.message);
+      await loadSubContacts(subId);
+    }
+
+    async function deleteSubContact(id, subId) {
+      if (!confirm('¿Eliminar este contacto del sumiso?')) return;
+      const { error } = await db.from('member_contacts').delete().eq('id', id);
+      if (error) return alert('Error: ' + error.message);
+      await loadSubContacts(subId);
     }
 
     async function clearAuctionMark(subId) {
