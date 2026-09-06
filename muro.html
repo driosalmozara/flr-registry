@@ -200,7 +200,7 @@ async function render() {
     .select('*, author:profiles!muro_posts_author_id_fkey(id, display_name, role, avatar_url)')
     .order('created_at', { ascending: false }).limit(120);
   const list = (posts || []).filter(p =>
-    p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id)
+    p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.status === 'pending' && p.author?.role === 'submissive')
   );
 
   list.sort((a, b) => {
@@ -224,8 +224,21 @@ async function render() {
     reactions = rk.data || [];
   }
 
+  // Cargar set de sumisos con Dueña confirmada (para restringir a Perros Guardianes)
+  const ownedSubs = new Set();
+  if (isChatMod && !(isSuper || isMod)) {
+    const pendingAuthorIds = list.filter(p => p.status === 'pending' && p.author?.role === 'submissive').map(p => p.author_id);
+    if (pendingAuthorIds.length) {
+      const { data: ownedRels } = await db.from('relationships')
+        .select('submissive_id')
+        .in('submissive_id', pendingAuthorIds)
+        .eq('status', 'confirmed');
+      (ownedRels || []).forEach(r => ownedSubs.add(r.submissive_id));
+    }
+  }
+
   const queue = list.filter(p =>
-    (p.status === 'pending' && (isSuper || isMod)) ||
+    (p.status === 'pending' && (isSuper || isMod || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id)))) ||
     (p.status === 'owner_pending' && mySubIds.has(p.author_id))
   );
   if (queue.length) {
@@ -236,7 +249,7 @@ async function render() {
           <p class="small" style="margin:0 0 6px;"><b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b> · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}</p>
           <p style="margin:0 0 6px;white-space:pre-wrap;">${esc((p.body || '').slice(0, 220))}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${(isSuper || isMod) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
+            ${((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
             ${p.status === 'owner_pending' && mySubIds.has(p.author_id) ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
           </div>
         </div>`;
@@ -251,7 +264,7 @@ async function render() {
     const cmts = comments.filter(c => c.post_id === p.id);
     const tops = cmts.filter(c => !c.parent_id);
     const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.author?.role === 'submissive');
-    const canStaffAct = (isSuper || isMod) && p.status === 'pending';
+    const canStaffAct = ((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending';
     const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
     const canBlock = (isSuper) || ((isMod || isChatMod) && p.author?.role === 'submissive' && !mySubIds.has(p.author_id));
 
@@ -397,6 +410,21 @@ async function delPost(id) {
 
 async function staffApprove(id) {
   const p = (window.__posts || []).find(x => x.id === id);
+  // Si el autor tiene Dueña y quien aprueba NO es Admin, rechaza: solo Admin puede saltarse a la Dueña
+  if (p && p.author?.role === 'submissive' && !isSuper) {
+    const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
+    if (rel) {
+      if (isChatMod && !isMod) {
+        alert('⚠ No puedes aprobar esta publicación: el sumiso tiene Dueña. Solo el Staff superior (Moderadoras y Administradoras) puede saltarse la aprobación de la Dueña.');
+        return;
+      }
+      // Para Moderadoras: mismo respeto
+      if (isMod && !isSuper) {
+        alert('⚠ No puedes aprobar esta publicación: el sumiso tiene Dueña. Solo las Administradoras pueden saltarse la aprobación de la Dueña.');
+        return;
+      }
+    }
+  }
   let bypass = false;
   if (p && p.author?.role === 'submissive' && isSuper) {
     const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
