@@ -3,44 +3,61 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Salón de miembros — Queendomland</title><style>
+<title>Salón de miembros — Queendomland</title>
+<style>
 :root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
 *{box-sizing:border-box}
 body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
 header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 h1,h2,h3{color:var(--gold)}
-main{max-width:900px;margin:0 auto;padding:20px}
+main{max-width:1000px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#0b0b12}
-.item.own-profile{border-color:var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.02))}
 .small{color:#a1a1aa;font-size:13px}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
-.free{color:#4ade80;font-size:13px}
-.rowitem{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
-.ava.empty{display:flex;align-items:center;justify-content:center;background:#161625;color:var(--gold);font-size:22px}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-top:8px;margin-right:6px}
-button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
-.own-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.1));border:1px solid var(--gold);color:var(--gold);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
-.own-badge::before{content:"♛";font-size:14px}
-.meta-line{color:#a1a1aa;font-size:12px;margin-top:4px}
-.meta-line b{color:#e5e5e5}
+input,select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.member{border:1px solid var(--line);border-radius:14px;background:#0b0b12;padding:14px;display:flex;flex-direction:column;gap:8px}
+.member .ava{width:84px;height:84px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#161625;align-self:center}
+.member .ava.empty{display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--gold)}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:#a1a1aa;font-size:11px;margin:2px 2px 0 0}
+.badge.gold{border-color:var(--gold);color:var(--gold)}
+.badge.green{border-color:#4ade80;color:#4ade80}
+.badge.blue{border-color:#8ab4f8;color:#8ab4f8}
+.bday{margin:6px 0;padding:10px;border:2px solid var(--gold);border-radius:12px;background:rgba(212,175,55,.12);text-align:center}
+.bday .emo{font-size:26px}
+.bday b{color:var(--gold)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#161625;border:1px solid var(--line);border-radius:999px;font-size:12px;color:#d4d4d8;text-decoration:none}
+.chip:hover{border-color:var(--gold);color:var(--gold)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.tab{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:#a1a1aa;cursor:pointer;font-size:13px;font-weight:600}
+.tab.active{background:rgba(212,175,55,.15);border-color:var(--gold);color:var(--gold)}
+details.about{margin-top:4px}
+details.about summary{cursor:pointer;color:var(--gold);font-size:13px;font-weight:600}
+details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px;line-height:1.6}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Queendomland</h1>
+  <h1 style="margin:0;">👑 Salón de miembros</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
   <div class="card">
-        <h2>Salón de miembros</h2>
-    <p class="small">Contempla a las Dominantes que eligieron aparecer, los sumisos certificados y los sumisos sin dueña. <br>¿Deseas formar parte de la casa? <a href="index.html" style="color:var(--gold);font-weight:600;">Regístrate aquí</a>.</p>
+    <h2 style="margin-top:0;">La casa en público</h2>
+    <p class="small">Contempla a las Dominantes y sumisos que han decidido mostrarse. Cada miembro controla qué datos aparecen aquí desde su sección de Visibilidad y Privacidad. Contenido simbólico y consensuado entre adultos (+18).</p>
+    <input id="q" placeholder="Buscar por nombre o país..." oninput="render()" style="width:100%;"/>
+    <select id="fcountry" onchange="render()" style="width:100%;"><option value="">Todos los países</option></select>
+    <div class="tabs">
+      <button class="tab active" data-g="all" onclick="setTab('all',this)">Todos</button>
+      <button class="tab" data-g="dom" onclick="setTab('dom',this)">♛ Dominantes</button>
+      <button class="tab" data-g="free" onclick="setTab('free',this)">⛓ Sin Dueña</button>
+      <button class="tab" data-g="owned" onclick="setTab('owned',this)">⛓ En propiedad</button>
+    </div>
   </div>
-  <div id="stats" class="card" style="display:flex;gap:14px;flex-wrap:wrap;justify-content:space-around;text-align:center;">Cargando estadísticas...</div>
-  <div id="doms" class="card">Cargando...</div>  <div id="list" class="card">Cargando...</div>
+  <div id="list"><div class="card">Cargando...</div></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -48,271 +65,154 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentUser = null;
-let myProfile = null;
-let idByName = {};
-let profilesById = {};
-  let chastityMap = {};
+let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
 
-function chastityBadge(uid){
-  const since = chastityMap[uid];
-  if (!since) return '';
-  const d = Math.floor(Math.max(0, Date.now() - new Date(since)) / 864e5);
-  return `<p class="small" style="color:#a78bfa;">🔒 Castidad: ${d} día${d === 1 ? '' : 's'}</p>`;
-}
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
+function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
+function dayMonth(iso){ const p=(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : ''; }
+function getSocialIcon(pl){ const i={facebook:'📘',instagram:'📷',x:'🐦',threads:'🧵',tiktok:'🎵',snapchat:'👻',linkedin:'💼',custom:'🌐'}; return i[pl]||'🌐'; }
+function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
 
-function escapeHtml(v){
-  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+async function init(){
+  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified').order('display_name').limit(500);
+  allProfiles = prof || [];
 
-function avatarHTML(url, fallback) {
-  if (url) return `<img class="ava" src="${escapeHtml(url)}" />`;
-  return `<div class="ava empty">${fallback}</div>`;
-}
+  const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
+  (rels||[]).forEach(r => relBySub[r.submissive_id] = r.dominant_id);
 
-function domId(d){
-  return d.user_id || d.id || d.dominant_id || idByName[d.display_name] || null;
-}
+  const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
+  (recs||[]).forEach(r => { if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
 
-function messageButton(userId) {
-  if (!currentUser || !userId || userId === currentUser.id) return '';
-  return `<button onclick="window.location.href='mensajes.html?start=${userId}'">💬 Mensaje</button>`;
-}
-
-  function galleryButton(userId) {
-  if (!userId) return '';
-  return `<button class="secondary" onclick="window.location.href='mi-galeria.html?user=${userId}'">🖼 Galería personal</button>`;}
-function ownBadge() {
-  return `<div class="own-badge">Este es tu perfil</div>`;
-}
-
-function requestSubButton(subId) {
-  if (!myProfile || myProfile.role !== 'dominant') return '';
-  if (!subId || subId === currentUser?.id) return '';
-  return `<button class="secondary" onclick="requestSubmissive('${subId}')">♛ Solicitar ser su Dominante</button>`;
-}
-
-  function genderTag(profile) {
-  if (!profile || !profile.gender) return '';
-  return profile.gender === 'mujer'
-    ? ' <span class="small" style="color:#d4af37;">♀ Mujer</span>'
-    : ' <span class="small" style="color:#8ab4f8;">♂ Hombre</span>';
-}
-function socialMeta(profile) {
-  if (!profile || !profile.social_links_public) return '';
-  const parts = [];
-  if (profile.country) parts.push(`<b>🌎 ${escapeHtml(profile.country)}</b>`);
-  if (profile.social_links) parts.push(`<b>📱 ${escapeHtml(profile.social_links)}</b>`);
-  return parts.length ? `<div class="meta-line">${parts.join(' · ')}</div>` : '';
-}
-
-async function requestSubmissive(subId) {
-  if (!currentUser) return alert('Inicia sesión primero.');
-  if (myProfile.role !== 'dominant') return alert('Solo las Dominantes pueden solicitar sumisos.');
-
-  const { data: existing } = await db
-    .from('relationships')
-    .select('id, status')
-    .eq('dominant_id', currentUser.id)
-    .eq('submissive_id', subId)
-    .in('status', ['pending', 'confirmed'])
-    .maybeSingle();
-
-  if (existing) {
-    if (existing.status === 'pending') return alert('Ya enviaste una solicitud a este sumiso.');
-    if (existing.status === 'confirmed') return alert('Este sumiso ya es tuyo.');
+  const ids = allProfiles.map(p => p.id);
+  if (ids.length) {
+    const { data: contacts } = await db.from('member_contacts').select('*').in('user_id', ids).order('created_at');
+    (contacts||[]).forEach(c => { (contactsByUser[c.user_id] = contactsByUser[c.user_id] || []).push(c); });
   }
 
-  const { error } = await db.from('relationships').insert({
-    dominant_id: currentUser.id,
-    submissive_id: subId,
-    status: 'pending',
-    initiated_by: 'dominant'
-  });
+  const countries = [...new Set(allProfiles.map(p => p.country).filter(Boolean))].sort();
+  const sel = document.getElementById('fcountry');
+  countries.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
 
-  if (error) return alert(error.message);
-
-  alert('Solicitud enviada. El sumiso decidirá si aceptarla.');
-  window.location.reload();
+  render();
 }
 
-(async () => {
-  const { data: { session } } = await db.auth.getSession();
-  currentUser = session?.user || null;
+function classify(p){
+  if (p.role === 'dominant') return (p.dom_verified && p.available_public) ? { group:'dom' } : null;
+  const ownerId = relBySub[p.id];
+  if (!ownerId) return p.available_public ? { group:'free' } : null;
+  const rec = recordsBySub[p.id];
+  return (rec && rec.is_public) ? { group:'owned', ownerId, rec } : null;
+}
 
-  // Cargar todos los perfiles para mostrar país/redes cuando sea público
-  const { data: allProfiles } = await db
-    .from('profiles')
-    .select('id, display_name, country, social_links, social_links_public, gender, avatar_url, dom_verified').limit(500);  
-  (allProfiles || []).forEach(p => {
-    idByName[p.display_name] = p.id;
-    profilesById[p.id] = p;
-  });
+function setTab(g, btn){
+  currentTab = g;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
 
-  if (currentUser) {
-    const { data: profile } = await db
-      .from('profiles')
-      .select('id, role')
-      .eq('id', currentUser.id)
-      .maybeSingle();
-    myProfile = profile;
-  }
+function birthdayBanner(p){
+  if (!p.show_birthday_public || !isBirthdayToday(p.birth_date)) return '';
+  const age = p.birth_date ? ageFrom(new Date(+p.birth_date.split('-')[0], +p.birth_date.split('-')[1]-1, +p.birth_date.split('-')[2])) : p.age;
+  return `<div class="bday"><div class="emo">🎈🎉</div><b>¡Feliz cumpleaños, ${esc(p.display_name)}!</b><div class="small">Hoy celebra ${esc(String(age))} años. La casa te saluda. 🎈</div></div>`;
+}
 
-    const [doms, subs, chas, stats] = await Promise.all([
-    db.rpc('public_dominants'),
-    db.rpc('public_registry'),
-    db.rpc('active_chastity'),
-    db.rpc('public_stats')
-  ]);
-  (chas.data || []).forEach(c => { chastityMap[c.submissive_id] = c.since; });
+function extrasHTML(p){
+  let out = '';
+  if (p.show_age_public && p.age != null) out += `<span class="badge">${esc(String(p.age))} años</span>`;
+  if (p.show_birthday_public && p.birth_date) out += `<span class="badge">🎂 ${dayMonth(p.birth_date)}</span>`;
+  if (p.show_gender_public && p.gender) out += `<span class="badge">⚧ ${esc(p.gender)}${p.gender==='Otro'&&p.gender_detail?' ('+esc(p.gender_detail)+')':''}</span>`;
+  if (p.show_orientation_public && p.orientation) out += `<span class="badge">❤ ${esc(p.orientation)}${p.orientation==='Otro'&&p.orientation_detail?' ('+esc(p.orientation_detail)+')':''}</span>`;
+  if (p.show_playrole_public && p.play_role) out += `<span class="badge">⛓ ${esc(p.play_role)}</span>`;
+  return out;
+}
 
-  const st = stats.data || {};
-  const enSalon = st.in_salon ?? ((doms.data ? doms.data.length : 0) + (subs.data ? subs.data.length : 0));
-  document.getElementById('stats').innerHTML = `
-    <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${st.total ?? 0}</h2><p class="small" style="margin:4px 0 0;">Miembros registrados</p></div>
-    <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${st.dominants ?? 0}</h2><p class="small" style="margin:4px 0 0;">♛ Diosas</p></div>
-    <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${st.submissives ?? 0}</h2><p class="small" style="margin:4px 0 0;">⛓ Esclavos</p></div>
-    <div style="min-width:120px;flex:1;"><h2 style="margin:0;">${enSalon}</h2><p class="small" style="margin:4px 0 0;">Perfiles públicos en el Salón</p></div>
-    <div style="min-width:120px;flex:1;"><h2 style="margin:0;color:#4ade80;">+${st.new24h ?? 0}</h2><p class="small" style="margin:4px 0 0;">Nuevos en 24 h</p></div>
-  `;
-
-  const domsBox = document.getElementById('doms');
-  const listBox = document.getElementById('list');
-
-  // Dominantes
-  let html = '<h2>♛ Dominantes</h2>';
-
-  if (!doms.data || doms.data.length === 0) {
-    html += '<p class="small">Todavía no hay Dominantes públicas.</p>';
-  } else {
-    html += doms.data.map(d => {
-      const uid = domId(d);
-      const isOwn = !!currentUser && uid === currentUser.id;
-      const prof = profilesById[uid] || {};
-      return `
-      <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
-        ${avatarHTML(d.avatar_url, '♛')}
-        <div style="flex:1;min-width:200px;">
-          <h3 style="margin:0;">${escapeHtml(d.display_name)} <span class="small" style="color:var(--gold);">· ${escapeHtml(d.rank || '')}</span>${prof.dom_verified === false ? ' <span class="small" style="color:#f59e0b;">⏳ pendiente de verificación</span>' : ''}</h3>
-          <p class="small">${escapeHtml(d.bio || '')}</p>
-          <p class="small">⛓ Sumisos certificados: ${d.certified_count || 0}</p>
-          ${socialMeta(prof)}
-          ${isOwn ? ownBadge() : (galleryButton(uid) + messageButton(uid))}        </div>
-      </div>
-    `}).join('');
-  }
-
-  domsBox.innerHTML = html;
-
-  // Sumisos
-  let html2 = '<h2>⛓ Sumisos</h2>';
-
-  if (subs.error) {
-    html2 += '<p class="small">Error: ' + escapeHtml(subs.error.message) + '</p>';
-  } else if (!subs.data || subs.data.length === 0) {
-    html2 += '<p class="small">Todavía no hay sumisos en el registro público.</p>';
-  } else {
-    html2 += subs.data.map(r => {
-      const libre = r.dominant_name === 'Sumiso sin Dueña';
-      const uid = r.submissive_id || null;
-      const isOwn = !!currentUser && uid === currentUser.id;
-      const prof = profilesById[uid] || {};
-
-      if (libre) {
-        return `
-          <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
-            ${avatarHTML(r.avatar_url || prof.avatar_url, '⛓')}
-            <div style="flex:1;min-width:200px;">
-              <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso')}${genderTag(prof)}</h3>              <p class="free">● Sumiso sin Dueña — disponible</p>
-              ${chastityBadge(uid)}
-              ${socialMeta(prof)}
-              ${isOwn ? ownBadge() : (galleryButton(uid) + requestSubButton(uid) + messageButton(uid))}            </div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="item rowitem ${isOwn ? 'own-profile' : ''}">
-          ${avatarHTML(r.avatar_url || prof.avatar_url, '⛓')}
-          <div style="flex:1;min-width:200px;">
-            <h3 style="margin:0;">${escapeHtml(r.slave_name || 'Sumiso sin nombre')}${genderTag(prof)}</h3>            <p class="small">Nº ${escapeHtml(r.registration_number)}</p>
-            <p class="small">Pertenece a: ♛ ${escapeHtml(r.dominant_name)}</p>
-            ${chastityBadge(uid)}
-            <p class="small">Desde: ${escapeHtml(r.collar_date || '')} · Nivel: ${escapeHtml(r.obedience_level || '')}</p>
-            ${socialMeta(prof)}
-            ${isOwn ? ownBadge() : (galleryButton(uid) + messageButton(uid))}          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  listBox.innerHTML = html2;
-  // ══ Sección de Visibilidad y Privacidad (solo si hay sesión) ══
-  async function renderVisibilitySection() {
-    if (!currentUser) return;
-    const { data: profile } = await db.from('profiles')
-      .select('id, role, available_public, show_avatar_public')
-      .eq('id', currentUser.id)
-      .maybeSingle();
-    if (!profile) return;
-
-    // Si es sumiso con dueña, no controla su visibilidad
-    if (profile.role === 'submissive') {
-      const { data: owned } = await db.from('relationships')
-        .select('id')
-        .eq('submissive_id', currentUser.id)
-        .eq('status', 'confirmed')
-        .maybeSingle();
-      if (owned) return;
+function contactsHTML(p){
+  const list = contactsByUser[p.id] || [];
+  let out = '';
+  if (p.show_social_public) {
+    const socials = list.filter(c => c.contact_type === 'social');
+    if (socials.length) {
+      out += `<div class="chips">` + socials.map(c => {
+        const label = c.platform === 'custom' ? c.custom_platform : c.platform;
+        const href = /^https?:/i.test(c.value) ? c.value : 'https://' + c.value;
+        return `<a class="chip" href="${esc(href)}" target="_blank" rel="noopener">${getSocialIcon(c.platform)} ${esc(label)}</a>`;
+      }).join('') + `</div>`;
     }
-
-    const appearLabel = profile.role === 'dominant'
-      ? 'Aparecer en el Salón como Dominante'
-      : 'Aparecer en el Salón como "Sumiso sin Dueña"';
-
-    const section = document.createElement('div');
-    section.className = 'card';
-    section.innerHTML = `
-      <h2 style="margin-top:0;">👁 Visibilidad y Privacidad</h2>
-      <p class="small">Controla qué se muestra de ti en el Salón de miembros. ${profile.role === 'dominant' ? 'Como Dominante, tú decides cuándo aparecer.' : 'En cuanto una Dominante te confirme, ella tomará el control.'}</p>
-      <label>
-        <input type="checkbox" id="vis_avail" ${profile.available_public ? 'checked' : ''} />
-        ${appearLabel}
-      </label>
-      <label>
-        <input type="checkbox" id="vis_ava" ${profile.show_avatar_public ? 'checked' : ''} />
-        Mostrar mi avatar en el Salón
-      </label>
-      <button onclick="saveVisibility()">Guardar visibilidad</button>
-    `;
-    // Insertar después de las estadísticas
-    const statsCard = document.getElementById('stats');
-    if (statsCard) statsCard.parentNode.insertBefore(section, statsCard.nextSibling);
-    else document.querySelector('main').appendChild(section);
   }
+  if (p.show_contact_public) {
+    const directs = list.filter(c => c.contact_type !== 'social');
+    if (directs.length) {
+      out += `<div class="chips">` + directs.map(c => {
+        const display = (c.contact_type==='phone'||c.contact_type==='whatsapp') ? `${c.country_code||''} ${c.value}` : c.value;
+        return `<span class="chip">${getContactIcon(c.contact_type)} ${esc(display)}</span>`;
+      }).join('') + `</div>`;
+    }
+  }
+  return out;
+}
 
-  window.saveVisibility = async function() {
-    const available_public = document.getElementById('vis_avail').checked;
-    const show_avatar_public = document.getElementById('vis_ava').checked;
-    const { error } = await db.from('profiles')
-      .update({ available_public, show_avatar_public })
-      .eq('id', currentUser.id);
-    if (error) return alert(error.message);
-    alert('Visibilidad actualizada.');
-    window.location.reload();
-  };
+function cardHTML(p, info){
+  const showAva = p.show_avatar_public && (info.group !== 'owned' || info.rec.show_avatar !== false);
+  const ownerName = info.ownerId ? (allProfiles.find(x => x.id === info.ownerId)?.display_name || '') : '';
+  const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
+    : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
+    : '<span class="badge green">⛓ En propiedad</span>';
+  return `
+    <div class="member">
+      ${showAva
+        ? `<img class="ava" src="${esc(p.avatar_url||'')}" onerror="this.outerHTML='<div class=&quot;ava empty&quot;>♛</div>'"/>`
+        : `<div class="ava empty">👤</div>`}
+      <div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">${info.group==='dom'?'♛ ':'⛓ '}${esc(p.display_name)}</b></div>
+      ${info.group==='owned' && info.rec?.slave_name ? `<div style="text-align:center;" class="small">como <b>${esc(info.rec.slave_name)}</b></div>` : ''}
+      ${info.group==='owned' && ownerName ? `<div style="text-align:center;" class="small">♛ de <b>${esc(ownerName)}</b></div>` : ''}
+      <div style="text-align:center;">${roleBadge}</div>
+      ${birthdayBanner(p)}
+      <div style="text-align:center;">${extrasHTML(p)}</div>
+      ${p.country && p.social_links_public ? `<div style="text-align:center;" class="small">🌎 ${esc(p.country)}</div>` : ''}
+      ${p.bio ? `<p class="small" style="margin:0;white-space:pre-wrap;">${esc(p.bio)}</p>` : ''}
+      ${contactsHTML(p)}
+      ${p.show_about_public && p.bio_extended ? `<details class="about"><summary>Sobre mí</summary><p>${esc(p.bio_extended)}</p></details>` : ''}
+      <div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=${p.id}">📸 Galería</a></div>
+    </div>`;
+}
 
-  renderVisibilitySection();
-})();
+function render(){
+  const q = (document.getElementById('q').value || '').trim().toLowerCase();
+  const fc = document.getElementById('fcountry').value;
+  const groups = { dom: [], free: [], owned: [] };
+  allProfiles.forEach(p => {
+    const info = classify(p);
+    if (!info) return;
+    if (fc && p.country !== fc) return;
+    if (q && !((p.display_name||'').toLowerCase().includes(q) || (p.country||'').toLowerCase().includes(q))) return;
+    groups[info.group].push({ p, info });
+  });
+
+  let html = '';
+  const sections = [
+    ['dom', '♛ Dominantes verificadas'],
+    ['free', '⛓ Sumisos y sumisas sin Dueña'],
+    ['owned', '⛓ Sumisos y sumisas en propiedad']
+  ];
+  sections.forEach(([key, title]) => {
+    if (currentTab !== 'all' && currentTab !== key) return;
+    const items = groups[key];
+    if (!items.length) return;
+    html += `<div class="card"><h3 style="margin-top:0;">${title} (${items.length})</h3><div class="grid">` +
+      items.map(x => cardHTML(x.p, x.info)).join('') + `</div></div>`;
+  });
+  if (!html) html = `<div class="card"><p class="small">No hay miembros que coincidan con tu búsqueda o que hayan decidido mostrarse.</p></div>`;
+  document.getElementById('list').innerHTML = html;
+}
+
+init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
+  new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
 }
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
