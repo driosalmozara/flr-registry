@@ -15,17 +15,10 @@ main{max-width:1000px;margin:0 auto;padding:20px}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:#0b0b12}
 .small{color:#a1a1aa;font-size:13px}
 input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
-button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
-button.mini{background:transparent;color:#7f1d1d;border:1px solid #7f1d1d;padding:2px 8px;font-size:12px}
-  button.msg-del{background:transparent !important;border:none !important;color:#71717a !important;padding:0 5px !important;font-size:11px !important;border-radius:6px !important;opacity:.4;cursor:pointer;margin-left:6px;vertical-align:middle;letter-spacing:0 !important}
-button.msg-del:hover{opacity:1;color:#dc2626 !important}
-  button.p-act{background:transparent !important;border:none !important;color:#71717a !important;padding:0 4px !important;font-size:12px !important;border-radius:6px !important;opacity:.5;cursor:pointer;margin-left:4px;letter-spacing:0 !important;vertical-align:middle}
-button.p-act:hover{opacity:1;color:var(--gold) !important}
-button.p-act.ban:hover{color:#dc2626 !important}
-button.p-act.ok{color:#4ade80 !important;opacity:.85}
-button.p-act.ok:hover{opacity:1}
-button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
-button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 12px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff}
+button.mini{background:transparent !important;color:#7f1d1d !important;border:1px solid #7f1d1d !important;padding:2px 8px !important;font-size:12px !important}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 #irc{display:flex;gap:12px;height:65vh}
 #side{width:230px;flex:none;overflow-y:auto;margin:0}
@@ -58,6 +51,15 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
 #emoji-panel .emo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 #emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
 #emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
+button.msg-del{background:transparent !important;border:none !important;color:#71717a !important;padding:0 5px !important;font-size:11px !important;border-radius:6px !important;opacity:.4;cursor:pointer;margin-left:6px;vertical-align:middle}
+button.msg-del:hover{opacity:1;color:#dc2626 !important}
+button.p-act{background:transparent !important;border:none !important;color:#71717a !important;padding:0 4px !important;font-size:12px !important;border-radius:6px !important;opacity:.5;cursor:pointer;margin-left:4px;vertical-align:middle}
+button.p-act:hover{opacity:1;color:var(--gold) !important}
+button.p-act.ban:hover{color:#dc2626 !important}
+button.p-act.ok{color:#4ade80 !important;opacity:.85}
+button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
+.hidden{display:none}
+#toggle-side{display:none}
 @media (max-width:760px){
   body{font-size:14px}
   header{padding:10px 14px}
@@ -66,14 +68,10 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
   .card{padding:12px;margin-bottom:10px}
   #rooms-bar{overflow-x:auto;flex-wrap:nowrap;padding:6px;margin-bottom:8px}
   .room-tab{font-size:11px;padding:4px 8px;flex:none;white-space:nowrap}
-  #irc{flex-direction:column;height:calc(100vh - 180px);gap:6px}
-  #side{width:100%;max-height:none;order:2;flex:none}
+  #toggle-side{display:inline-block;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;margin-bottom:6px}
+  #irc{flex-direction:column;height:calc(100vh - 210px);gap:6px}
+  #side{width:100%;order:2;flex:none;max-height:none}
   #side.collapsed{display:none}
-  #side .card{padding:10px;margin:0}
-  #ptitle{font-size:14px;margin:0 0 6px}
-  .prow{padding:3px 4px;font-size:12px}
-  .prow span{font-size:12px}
-  .prow button{font-size:10px;padding:0 3px}
   #main{order:1;min-height:0;flex:1}
   #msgs{font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:13px;padding:8px;height:100%;min-height:0}
   .line{margin:2px 0;padding:4px 6px;line-height:1.4;border-radius:6px;background:rgba(22,22,37,.5)}
@@ -81,17 +79,9 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
   #inputrow{gap:4px;margin-top:6px;flex-wrap:nowrap}
   #msg{padding:8px 10px;font-size:14px}
   #inputrow button{padding:6px 10px;font-size:13px}
-  #emoji-btn, #gif-btn{padding:6px 8px;font-size:14px}
+  #emoji-btn,#gif-btn{padding:6px 8px;font-size:14px}
   #emoji-panel{width:calc(100vw - 20px);max-width:320px}
   .nick-row{grid-template-columns:1fr;gap:6px}
-  /* Ocultar tarjetas superiores pesadas en móvil, salvo la de identidad compacta */
-  .card:not(.notranslate):not(#content > .card){display:none}
-  #content > .card > h3:first-child{font-size:15px;margin-top:0}
-  #content > .card > p{font-size:12px}
-  #toggle-side{display:inline-block}
-}
-@media (min-width:761px){
-  #toggle-side{display:none}
 }
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
@@ -102,37 +92,26 @@ button.ghost{background:transparent;color:var(--gold);border:1px solid var(--gol
   <h1 style="margin:0;">♛ Chat</h1>
   <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
-  </header>
 <main><div id="content" class="card">Cargando...</div></main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<main>
-  <div id="content" class="card">Cargando...</div>
-</main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const GIPHY_KEY = 'oX0m6bGTsnZSJclKOXLZZAxgICUImPlu';
-
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const DEFAULT_ROOM_NAME = 'chat-general';
-  const DEFAULT_ROOM_LABEL = 'Chat General';
+const DEFAULT_ROOM_LABEL = 'Chat General';
+const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😭','😡','🤬','','👎','','💪','❤️','💛','💜','🖤','💋','👑','🍷','✨','🤍','⛓','🐕','🦮'];
 
 let me = null, myProfile = null;
 let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
-let selfNicks = [], assignedNicks = [], currentTargets = [];
-let ownedSet = new Set(), chatModIds = new Set(), myDominion = new Set();
+let selfNicks = [], assignedNicks = [];
+let ownedSet = new Set(), chatModIds = new Set();
 let rooms = [], currentRoomId = null, chatChannel = null;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-function colorFor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return 'hsl(' + h + ',70%,65%)';
-}
 
 function nameFor(id, fallback) {
   const a = assignedNicks.find(x => x.target_user_id === id);
@@ -153,14 +132,17 @@ async function init() {
   myProfile = profile;
   if (!myProfile) { content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
 
-  const [sf, mf, cf] = await Promise.all([
-    db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'), db.rpc('am_i_chatmod')
+  const [sf, mf, cf, ow, cmods] = await Promise.all([
+    db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'), db.rpc('am_i_chatmod'),
+    db.from('relationships').select('submissive_id').eq('dominant_id', me).eq('status', 'confirmed'),
+    db.from('app_chat_mods').select('user_id')
   ]);
   isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cf.data;
+  ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
+  chatModIds = new Set((cmods.data || []).map(x => x.user_id));
 
   await loadRooms(true);
   await renderPage();
-
   subscribeChat();
 
   db.channel('flr-chat-media')
@@ -180,9 +162,7 @@ async function init() {
       Object.values(state).forEach(arr => arr.forEach(p => onlineIds.add(p.user_id)));
       renderParticipants();
     })
-    .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me });
-    });
+    .subscribe(async (status) => { if (status === 'SUBSCRIBED') await presenceChannel.track({ user_id: me }); });
 }
 
 async function loadRooms(initial) {
@@ -200,7 +180,7 @@ async function loadRooms(initial) {
 async function loadRoomBans() {
   const { data } = await db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId);
   window._roomBans = data || [];
-    const { data: rm } = await db.from('chat_room_mutes').select('user_id').eq('room_id', currentRoomId);
+  const { data: rm } = await db.from('chat_room_mutes').select('user_id').eq('room_id', currentRoomId);
   window._roomMutes = new Set((rm.data || []).map(x => x.user_id));
 }
 
@@ -255,15 +235,13 @@ async function manageRoomMembers(roomId, roomName) {
   const { data: allUsers } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(500);
   const { data: members } = await db.from('chat_room_members').select('user_id').eq('room_id', roomId);
   const memberSet = new Set((members || []).map(m => m.user_id));
-
   let html = `<h2 style="margin-top:0;">🔒 Miembros de #${esc(roomName)}</h2>
     <p class="small">Solo los miembros listados (y administradores) pueden ver y escribir en esta sala.</p>
     <div style="max-height:50vh;overflow-y:auto;">`;
   (allUsers || []).forEach(u => {
     if (u.id === me) return;
     const isIn = memberSet.has(u.id);
-    html += `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #2a2a3d;gap:10px;">
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #2a2a3d;gap:10px;">
         <span>${u.role === 'dominant' ? '♛' : '⛓'} ${esc(u.display_name)}</span>
         ${isIn
           ? `<button class="danger" style="margin:0;" onclick="removeRoomMember('${roomId}','${u.id}','${esc(roomName)}')">✕ Quitar</button>`
@@ -290,38 +268,24 @@ async function removeRoomMember(roomId, userId, roomName) {
 function subscribeChat() {
   if (chatChannel) { db.removeChannel(chatChannel); chatChannel = null; }
   chatChannel = db.channel('flr-chat-' + currentRoomId)
-    .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'chat_messages',
-      filter: 'room_id=eq.' + currentRoomId
-    }, () => loadMessages())
-    .on('postgres_changes', {
-      event: 'DELETE', schema: 'public', table: 'chat_messages',
-      filter: 'room_id=eq.' + currentRoomId
-    }, () => loadMessages())
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + currentRoomId }, () => loadMessages())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + currentRoomId }, () => loadMessages())
     .subscribe();
 }
 
 async function renderPage() {
   const content = document.getElementById('content');
-
-  const [p, sn, an, ow, cmods] = await Promise.all([
+  const [p, sn, an] = await Promise.all([
     db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
     db.from('chat_self_nicknames').select('*'),
-    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false }),
-    db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id')
+    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false })
   ]);
-
   people = (p.data || []).map(person => ({
     ...person,
     is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
   }));
   selfNicks = sn.data || [];
   assignedNicks = an.data || [];
-  ownedSet = new Set((ow.data || []).map(x => x.submissive_id));
-  chatModIds = new Set((cmods.data || []).map(x => x.user_id));
-    const { data: domIds } = await db.rpc('my_dominion_ids');
-  myDominion = new Set(domIds || []);
 
   await loadRoomBans();
 
@@ -331,7 +295,7 @@ async function renderPage() {
   let html = `
     <div class="card">
       <h3>Tu identidad en el chat</h3>
-      <p class="small">Apareces como: <b style="color:${colorFor(nameFor(me))}">${esc(nameFor(me))}</b>
+      <p class="small">Apareces como: <b style="color:#d4af37">${esc(nameFor(me))}</b>
       ${assignedNick ? '· (apodo asignado por tu Dominante o un Administrador)' : ''}</p>
       <input id="self_nick" placeholder="Tu apodo propio" value="${esc(selfNick?.nickname || '')}" />
       <button onclick="setSelfNick()">Guardar mi apodo</button>
@@ -348,7 +312,6 @@ async function renderPage() {
         .eq('dominant_id', me).eq('status', 'confirmed');
       targets = (subs || []).map(s => s.profiles).filter(Boolean);
     }
-    currentTargets = targets;
     if (targets.length > 0) {
       html += `
         <div class="card">
@@ -396,15 +359,18 @@ async function renderPage() {
   }
 
   html += `
+    <button id="toggle-side" onclick="document.getElementById('side').classList.toggle('collapsed')">👥 Participantes</button>
     <div id="rooms-bar"></div>
-    <div style="display:flex;gap:6px;margin-bottom:6px;">
-      <button id="toggle-side" onclick="document.getElementById('side').classList.toggle('collapsed')" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;">👥 Participantes</button>
-    </div>
-    <div id="irc" class="notranslate" translate="no">
+    <div id="irc">
       <div id="side" class="card">
         <h3 id="ptitle">Participantes (${people.length})</h3>
         <div id="plist"></div>
       </div>
+      <div id="main">
+        <div id="msgs"></div>
+        <div id="inputrow"></div>
+      </div>
+    </div>
   `;
 
   content.innerHTML = html;
@@ -417,8 +383,8 @@ async function renderPage() {
 function renderParticipants() {
   const box = document.getElementById('plist');
   const title = document.getElementById('ptitle');
+  if (!box) return;
   if (title) title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
-
   box.innerHTML = people.map(p => {
     const n = nameFor(p.id);
     const chatMuted = p.chat_muted || false;
@@ -428,18 +394,17 @@ function renderParticipants() {
     const canMute = p.id !== me && p.role === 'submissive' && (isSuper || ((isMod || isChatMod) && !owned));
     const isBannedHere = (window._roomBans || []).find(b => b.user_id === p.id);
     const canBan = p.id !== me && (isSuper || isMod || isChatMod);
-        const roomMuted = (window._roomMutes || new Set()).has(p.id);
-    const canDom = p.id !== me && myDominion.has(p.id);
-
+    const roomMuted = (window._roomMutes || new Set()).has(p.id);
+    const canDom = p.id !== me && ownedSet.has(p.id);
     return `
       <div class="prow">
-        <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : colorFor(n)}">
-          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Moderador de chat">🎙</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}${roomMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO EN ESTA SALA)</span>' : ''}
+        <span style="color:${isMuzzled ? '#dc2626' : chatMuted ? '#f59e0b' : '#d4d4d8'}">
+          ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${chatModIds.has(p.id) ? ' <span style="color:#4ade80;font-size:11px;" title="Perro Guardián">⛓‍🦺</span>' : ''}${isMuzzled ? ' <span style="color:#dc2626;font-weight:700;">(AMORDAZADO)</span>' : ''}${chatMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO)</span>' : ''}${roomMuted ? ' <span style="color:#f59e0b;font-weight:700;">(SILENCIADO EN ESTA SALA)</span>' : ''}
         </span>
         <span>
           ${canMute ? `<button class="p-act" title="${chatMuted ? 'Devolver la voz' : 'Silenciar'}" onclick="chatMuteToggle('${p.id}', ${!chatMuted})">${chatMuted ? '🔊' : '🔇'}</button>` : ''}
           ${canBan && !isBannedHere ? `<button class="p-act ban" title="Prohibir en esta sala" onclick="banFromRoom('${p.id}','${esc(n)}')">🚫</button>` : ''}
-                    ${canDom ? `<button class="p-act" title="${(p.chat_muted || roomMuted) ? 'Devolver la voz' : 'Silenciar'}" onclick="domMuteAsk('${p.id}', ${!(p.chat_muted || roomMuted)})">${(p.chat_muted || roomMuted) ? '🔊' : '🔇'}</button>` : ''}
+          ${canDom ? `<button class="p-act" title="${(p.chat_muted || roomMuted) ? 'Devolver la voz' : 'Silenciar'}" onclick="domMuteAsk('${p.id}', ${!(p.chat_muted || roomMuted)})">${(p.chat_muted || roomMuted) ? '🔊' : '🔇'}</button>` : ''}
           ${isBannedHere ? `<button class="p-act ok" title="Levantar ban (por ${isBannedHere.banned_by_role})" onclick="liftRoomBan('${isBannedHere.id}','${isBannedHere.banned_by_role}')">✓ readmitir</button>` : ''}
         </span>
       </div>
@@ -450,58 +415,39 @@ function renderParticipants() {
 async function renderInputRow() {
   const row = document.getElementById('inputrow');
   if (!row) return;
-
   if (currentRoomId) {
     const currentRoom = rooms.find(r => r.id === currentRoomId);
     if (currentRoom && currentRoom.is_private) {
-      const { data: isMember } = await db.from('chat_room_members')
-        .select('user_id').eq('room_id', currentRoomId).eq('user_id', me).maybeSingle();
-      if (!isMember && !isSuper) {
-        row.innerHTML = '<p class="small" style="color:#dc2626;">🔒 Sala privada: solo miembros invitados pueden escribir.</p>';
-        return;
-      }
+      const { data: isMember } = await db.from('chat_room_members').select('user_id').eq('room_id', currentRoomId).eq('user_id', me).maybeSingle();
+      if (!isMember && !isSuper) { row.innerHTML = '<p class="small" style="color:#dc2626;">🔒 Sala privada: solo miembros invitados pueden escribir.</p>'; return; }
     }
   }
-
   const myBan = (window._roomBans || []).find(b => b.user_id === me);
-  if (myBan) {
-    row.innerHTML = `<p class="small" style="color:#dc2626;">🚫 Tu acceso a esta sala está prohibido por ${esc(myBan.banned_by_role)}${myBan.reason ? ' · motivo: ' + esc(myBan.reason) : ''}.</p>`;
-    return;
-  }
-
-    if ((window._roomMutes || new Set()).has(me)) {
-    row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Tu Dueña te silenció en esta sala.</p>';
-    return;
-  }
+  if (myBan) { row.innerHTML = `<p class="small" style="color:#dc2626;">🚫 Tu acceso a esta sala está prohibido por ${esc(myBan.banned_by_role)}${myBan.reason ? ' · motivo: ' + esc(myBan.reason) : ''}.</p>`; return; }
+  if ((window._roomMutes || new Set()).has(me)) { row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Tu Dueña te silenció en esta sala.</p>'; return; }
   const { data: myProfileData } = await db.from('profiles').select('chat_muted').eq('id', me).maybeSingle();
-  if (myProfileData && myProfileData.chat_muted) {
-    row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Has sido silenciado por el Staff. No puedes participar en el chat.</p>';
-    return;
-  }
-
+  if (myProfileData && myProfileData.chat_muted) { row.innerHTML = '<p class="small" style="color:#f59e0b;">🔇 Has sido silenciado por el Staff. No puedes participar en el chat.</p>'; return; }
   const { data: myRel } = await db.from('relationships').select('is_muzzled').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
-  if (myRel && myRel.is_muzzled) {
-    row.innerHTML = '<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. No puedes participar en el chat.</p>';
-    return;
-  }
+  if (myRel && myRel.is_muzzled) { row.innerHTML = '<p class="small" style="color:#dc2626;">🔇 Estás amordazado por tu Dominante. No puedes participar en el chat.</p>'; return; }
 
   row.innerHTML = `
     <div id="emoji-panel">
       <div class="emo-cat">Caras</div>
-      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','','😘','😜','🤔','😏','😎','🥺','','😭','😡','🤯','','😴','🤤'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['😀','😁','😂','🤣','😊','😍','😘','😜','🤔','😏','😎','🥺','😭','😡','🤯','😴'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Corazones y gestos</div>
-      <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💖','💕','💘','👑','⛓','🔥','✨','💫','⭐','🌟','💎'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['❤️','🧡','💛','💚','💙','💜','🖤','🤍','','💖','💕','💘','','⛓','🔥','✨'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Manos</div>
-      <div class="emo-grid">${['👍','👎','👏','','🤝','','✌️','','🤟','','👊','✊','🤛','🤜','👋','💪','🙌','👐','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['👍','👎','','🤝','️','','👊','','🤛','','👋','','🙌','👐','🤲',''].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="emo-cat">Objetos</div>
-      <div class="emo-grid">${['🌹','🍷','🍾','🎂','🎁','🎉','🎊','🎵','🎶','📷','💌','📱','💻','⚡','☕','🍫','🍓','🌙','🗝','⚔️'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="emo-grid">${['🌹','🍷','','🎂','','🎉','','🎵','','📷','','📱','💻','⚡','','🍫'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
     </div>
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
     <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
     <button id="emoji-btn" type="button" title="Emojis" onclick="toggleEmoji(event)">😀</button>
     <button id="gif-btn" type="button" title="GIF" onclick="openGifPicker()">GIF</button>
     <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
-    <button id="sendbtn" onclick="sendMsg()">Enviar</button>  `;
+    <button id="sendbtn" onclick="sendMsg()">Enviar</button>
+  `;
   document.addEventListener('click', closeEmojiOutside, true);
 }
 
@@ -511,9 +457,7 @@ async function attachChat(input){
   const { error } = await db.storage.from('chat-media').upload(path, file);
   if (error) return alert(error.message);
   const url = db.storage.from('chat-media').getPublicUrl(path).data.publicUrl;
-  const { error: e2 } = await db.from('chat_media_pending').insert({
-    user_id: me, url, type: file.type.startsWith('video') ? 'video' : 'image'
-  });
+  const { error: e2 } = await db.from('chat_media_pending').insert({ user_id: me, url, type: file.type.startsWith('video') ? 'video' : 'image' });
   if (e2) return alert(e2.message);
   alert('📎 Archivo enviado a revisión.\nUn Moderador de chat, Moderadora o Administradora deberá aprobarlo antes de publicarse.');
   input.value = '';
@@ -528,12 +472,8 @@ async function mediaDecide(id, approve){
 async function loadMessages() {
   const box = document.getElementById('msgs');
   if (!box || !currentRoomId) return;
-
   const myBan = (window._roomBans || []).find(b => b.user_id === me);
-  if (myBan) {
-    box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`;
-    return;
-  }
+  if (myBan) { box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`; return; }
 
   const { data } = await db.from('chat_messages_public')
     .select('*')
@@ -566,17 +506,24 @@ async function loadMessages() {
         <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>
         ${esc(bodyText)}
         ${att}
-        ${canDel ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}    `;
+        ${canDel ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
+      </div>`;
   }).join('') || '<p class="small">Todavía no hay mensajes en esta sala. Sé el primero en hablar.</p>';
 
   box.scrollTop = box.scrollHeight;
+}
+
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return 'hsl(' + h + ',70%,65%)';
 }
 
 async function sendMsg() {
   const input = document.getElementById('msg');
   const body = input.value.trim();
   if (!body || !currentRoomId) return;
-    if ((window._roomMutes || new Set()).has(me)) return alert('🔇 Estás silenciado en esta sala.');
+  if ((window._roomMutes || new Set()).has(me)) return alert('🔇 Estás silenciado en esta sala.');
   const { error } = await db.from('chat_messages').insert({ user_id: me, body, room_id: currentRoomId });
   if (error) return alert(error.message);
   input.value = '';
@@ -592,9 +539,7 @@ async function deleteMsg(id) {
 async function chatMuteToggle(id, shouldMute) {
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   if (shouldMute) {
-    const { error } = await db.from('profiles').update({
-      chat_muted: true, chat_muted_by: me, chat_muted_by_role: myRole
-    }).eq('id', id);
+    const { error } = await db.from('profiles').update({ chat_muted: true, chat_muted_by: me, chat_muted_by_role: myRole }).eq('id', id);
     if (error) return alert(error.message);
   } else {
     const { data } = await db.rpc('lift_chat_mute', { target_user_id: id, lifter_role: myRole });
@@ -625,9 +570,7 @@ async function banFromRoom(userId, name) {
   if (!currentRoomId) return;
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   const reason = prompt(`Motivo del ban a ${name} en esta sala (opcional):`) || null;
-  const { error } = await db.from('chat_room_bans').insert({
-    room_id: currentRoomId, user_id: userId, banned_by: me, banned_by_role: myRole, reason
-  });
+  const { error } = await db.from('chat_room_bans').insert({ room_id: currentRoomId, user_id: userId, banned_by: me, banned_by_role: myRole, reason });
   if (error) return alert(error.message);
   await renderPage();
 }
@@ -685,8 +628,7 @@ function insertEmoji(e) {
 function openModal(html) {
   let m = document.getElementById('flr-modal');
   if (!m) {
-    m = document.createElement('div');
-    m.id = 'flr-modal';
+    m = document.createElement('div'); m.id = 'flr-modal';
     m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;';
     m.innerHTML = '<div style="background:#161625;border:1px solid #d4af37;border-radius:14px;padding:22px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;"></div>';
     document.body.appendChild(m);
@@ -694,7 +636,6 @@ function openModal(html) {
   m.querySelector('div').innerHTML = html;
   m.style.display = 'flex';
 }
-
 function closeModal() {
   const m = document.getElementById('flr-modal');
   if (m) m.style.display = 'none';
