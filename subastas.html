@@ -50,6 +50,13 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null, myProfile = null, people = {}, auctions = [], mySubs = [];
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function sortByName(list){
+  return [...list].sort((a,b) => {
+    const na = (a.profiles?.display_name || a.display_name || '');
+    const nb = (b.profiles?.display_name || b.display_name || '');
+    return na.localeCompare(nb, 'es', {sensitivity:'base'});
+  });
+}
 function nameOf(id){ return (people[id] || {}).display_name || '?'; }
 function avaOf(id, fb){
   const u = (people[id] || {}).avatar_url;
@@ -168,7 +175,7 @@ async function render(){
         ${eligible.length ? `
           <select id="auc-select">
             <option value="">Elige a tu sumiso...</option>
-            ${eligible.map(s => `<option value="${s.id}">⛓ ${esc(s.profiles.display_name)}</option>`).join('')}
+            ${sortByName(eligible).map(s => `<option value="${s.id}">⛓ ${esc(s.profiles.display_name)}</option>`).join('')}
           </select>
           <button onclick="createAuction()">🔨 Abrir subasta</button>
         ` : '<p class="small">No tienes sumisos elegibles (sin marca de subasta ni subastas abiertas).</p>'}
