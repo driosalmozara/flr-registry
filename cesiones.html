@@ -39,6 +39,12 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let me = null, myProfile = null, people = [], transfers = [], mySubs = [];
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function sortUsers(list){
+  return [...list].sort((a,b) => {
+    if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
+    return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'});
+  });
+}
 function name(id){ const p = people.find(x=>x.id===id); return p ? p.display_name : '?'; }
 async function authHeaders(){ const { data:{session} } = await db.auth.getSession(); return session ? { Authorization: 'Bearer ' + session.access_token } : null; }
 
@@ -78,8 +84,8 @@ async function render(){
         <p class="small">La cesión modifica automáticamente contrato y carnet. La nota con condiciones especiales es optativa.</p>
         ${mySubs.length ? `
         <div class="row">
-          <div><label class="small">Sumiso</label><select id="tr_sub">${mySubs.map(s=>`<option value="${s.id}">⛓ ${esc(s.display_name)}</option>`).join('')}</select></div>
-          <div><label class="small">Dominante receptora</label><select id="tr_dom">${people.filter(x=>x.role==='dominant'&&x.id!==me).map(d=>`<option value="${d.id}">♛ ${esc(d.display_name)}</option>`).join('')}</select></div>
+          <div><label class="small">Sumiso</label><select id="tr_sub">${sortUsers(mySubs).map(s=>`<option value="${s.id}">⛓ ${esc(s.display_name)}</option>`).join('')}</select></div>
+          <div><label class="small">Dominante receptora</label><select id="tr_dom">${sortUsers(people.filter(x=>x.role==='dominant'&&x.id!==me)).map(d=>`<option value="${d.id}">♛ ${esc(d.display_name)}</option>`).join('')}</select></div>
         </div>
         <div class="row">
           <div>
