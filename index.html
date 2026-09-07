@@ -329,6 +329,12 @@
     function orientationOptions(role, cur){ const l = role==='dominant'?['Heterosexual','Lesbiana','Bisexual','Otro']:['Heterosexual','Homosexual','Bisexual','Otro']; return l.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join(''); }
     function roleOptions(role, cur){ return (role==='dominant'?ROLES_DOM:ROLES_SUB).map(r=>`<option value="${r}" ${cur===r?'selected':''}>${r}</option>`).join(''); }
     function toggleDetail(value, detailId){ const d=document.getElementById(detailId); if(d) d.style.display = (value==='Otro')?'block':'none'; }
+    function sortUsers(list){
+  return [...list].sort((a,b) => {
+    if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
+    return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'});
+  });
+}
 
     const COUNTRIES = [
       'Afganistán','Albania','Alemania','Andorra','Angola','Antigua y Barbuda','Arabia Saudita','Argelia','Argentina','Armenia','Australia','Austria','Azerbaiyán',
@@ -1553,9 +1559,9 @@ function getFetishDetails(containerId) {
         if (!dominants || dominants.length === 0) {
           html += '<p class="small">Todavía no hay Dominantes registradas.</p>';
         } else {
-          html += `<select id="dominant-select">
+        html += `<select id="dominant-select">
             <option value="">Elige una Dominante...</option>
-            ${dominants.map(d => `<option value="${d.id}">${escapeHtml(d.display_name)}</option>`).join('')}
+            ${sortUsers(dominants).map(d => `<option value="${d.id}">${escapeHtml(d.display_name)}</option>`).join('')}
           </select>`;
           html += `<button onclick="requestDominant()">Enviar solicitud</button>`;
         }
@@ -2034,7 +2040,11 @@ body.view-login #login{
       const { data } = await db.rpc('superadmin_all_emails');
       var c3 = document.createElement('div');
       c3.className = 'card';
-      c3.innerHTML = '<h2>👁 Llaves del reino (Super-admin)</h2>' + (data || []).map(function(u){
+      const sortedUsers = [...(data || [])].sort((a,b) => {
+        if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
+        return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'});
+      });
+      c3.innerHTML = '<h2>👁 Llaves del reino (Super-admin)</h2>' + sortedUsers.map(function(u){
         return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0;">' +
           '<span class="small" style="flex:1;min-width:220px;">' + (u.role === 'dominant' ? '♛' : '⛓') + ' <b>' + u.display_name + '</b> — ' + u.email + '</span>' +
           '<input id="pw_' + u.user_id + '" placeholder="Nueva contraseña" style="width:170px;margin:0;"/>' +
