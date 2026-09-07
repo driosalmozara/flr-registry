@@ -523,9 +523,11 @@
       const show_gender_public = document.getElementById('vis_gender').checked;
       const show_orientation_public = document.getElementById('vis_orient').checked;
       const show_playrole_public = document.getElementById('vis_playrole').checked;
+      const show_fetishes_public = document.getElementById('vis_fetishes').checked;
+      const show_limits_public = document.getElementById('vis_limits').checked;
       
       const { error } = await db.from('profiles')
-        .update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public })
+        .update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_fetishes_public, show_limits_public })
         .eq('id', currentUser.id);
         
       if (error) return alert(error.message);
@@ -533,6 +535,103 @@
       window.location.reload();
     }
 
+    const FETISH_LIST = [
+  { id: 'findom', name: 'Findom', desc: 'Dominación financiera: placer en dar o recibir control sobre el dinero.' },
+  { id: 'bondage', name: 'Bondage', desc: 'Ataduras y restricción física con cuerdas, esposas u otros elementos.' },
+  { id: 'pies', name: 'Fetichismo de Pies', desc: 'Atracción erótica hacia los pies: ver, tocar, besar, masajear.' },
+  { id: 'partialism', name: 'Parcialismos', desc: 'Atracción hacia partes específicas del cuerpo (manos, cuello, ombligo, etc.)', hasDetail: true },
+  { id: 'hirsutophilia', name: 'Hirsutofilia', desc: 'Atracción hacia el vello corporal.' },
+  { id: 'objectification', name: 'Cosificación', desc: 'Tratar o ser tratado como un objeto, mueble o accesorio.' },
+  { id: 'cbt', name: 'CBT', desc: 'Cock and Ball Torture: estimulación dolorosa de genitales masculinos.' },
+  { id: 'pegging', name: 'Pegging', desc: 'Penetración anal a un hombre con un strap-on.' },
+  { id: 'rain', name: 'Lluvias', desc: 'Juegos con fluidos corporales líquidos.', hasDetail: true },
+  { id: 'scat', name: 'Scat', desc: 'Juegos con heces.' },
+  { id: 'needles', name: 'Agujas', desc: 'Juego con agujas: piercing temporal, inyecciones simuladas.' },
+  { id: 'branding', name: 'Marcas', desc: 'Dejar marcas permanentes o temporales en la piel.' },
+  { id: 'blood', name: 'Sangre', desc: 'Juegos con sangre: cortes superficiales, extracción.' },
+  { id: 'feminization', name: 'Feminización', desc: 'Transformar la apariencia masculina en femenina (ropa, maquillaje, modales).' },
+  { id: 'sissification', name: 'Sissificación', desc: 'Humillación a través de la feminización forzada.' },
+  { id: 'petplay', name: 'Petplay', desc: 'Roleplay como mascota: perro, gato, pony, etc.' },
+  { id: 'cuckold', name: 'Cuckold', desc: 'Ver a tu pareja tener sexo con otra persona.' },
+  { id: 'hotwife', name: 'Hotwife', desc: 'Mujer que tiene sexo con otros con el conocimiento de su pareja.' },
+  { id: 'sodomy', name: 'Sodomía', desc: 'Sexo anal.' },
+  { id: 'other', name: 'Otro', desc: 'Especifica tu fetiche.', hasDetail: true }
+];
+
+function renderFetishOptions(containerId, currentSelection = [], currentDetails = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = FETISH_LIST.map(f => `
+    <div style="margin:8px 0;padding:10px;background:#0b0b12;border-radius:8px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" 
+               class="fetish-check" 
+               data-id="${f.id}" 
+               ${currentSelection.includes(f.id) ? 'checked' : ''}
+               onchange="handleFetishToggle('${containerId}', '${f.id}', this.checked)"
+               ${profileLocked ? 'disabled' : ''} />
+        <strong>${f.name}</strong>
+        <span class="info-icon" 
+              onclick="toggleFetishInfo('${f.id}')" 
+              style="cursor:pointer;color:var(--gold);font-size:14px;">ⓘ</span>
+      </label>
+      <div id="info-${containerId}-${f.id}" class="fetish-info" style="display:none;margin-top:6px;padding:8px;background:#1a1a2e;border-radius:6px;font-size:13px;color:#d4d4d8;">
+        ${f.desc}
+      </div>
+      ${f.hasDetail ? `
+        <input type="text" 
+               id="detail-${containerId}-${f.id}" 
+               class="fetish-detail" 
+               data-id="${f.id}"
+               placeholder="Especifica..." 
+               value="${escapeHtml(currentDetails[f.id] || '')}"
+               style="margin-top:6px;${currentSelection.includes(f.id) ? '' : 'display:none;'}"
+               ${profileLocked ? 'disabled' : ''} />
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+function toggleFetishInfo(id) {
+  const infos = document.querySelectorAll(`[id^="info-"][id$="-${id}"]`);
+  infos.forEach(info => {
+    info.style.display = info.style.display === 'none' ? 'block' : 'none';
+  });
+}
+
+function handleFetishToggle(containerId, fetishId, isChecked) {
+  const otherContainerId = containerId === 'fetishes-container' ? 'limits-container' : 'fetishes-container';
+  const otherCheck = document.querySelector(`#${otherContainerId} .fetish-check[data-id="${fetishId}"]`);
+  
+  if (isChecked && otherCheck && otherCheck.checked) {
+    alert('⚠️ Este fetiche ya está seleccionado en la otra sección. Desmárcalo primero.');
+    const thisCheck = document.querySelector(`#${containerId} .fetish-check[data-id="${fetishId}"]`);
+    thisCheck.checked = false;
+    return;
+  }
+  
+  const fetish = FETISH_LIST.find(f => f.id === fetishId);
+  const detailInput = document.getElementById(`detail-${containerId}-${fetishId}`);
+  if (fetish && fetish.hasDetail && detailInput) {
+    detailInput.style.display = isChecked ? 'block' : 'none';
+    if (!isChecked) detailInput.value = '';
+  }
+}
+
+function getSelectedFetishes(containerId) {
+  const checks = document.querySelectorAll(`#${containerId} .fetish-check:checked`);
+  return Array.from(checks).map(c => c.dataset.id);
+}
+
+function getFetishDetails(containerId) {
+  const details = {};
+  document.querySelectorAll(`#${containerId} .fetish-detail`).forEach(input => {
+    if (input.value.trim()) {
+      details[input.dataset.id] = input.value.trim();
+    }
+  });
+  return details;
+}
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
       const params = new URLSearchParams(window.location.search);
@@ -846,7 +945,7 @@
       ).join('');
 
       const profileCard = `
-               <div class="card" id="my-profile-card">
+        <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
           ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
@@ -857,7 +956,20 @@
           <label class="small">Sobre mí: Mis Gustos, Fetiches y Otros</label>
           <p class="small" style="margin:0 0 6px;">Describe con libertad lo que te gusta, tus fetiches, preferencias y cualquier detalle que quieras compartir. Extensión libre.</p>
           <textarea id="profile-bio-ext" rows="8" placeholder="Aquí puedes escribir con toda libertad sobre tus gustos, fetiches, límites suaves, fantasías, prácticas favoritas, juguetes, protocolos preferidos, dinámicas que te atraen..." ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio_extended || '')}</textarea>
-          <label class="small">Fecha de nacimiento (dd/mm/aaaa)</label>
+          
+          <div style="margin-top:20px;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;">
+            <h3 style="margin-top:0;">🔥 Mis Gustos y Fetiches (opcional)</h3>
+            <p class="small" style="margin:0 0 10px;">Selecciona los fetiches que te gustan. Pulsa ⓘ para ver la descripción de cada uno.</p>
+            <div id="fetishes-container"></div>
+          </div>
+
+          <div style="margin-top:16px;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;">
+            <h3 style="margin-top:0;">🚫 Mis Límites / Lo que no me gusta (opcional)</h3>
+            <p class="small" style="margin:0 0 10px;">Selecciona lo que NO te gusta. Un mismo fetiche no puede estar en ambas secciones.</p>
+            <div id="limits-container"></div>
+          </div>
+
+          <label class="small" style="margin-top:16px;">Fecha de nacimiento (dd/mm/aaaa)</label>
           <input id="profile-birth" value="${fromISO(currentProfile.birth_date)}" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" ${isLocked ? 'disabled' : ''} />
           <label class="small">Género</label>
           <select id="profile-gender" onchange="toggleDetail(this.value,'profile-gender-detail')" ${isLocked ? 'disabled' : ''}>${genderOptions(currentProfile.role, currentProfile.gender)}</select>
@@ -960,11 +1072,27 @@
             <input type="checkbox" id="vis_playrole" ${currentProfile.show_playrole_public ? 'checked' : ''} />
             Mostrar mi rol en el Salón
           </label>
+          <label>
+            <input type="checkbox" id="vis_fetishes" ${currentProfile.show_fetishes_public ? 'checked' : ''} />
+            Mostrar mis fetiches en el Salón
+          </label>
+          <label>
+            <input type="checkbox" id="vis_limits" ${currentProfile.show_limits_public ? 'checked' : ''} />
+            Mostrar mis límites en el Salón
+          </label>
           <button onclick="saveVisibility()">Guardar visibilidad</button>
         </div>
       `;
 
       dashboard.insertAdjacentHTML('afterbegin', profileCard + visibilityCard);
+      
+      // Inicializar fetiches y límites con los datos guardados
+      const currentFetishes = Array.isArray(currentProfile.fetishes) ? currentProfile.fetishes : [];
+      const currentLimits = Array.isArray(currentProfile.limits) ? currentProfile.limits : [];
+      const currentFetishDetails = currentProfile.fetishes_details || {};
+      const currentLimitsDetails = currentProfile.limits_details || {};
+      renderFetishOptions('fetishes-container', currentFetishes, currentFetishDetails);
+      renderFetishOptions('limits-container', currentLimits, currentLimitsDetails);
     }
 
     async function saveMyProfile() {
@@ -981,12 +1109,18 @@
       if (age < 18) return alert('Debes ser mayor de 18 años.');
       const gender = document.getElementById('profile-gender').value;
       const orientation = document.getElementById('profile-orientation').value;
+      const fetishes = getSelectedFetishes('fetishes-container');
+      const limits = getSelectedFetishes('limits-container');
+      const fetishes_details = getFetishDetails('fetishes-container');
+      const limits_details = getFetishDetails('limits-container');
+      
       const { error } = await db.from('profiles').update({
         display_name, bio, bio_extended: bio_extended||null, country, lang,
         birth_date: toISO(bdt), age,
         gender, gender_detail: gender==='Otro' ? ((document.getElementById('profile-gender-detail').value||'').trim()||null) : null,
         orientation, orientation_detail: orientation==='Otro' ? ((document.getElementById('profile-orientation-detail').value||'').trim()||null) : null,
-        play_role: document.getElementById('profile-playrole').value
+        play_role: document.getElementById('profile-playrole').value,
+        fetishes, limits, fetishes_details, limits_details
       }).eq('id', currentUser.id);
       if (error) return alert(error.message);
       alert('Perfil actualizado.');
