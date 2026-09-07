@@ -416,7 +416,7 @@
             <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
               <span>${icon}</span>
               <b style="min-width:80px;">${platform}:</b>
-              <span style="flex:1;">${escapeHtml(c.value)}</span>
+              <button onclick="window.open('${escapeHtml(socialHref(c))}','_blank','noopener')" style="flex:1;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;">🔗 Abrir perfil</button>
               ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
             </div>
           `;
@@ -434,8 +434,8 @@
           return `
             <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
               <span>${icon}</span>
-              <b style="min-width:80px;">${platform}:</b>
-              <button onclick="window.open('${escapeHtml(socialHref(c))}','_blank','noopener')" style="flex:1;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;">🔗 Abrir perfil</button>
+              <b style="min-width:80px;">${c.contact_type}:</b>
+              <span style="flex:1;">${escapeHtml(display)}</span>
               ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
             </div>
           `;
