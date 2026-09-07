@@ -484,7 +484,7 @@ function getClient(){
   var OTHERS = [
     ['muro.html', 'Muro'],
     // disponible.html eliminado: ahora vive dentro del Salón y de Mi perfil
-    ['avatar.html', 'Mi avatar'],
+    // avatar.html eliminado: la foto vive dentro de Mi perfil (index.html#my-profile-card)
     { title: 'Gestión de sumisos en propiedad', items: [
       ['disciplina.html', '⚖ Disciplina'],
       ['contrato.html', '📜 Contrato'],
