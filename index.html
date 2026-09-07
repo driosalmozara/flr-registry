@@ -197,9 +197,23 @@
               <input type="checkbox" style="width:auto;margin:0;" onclick="togglePass('reg-password', this.checked)" />
               Ver contraseña
             </label>
-            <label class="small">Redes sociales / contacto (opcional)</label>
-            <input id="reg-social" placeholder="Ej: Instagram @usuario · WhatsApp +52..." />
-            <label class="small">
+            <label class="small">📱 Mis Redes Sociales (opcional)</label>
+            <div id="reg-contacts-list"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select id="reg-platform-select" style="width:auto;min-width:150px;margin:0;">
+                <option value="">Seleccionar red...</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="x">X (Twitter)</option>
+                <option value="threads">Threads</option>
+                <option value="tiktok">TikTok</option>
+                <option value="snapchat">Snapchat</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="custom">Otra red...</option>
+              </select>
+              <button type="button" onclick="addRegSocial()">+ Agregar</button>
+            </div>
+            <label class="small" style="margin-top:8px;">
               <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
               Mostrar mi país y redes en el Salón de miembros
             </label>
@@ -472,6 +486,39 @@
       return icons[platform] || '🌐';
     }
 
+    let regContacts = [];
+    function renderRegContacts(){
+      const box = document.getElementById('reg-contacts-list');
+      if (!box) return;
+      if (!regContacts.length) { box.innerHTML = '<p class="small">No has agregado redes sociales.</p>'; return; }
+      box.innerHTML = regContacts.map((c,i) => `
+        <div style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
+          <span>${getSocialIcon(c.platform)}</span>
+          <b style="min-width:80px;">${escapeHtml(c.platform === 'custom' ? c.custom_platform : c.platform)}:</b>
+          <span style="flex:1;">${escapeHtml(c.value)}</span>
+          <button type="button" onclick="removeRegSocial(${i})" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>
+        </div>
+      `).join('');
+    }
+    function addRegSocial(){
+      const sel = document.getElementById('reg-platform-select');
+      const platform = sel.value;
+      if (!platform) return alert('Selecciona una red social.');
+      let customPlatform = null;
+      if (platform === 'custom') {
+        customPlatform = prompt('Nombre de la red social:');
+        if (!customPlatform) return;
+      }
+      const value = prompt(`Usuario o enlace de ${platform === 'custom' ? customPlatform : platform}:`);
+      if (!value) return;
+      regContacts.push({ platform, custom_platform: customPlatform, value });
+      sel.value = '';
+      renderRegContacts();
+    }
+    function removeRegSocial(i){
+      regContacts.splice(i,1);
+      renderRegContacts();
+    }
     function getContactIcon(type) {
       const icons = {
         phone: '📞',
@@ -747,6 +794,7 @@ function getFetishDetails(containerId) {
       if (w) { w.classList.remove('hidden'); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       renderFetishOptions('reg-fetishes-container', [], {}, false);
       renderFetishOptions('reg-limits-container', [], {}, false);
+            renderRegContacts();
     }
     function hideRegister(ev) {
       if (ev) ev.preventDefault();
@@ -855,7 +903,6 @@ function getFetishDetails(containerId) {
       const email = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
       const consent = document.getElementById('reg-consent').checked;
-      const social_links = document.getElementById('reg-social').value.trim();
       const social_links_public = document.getElementById('reg-social-public').checked;
       const lang = document.getElementById('reg-lang').value;
       const gender = document.getElementById('reg-gender').value;
@@ -872,7 +919,7 @@ function getFetishDetails(containerId) {
 
       const { error: profileError } = await db.rpc('register_profile', {
         p_id: data.user.id, p_role: role, p_display_name: display_name, p_age: age, p_country: country,
-        p_social_links: social_links || null, p_social_links_public: social_links_public,
+        p_social_links: null, p_social_links_public: social_links_public,
         p_lang: lang, p_gender: gender
       });
       if (profileError) return alert('Perfil: ' + profileError.message);
@@ -888,6 +935,11 @@ function getFetishDetails(containerId) {
         fetishes_details: getFetishDetails('reg-fetishes-container'),
         limits_details: getFetishDetails('reg-limits-container')
       }).eq('id', data.user.id);
+            if (regContacts.length) {
+        const rows = regContacts.map(c => ({ user_id: data.user.id, contact_type: 'social', platform: c.platform, custom_platform: c.custom_platform, value: c.value }));
+        await db.from('member_contacts').insert(rows);
+        regContacts = [];
+      }
 
       if (role === 'dominant') {
         const regOn = await regLockIsOn();
