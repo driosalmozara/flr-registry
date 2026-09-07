@@ -28,6 +28,9 @@
     .hidden { display: none; }
     .ava { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex: none; background: #0b0b12; }
     .ava.empty { display: flex; align-items: center; justify-content: center; background: #161625; color: var(--gold); font-size: 22px; }
+        img.avatar-preview { width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); background: #0b0b12; display: block; margin: 0 auto 10px; }
+    .avatar-block { text-align: center; padding: 14px; margin-bottom: 16px; background: #0f0f1a; border: 1px solid var(--line); border-radius: 12px; }
+    .avatar-block input[type=file] { color: #a1a1aa; display: block; margin: 10px auto; }
     .rowitem { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
     #tour-offer{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99989}
     #tour-spot{position:absolute;border:2px solid var(--gold);border-radius:12px;
@@ -89,7 +92,7 @@
       <a style="color:#d4af37;text-decoration:none;" href="chat.html">Chat</a>
       <a style="color:#d4af37;text-decoration:none;" href="mensajes.html">Mensajes</a>
       <a style="color:#d4af37;text-decoration:none;" href="notificaciones.html">Notificaciones</a>
-      <a style="color:#d4af37;text-decoration:none;" href="avatar.html">Mi avatar</a>
+      <a style="color:#d4af37;text-decoration:none;" href="index.html#my-profile-card">Mi foto de perfil</a>
       <a style="color:#d4af37;text-decoration:none;" href="disciplina.html">Disciplina</a>
       <a style="color:#d4af37;text-decoration:none;" href="contrato.html">Contrato</a>
       <a style="color:#d4af37;text-decoration:none;" href="carnet.html">Carnet</a>
@@ -387,6 +390,31 @@
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+        function extOf(name){
+      const m = (name || '').split('.').pop();
+      return (m || 'png').replace(/[^a-zA-Z0-9]/g,'').slice(0,8) || 'png';
+    }
+    async function uploadMyAvatar() {
+      const file = document.getElementById('myFile').files[0];
+      if (!file) return alert('Selecciona una imagen.');
+      if (!file.type.startsWith('image/')) return alert('El archivo debe ser una imagen.');
+      const oldUrl = currentProfile.avatar_url || '';
+      const path = currentUser.id + '/' + Date.now() + '.' + extOf(file.name);
+      const { error } = await db.storage.from('avatars').upload(path, file);
+      if (error) return alert(error.message);
+      const { data } = db.storage.from('avatars').getPublicUrl(path);
+      const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', currentUser.id);
+      if (updateError) return alert(updateError.message);
+      if (oldUrl) {
+        try {
+          const oldPath = decodeURIComponent(oldUrl.split('/avatars/')[1] || '');
+          if (oldPath) await db.storage.from('avatars').remove([oldPath]);
+        } catch(e){}
+      }
+      currentProfile.avatar_url = data.publicUrl;
+      document.getElementById('myAvatar').src = data.publicUrl + '?t=' + Date.now();
+      alert('Foto de perfil actualizada.');
+    }
     function avatarHTML(url, fallback) {
       if (url) return `<img class="ava" src="${escapeHtml(url)}" />`;
       return `<div class="ava empty">${fallback}</div>`;
@@ -1043,6 +1071,17 @@ function getFetishDetails(containerId) {
       const profileCard = `
         <div class="card" id="my-profile-card">
           <h2>Mi perfil</h2>
+          <div class="avatar-block">
+            <h3 style="margin:0 0 10px;">📸 Mi foto de perfil</h3>
+            <img class="avatar-preview" id="myAvatar" src="${escapeHtml(currentProfile.avatar_url || '')}" onerror="this.style.display='none'" />
+            ${!isLocked ? `
+              <input type="file" id="myFile" accept="image/*" />
+              <button type="button" onclick="uploadMyAvatar()">Cambiar mi foto</button>
+              ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;margin-top:10px;">🕊 Tu Dueña te mantiene con autonomía: puedes cambiar tu foto.</p>' : ''}
+            ` : `
+              <p class="small" style="color:#fbbf24;margin-top:10px;">⚠ Tu Dominante gestiona tu foto de perfil. Contacta con ella si deseas cambios.</p>
+            `}
+          </div>
           ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
           ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
           <label class="small">Nombre público</label>
@@ -1700,7 +1739,7 @@ function getFetishDetails(containerId) {
         { sel: 'a[href="chat.html"]', t: 'Chat y salas', x: 'Además del salón general hay salas públicas, privadas y de Staff: crea la tuya, usa emojis, GIFs y adjuntos. El botón brilla en dorado cuando hay mensajes sin leer.' },
         { sel: 'a[href="mensajes.html"]', t: 'Mensajes', x: 'Conversaciones privadas con otros miembros. También brilla con no leídos.' },
         { sel: 'a[href="notificaciones.html"]', t: 'Notificaciones', x: 'Todo lo que te ocurre: solicitudes, disciplina, cesiones, subastas, aprobaciones del Staff y avisos del muro.' },
-        { sel: 'a[href="avatar.html"]', t: 'Mi avatar', x: 'Cambia tu fotografía de perfil.' },
+        { sel: 'a[href="index.html#my-profile-card"]', t: 'Mi foto de perfil', x: 'Cambia tu fotografía de perfil desde la parte superior de "Mi perfil".' },
         { sel: 'a[href="disciplina.html"]', t: 'Disciplina', x: 'Recompensas, castigos, mordaza y castidad con contador en vivo. Mientras dure la mordaza, ni el chat ni el muro aceptan tu voz.' },
         { sel: 'a[href="contrato.html"]', t: 'Contrato', x: 'El contrato simbólico entre Dominante y sumiso, con anexos de cesión y descarga en PDF.' },
         { sel: 'a[href="carnet.html"]', t: 'Carnet', x: 'Tu credencial oficial con QR: imprímela o descárgala en PDF.' },
