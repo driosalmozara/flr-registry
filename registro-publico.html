@@ -96,6 +96,21 @@ function fetishesHTML(p){
   }
   return out;
 }
+      function socialHref(c){
+      const v = (c.value||'').trim();
+      if (/^https?:\/\//i.test(v)) return v;
+      const user = v.replace(/^@/,'');
+      const map = {
+        facebook: 'https://facebook.com/' + user,
+        instagram: 'https://instagram.com/' + user,
+        x: 'https://x.com/' + user,
+        threads: 'https://threads.net/@' + user,
+        tiktok: 'https://tiktok.com/@' + user,
+        snapchat: 'https://snapchat.com/add/' + user,
+        linkedin: 'https://linkedin.com/in/' + user
+      };
+      return map[c.platform] || v;
+    }
   function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
   function staffIcons(userId){
   let s = '';
@@ -173,10 +188,9 @@ function contactsHTML(p){
   if (p.show_social_public) {
     const socials = list.filter(c => c.contact_type === 'social');
     if (socials.length) {
-      out += `<div class="chips">` + socials.map(c => {
+      out += `<div style="display:flex;flex-direction:column;gap:6px;margin:6px 0;">` + socials.map(c => {
         const label = c.platform === 'custom' ? c.custom_platform : c.platform;
-        const href = /^https?:/i.test(c.value) ? c.value : 'https://' + c.value;
-        return `<a class="chip" href="${esc(href)}" target="_blank" rel="noopener">${getSocialIcon(c.platform)} ${esc(label)}</a>`;
+        return `<button onclick="window.open('${esc(socialHref(c))}','_blank','noopener')" style="display:flex;align-items:center;gap:8px;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">${getSocialIcon(c.platform)} <b>${esc(label)}</b> <span style="margin-left:auto;">🔗 Abrir perfil</span></button>`;
       }).join('') + `</div>`;
     }
   }
