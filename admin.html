@@ -532,7 +532,7 @@ async function impersonate(id) {
         apikey: SUPABASE_ANON_KEY,
         Authorization: 'Bearer ' + session.access_token
       },
-      body: JSON.stringify({ user_id: id, redirect: window.location.origin + '/index.html' })
+      body: JSON.stringify({ user_id: id, redirect: window.location.origin + '/index.html?stay=1&imp=1' })
     });
   } catch (e) {
     localStorage.removeItem('flr_impersonating');
