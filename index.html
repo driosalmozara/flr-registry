@@ -340,6 +340,10 @@
       'Puerto Rico','Otro'
     ];
 
+        function getCookie(name) {
+      const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return m ? decodeURIComponent(m[2]) : null;
+    }
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -531,6 +535,21 @@
 
     async function init() {
       if (window.location.hash.includes('type=recovery')) { show('reset'); return; }
+      const params = new URLSearchParams(window.location.search);
+      const impFromUrl = params.get('imp') === '1';
+      const impFromCookie = getCookie('flr_impersonating') === '1';
+      const backupFromCookie = getCookie('flr_admin_backup');
+      
+      if (impFromUrl || impFromCookie) {
+        localStorage.setItem('flr_impersonating', '1');
+        if (backupFromCookie && !localStorage.getItem('flr_admin_backup')) {
+          localStorage.setItem('flr_admin_backup', backupFromCookie);
+        }
+        params.delete('imp');
+        const qs = params.toString();
+        history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+      }
+      
       const { data: { session } } = await db.auth.getSession();
       currentUser = session?.user || null;
       checkImpersonation(!!currentUser);
@@ -617,8 +636,8 @@
 
     function checkImpersonation(loggedIn) {
       const bar = document.getElementById('impbar');
-      const imp = localStorage.getItem('flr_impersonating') === '1';
-      const backup = !!localStorage.getItem('flr_admin_backup');
+      const imp = localStorage.getItem('flr_impersonating') === '1' || getCookie('flr_impersonating') === '1';
+      const backup = !!localStorage.getItem('flr_admin_backup') || !!getCookie('flr_admin_backup');
       if (loggedIn && (imp || backup)) bar.classList.remove('hidden');
       else bar.classList.add('hidden');
     }
@@ -626,10 +645,13 @@
     async function exitImpersonation() {
       const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
       const authKey = 'sb-' + ref + '-auth-token';
-      const backup = localStorage.getItem('flr_admin_backup');
+      const backup = localStorage.getItem('flr_admin_backup') || getCookie('flr_admin_backup');
       localStorage.removeItem('flr_impersonating');
       localStorage.removeItem('flr_admin_backup');
-      if (backup) localStorage.setItem(authKey, backup);
+      // Limpiar cookies también
+      document.cookie = 'flr_impersonating=; path=/; max-age=0';
+      document.cookie = 'flr_admin_backup=; path=/; max-age=0';
+      if (backup) localStorage.setItem(authKey, decodeURIComponent(backup));
       else localStorage.removeItem(authKey);
       window.location.href = 'index.html';
     }
