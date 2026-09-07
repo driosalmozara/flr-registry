@@ -1,0 +1,26 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "flr-registry.vercel.app"
+        }
+      ],
+      "destination": "https://www.queendomland.com/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "queendomland.com"
+        }
+      ],
+      "destination": "https://www.queendomland.com/$1",
+      "permanent": true
+    }
+  ]
+}
