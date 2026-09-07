@@ -203,6 +203,16 @@
               <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
               Mostrar mi país y redes en el Salón de miembros
             </label>
+                        <div style="margin:14px 0;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+              <h4 style="margin:0 0 6px;">🔥 Mis Gustos y Fetiches (opcional)</h4>
+              <p class="small" style="margin:0 0 8px;">Pulsa ⓘ para ver cada descripción.</p>
+              <div id="reg-fetishes-container"></div>
+            </div>
+            <div style="margin:10px 0;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+              <h4 style="margin:0 0 6px;">🚫 Mis Límites / Lo que no me gusta (opcional)</h4>
+              <p class="small" style="margin:0 0 8px;">Un mismo fetiche no puede estar en ambas secciones.</p>
+              <div id="reg-limits-container"></div>
+            </div>
             <label class="small">
               <input id="reg-consent" type="checkbox" style="width:auto; margin-right:6px;" />
               Soy mayor de edad y acepto los <a href="terminos.html" target="_blank" style="color:#d4af37;">Términos y Consentimiento</a>.
@@ -565,7 +575,7 @@
   { id: 'other', name: 'Otro', desc: 'Especifica tu fetiche.', hasDetail: true }
 ];
 
-function renderFetishOptions(containerId, currentSelection = [], currentDetails = {}) {
+function renderFetishOptions(containerId, currentSelection = [], currentDetails = {}, locked = profileLocked) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '<div class="fetish-grid">' + FETISH_LIST.map(f => `
@@ -576,7 +586,7 @@ function renderFetishOptions(containerId, currentSelection = [], currentDetails 
                data-id="${f.id}" 
                ${currentSelection.includes(f.id) ? 'checked' : ''}
                onchange="handleFetishToggle('${containerId}', '${f.id}', this.checked)"
-               ${profileLocked ? 'disabled' : ''} />
+               ${locked ? 'disabled' : ''} />
         <strong>${f.name}</strong>
         <span onclick="toggleFetishInfo('${containerId}','${f.id}')" 
               style="cursor:pointer;color:var(--gold);font-size:13px;margin-left:auto;">ⓘ</span>
@@ -590,7 +600,7 @@ function renderFetishOptions(containerId, currentSelection = [], currentDetails 
                placeholder="Especifica..." 
                value="${escapeHtml(currentDetails[f.id] || '')}"
                style="${currentSelection.includes(f.id) ? '' : 'display:none;'}"
-               ${profileLocked ? 'disabled' : ''} />
+               ${locked ? 'disabled' : ''} />
       ` : ''}
     </div>
   `).join('') + '</div>';
@@ -602,7 +612,12 @@ function toggleFetishInfo(containerId, id) {
 }
 
 function handleFetishToggle(containerId, fetishId, isChecked) {
-  const otherContainerId = containerId === 'fetishes-container' ? 'limits-container' : 'fetishes-container';
+  let otherContainerId;
+  if (containerId === 'fetishes-container') otherContainerId = 'limits-container';
+  else if (containerId === 'limits-container') otherContainerId = 'fetishes-container';
+  else if (containerId.startsWith('subfet-')) otherContainerId = 'sublim-' + containerId.slice(7);
+  else if (containerId.startsWith('sublim-')) otherContainerId = 'subfet-' + containerId.slice(7);
+  else return;
   const otherCheck = document.querySelector(`#${otherContainerId} .fetish-check[data-id="${fetishId}"]`);
   
   if (isChecked && otherCheck && otherCheck.checked) {
@@ -709,6 +724,8 @@ function getFetishDetails(containerId) {
       if (ev) ev.preventDefault();
       const w = document.getElementById('register-card-wrapper');
       if (w) { w.classList.remove('hidden'); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      renderFetishOptions('reg-fetishes-container', [], {}, false);
+      renderFetishOptions('reg-limits-container', [], {}, false);
     }
     function hideRegister(ev) {
       if (ev) ev.preventDefault();
@@ -844,7 +861,11 @@ function getFetishDetails(containerId) {
         gender_detail: gender==='Otro' ? ((document.getElementById('reg-gender-detail').value||'').trim()||null) : null,
         orientation: document.getElementById('reg-orientation').value,
         orientation_detail: document.getElementById('reg-orientation').value==='Otro' ? ((document.getElementById('reg-orientation-detail').value||'').trim()||null) : null,
-        play_role: document.getElementById('reg-playrole').value
+        play_role: document.getElementById('reg-playrole').value,
+        fetishes: getSelectedFetishes('reg-fetishes-container'),
+        limits: getSelectedFetishes('reg-limits-container'),
+        fetishes_details: getFetishDetails('reg-fetishes-container'),
+        limits_details: getFetishDetails('reg-limits-container')
       }).eq('id', data.user.id);
 
       if (role === 'dominant') {
@@ -1139,7 +1160,7 @@ function getFetishDetails(containerId) {
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, fetishes, limits, fetishes_details, limits_details)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -1292,6 +1313,14 @@ function getFetishDetails(containerId) {
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pgenderpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_gender_public ? 'checked' : ''}> Mostrar su género</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="porientpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_orientation_public ? 'checked' : ''}> Mostrar su orientación</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="prolepub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_playrole_public ? 'checked' : ''}> Mostrar su rol</label>`;
+                        html += `<div style="margin-top:12px;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+              <h4 style="margin:0 0 6px;">🔥 Gustos y Fetiches de tu sumiso</h4>
+              <div id="subfet-${sub.submissive_id}"></div>
+            </div>`;
+            html += `<div style="margin-top:10px;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+              <h4 style="margin:0 0 6px;">🚫 Límites de tu sumiso</h4>
+              <div id="sublim-${sub.submissive_id}"></div>
+            </div>`;
             html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar datos y visibilidad</button>`;
             html += `<div style="margin-top:10px;"><b class="small">📱 Redes y contactos de tu sumiso:</b><div id="subcontacts_${sub.submissive_id}"><p class="small">Pulsa 🔄 para verlos.</p></div>
               <button class="secondary" onclick="loadSubContacts('${sub.submissive_id}')">🔄 Ver</button>
@@ -1326,6 +1355,14 @@ function getFetishDetails(containerId) {
       html += '</div>';
 
       dashboard.innerHTML = html;
+      submissives.forEach(sub => {
+        renderFetishOptions('subfet-' + sub.submissive_id,
+          Array.isArray(sub.profiles?.fetishes) ? sub.profiles.fetishes : [],
+          sub.profiles?.fetishes_details || {}, false);
+        renderFetishOptions('sublim-' + sub.submissive_id,
+          Array.isArray(sub.profiles?.limits) ? sub.profiles.limits : [],
+          sub.profiles?.limits_details || {}, false);
+      });
     }
 
     function messageSub(subId) {
@@ -1391,7 +1428,11 @@ function getFetishDetails(containerId) {
           orientation,
           orientation_detail: orientation==='Otro' ? ((document.getElementById('porientdetail_' + submissiveId).value||'').trim()||null) : null,
           play_role: document.getElementById('prole_' + submissiveId).value,
-          show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public 
+          show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public,
+          fetishes: getSelectedFetishes('subfet-' + submissiveId),
+          limits: getSelectedFetishes('sublim-' + submissiveId),
+          fetishes_details: getFetishDetails('subfet-' + submissiveId),
+          limits_details: getFetishDetails('sublim-' + submissiveId)
         })
         .eq('id', submissiveId);
       if (error) return alert(error.message);
