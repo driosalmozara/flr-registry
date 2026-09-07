@@ -68,6 +68,13 @@
     .ios-steps li{margin-bottom:8px}
     .ios-steps b{color:var(--gold)}
     @media (max-width:500px){.inst-options{grid-template-columns:1fr}}
+        .fetish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+    .fetish-item{margin:0;padding:6px 10px;background:#0b0b12;border:1px solid var(--line);border-radius:8px;}
+    .fetish-item label{display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;}
+    .fetish-item input[type="checkbox"]{width:auto !important;margin:0 !important;padding:0 !important;flex:none;}
+    .fetish-item strong{font-size:13px;font-weight:600;}
+    .fetish-info{margin-top:6px;padding:6px 8px;background:#1a1a2e;border-radius:6px;font-size:12px;color:#d4d4d8;line-height:1.4;}
+    .fetish-detail{margin:6px 0 0 !important;padding:6px 10px !important;font-size:13px;}
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -561,9 +568,9 @@
 function renderFetishOptions(containerId, currentSelection = [], currentDetails = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = FETISH_LIST.map(f => `
-    <div style="margin:8px 0;padding:10px;background:#0b0b12;border-radius:8px;">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+  container.innerHTML = '<div class="fetish-grid">' + FETISH_LIST.map(f => `
+    <div class="fetish-item">
+      <label>
         <input type="checkbox" 
                class="fetish-check" 
                data-id="${f.id}" 
@@ -571,13 +578,10 @@ function renderFetishOptions(containerId, currentSelection = [], currentDetails 
                onchange="handleFetishToggle('${containerId}', '${f.id}', this.checked)"
                ${profileLocked ? 'disabled' : ''} />
         <strong>${f.name}</strong>
-        <span class="info-icon" 
-              onclick="toggleFetishInfo('${f.id}')" 
-              style="cursor:pointer;color:var(--gold);font-size:14px;">ⓘ</span>
+        <span onclick="toggleFetishInfo('${containerId}','${f.id}')" 
+              style="cursor:pointer;color:var(--gold);font-size:13px;margin-left:auto;">ⓘ</span>
       </label>
-      <div id="info-${containerId}-${f.id}" class="fetish-info" style="display:none;margin-top:6px;padding:8px;background:#1a1a2e;border-radius:6px;font-size:13px;color:#d4d4d8;">
-        ${f.desc}
-      </div>
+      <div id="info-${containerId}-${f.id}" class="fetish-info" style="display:none;">${f.desc}</div>
       ${f.hasDetail ? `
         <input type="text" 
                id="detail-${containerId}-${f.id}" 
@@ -585,18 +589,16 @@ function renderFetishOptions(containerId, currentSelection = [], currentDetails 
                data-id="${f.id}"
                placeholder="Especifica..." 
                value="${escapeHtml(currentDetails[f.id] || '')}"
-               style="margin-top:6px;${currentSelection.includes(f.id) ? '' : 'display:none;'}"
+               style="${currentSelection.includes(f.id) ? '' : 'display:none;'}"
                ${profileLocked ? 'disabled' : ''} />
       ` : ''}
     </div>
-  `).join('');
+  `).join('') + '</div>';
 }
 
-function toggleFetishInfo(id) {
-  const infos = document.querySelectorAll(`[id^="info-"][id$="-${id}"]`);
-  infos.forEach(info => {
-    info.style.display = info.style.display === 'none' ? 'block' : 'none';
-  });
+function toggleFetishInfo(containerId, id) {
+  const info = document.getElementById(`info-${containerId}-${id}`);
+  if (info) info.style.display = info.style.display === 'none' ? 'block' : 'none';
 }
 
 function handleFetishToggle(containerId, fetishId, isChecked) {
