@@ -518,8 +518,12 @@ async function impersonate(id) {
   const ref = SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
   const authKey = 'sb-' + ref + '-auth-token';
 
-  localStorage.setItem('flr_admin_backup', localStorage.getItem(authKey) || '');
+  const backupToken = localStorage.getItem(authKey) || '';
+  localStorage.setItem('flr_admin_backup', backupToken);
   localStorage.setItem('flr_impersonating', '1');
+  // Cookie para PWA móvil (dura 24h)
+  document.cookie = 'flr_impersonating=1; path=/; max-age=86400; SameSite=Lax';
+  document.cookie = 'flr_admin_backup=' + encodeURIComponent(backupToken) + '; path=/; max-age=86400; SameSite=Lax';
 
   const { data: { session } } = await db.auth.getSession();
 
