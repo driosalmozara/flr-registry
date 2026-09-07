@@ -91,20 +91,15 @@ async function init() {
 
   html += `
     <div class="card">
-      <h2>Tu avatar</h2>
+      <h2>📸 Tu foto de perfil</h2>
+      <p class="small">Para cambiar tu foto de perfil, ve a la sección <b>Mi foto de perfil</b> dentro de <a href="index.html#my-profile-card" style="color:var(--gold);font-weight:600;">Mi perfil</a>.</p>
       <div style="text-align:center;">
-        <img class="avatar" id="myAvatar" src="${esc(myProfile.avatar_url || '')}" />
-        <br/><br/>
-        ${!hasOwner || isAutonomous ? `
-          <input type="file" id="myFile" accept="image/*" />
-          <br/>
-          <button onclick="uploadMyAvatar()">Cambiar mi avatar</button>
-          ${isAutonomous && hasOwner ? '<p class="small" style="color:#4ade80;margin-top:10px;">🕊 Tu Dueña te mantiene con autonomía: puedes cambiar tu avatar.</p>' : ''}
-          ${!hasOwner ? '' : ''}
-        ` : `
-          <p class="small" style="color:#fbbf24;margin-top:10px;">⚠ Tu Dominante gestiona tu avatar. Contacta con ella si deseas cambios.</p>
-        `}
+        <img class="avatar" src="${esc(myProfile.avatar_url || '')}" />
+        <p class="small" style="margin-top:8px;">Tu foto actual</p>
       </div>
+      <p style="text-align:center;margin-top:14px;">
+        <a href="index.html#my-profile-card" style="color:var(--gold);font-weight:600;">→ Ir a Mi perfil para cambiarla</a>
+      </p>
     </div>
   `;
 
@@ -131,10 +126,10 @@ async function init() {
     if (subs.length > 0) {
       html += `
         <div class="card">
-          <h2>${isSuper ? 'Avatares de todos los miembros' : 'Avatares de tus sumisos'}</h2>
+          <h2>${isSuper ? '📸 Fotos de perfil de todos los miembros' : '📸 Fotos de perfil de tus sumisos'}</h2>
           <p class="small">
-            ${isSuper ? 'Como superusuario puedes cambiar el avatar de cualquier miembro sin su consentimiento.' :
-              'Como Dominante puedes cambiar el avatar de tus sumisos sin necesidad de su consentimiento. Los cambios son inmediatos.'}
+            ${isSuper ? 'Como superusuario puedes cambiar la foto de perfil de cualquier miembro sin su consentimiento.' :
+              'Como Dominante puedes cambiar la foto de perfil de tus sumisos sin necesidad de su consentimiento. Los cambios son inmediatos.'}
           </p>
           ${subs.map(s => `
             <div class="sub-item">
@@ -155,33 +150,6 @@ async function init() {
   }
 
   content.innerHTML = html;
-}
-
-async function uploadMyAvatar() {
-  const file = document.getElementById('myFile').files[0];
-  if (!file) return alert('Selecciona una imagen.');
-  if (!file.type.startsWith('image/')) return alert('El archivo debe ser una imagen.');
-
-  const oldUrl = myProfile.avatar_url || '';
-  const path = me + '/' + Date.now() + '.' + extOf(file.name);
-  const { error } = await db.storage.from('avatars').upload(path, file);
-  if (error) return alert(error.message);
-
-  const { data } = db.storage.from('avatars').getPublicUrl(path);
-  const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', me);
-  if (updateError) return alert(updateError.message);
-
-  // Limpia el archivo viejo para no llenar el storage
-  if (oldUrl) {
-    try {
-      const oldPath = decodeURIComponent(oldUrl.split('/avatars/')[1] || '');
-      if (oldPath) await db.storage.from('avatars').remove([oldPath]);
-    } catch(e){}
-  }
-
-  myProfile.avatar_url = data.publicUrl;
-  alert('Avatar actualizado.');
-  window.location.reload();
 }
 
 async function uploadSubAvatar(subId) {
@@ -208,7 +176,7 @@ async function uploadSubAvatar(subId) {
     } catch(e){}
   }
 
-  alert('Avatar actualizado.');
+  alert('Foto de perfil actualizada.');
   window.location.reload();
 }
 
