@@ -77,6 +77,12 @@ let me = null, myProfile = null, users = [], allConvs = [], myConvs = [], mySubs
 let currentThread = null, staffIds = new Set(), unreadIds = new Set(), pendingAttach = null;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function sortUsers(list){
+  return [...list].sort((a,b) => {
+    if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
+    return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'});
+  });
+}
 function nameOf(id){ return (users.find(x => x.id === id) || {}).display_name || '?'; }
 function involvesMe(c){ return c.member_a === me || c.member_b === me; }
 function otherOf(c){ return c.member_a === me ? c.member_b : c.member_a; }
@@ -174,7 +180,7 @@ async function render() {
     <div class="card">
       <div class="newrow">
         <select id="target">
-          ${users.filter(x => x.id !== me).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+          ${sortUsers(users.filter(x => x.id !== me)).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
         </select>
         <button onclick="startConversation()">💬 Abrir conversación</button>
       </div>
