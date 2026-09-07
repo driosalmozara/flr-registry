@@ -34,6 +34,9 @@ const SUPABASE_URL='https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  function sortByName(list){
+  return [...list].sort((a,b) => (a.name||'').localeCompare(b.name||'', 'es', {sensitivity:'base'}));
+}
 function dates(m){
   let s='';
   if(m.signed_at)s+='Inicio: <b>'+new Date(m.signed_at).toLocaleString()+'</b>';
@@ -52,10 +55,10 @@ async function render(){
       <p class="small">Elige a tu sumiso y a una o más Dominantes. Redacta las condiciones del anexo. <b>No requiere aprobación del sumiso</b>; cada Dominante invitada debe firmar: desde entonces será también Dueña con todas sus atribuciones.</p>
       ${D.owned.length?`
       <label class="small">Sumiso en propiedad</label>
-      <select id="sh_sub">${D.owned.map(s=>`<option value="${s.rel_id}">⛓ ${esc(s.name)}</option>`).join('')}</select>
+      <select id="sh_sub">${sortByName(D.owned).map(s=>`<option value="${s.rel_id}">⛓ ${esc(s.name)}</option>`).join('')}</select>
       <label class="small">Dominantes con quienes compartir</label>
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
-        ${D.doms.map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
+        ${sortByName(D.doms).map(d=>`<label class="dom"><input type="checkbox" style="width:auto;margin:0;" value="${d.id}" class="sh_dom"/> ♛ ${esc(d.name)}</label>`).join('')||'<p class="small">No hay otras Dominantes.</p>'}
       </div>
       <label class="small">Condiciones del anexo</label>
       <textarea id="sh_cond" rows="3" placeholder="Ej.: horarios compartidos, protocolos, límites de disciplina…"></textarea>
