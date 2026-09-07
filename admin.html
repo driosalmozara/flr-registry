@@ -60,6 +60,17 @@ let users = [], admins = [], mods = [], rels = [], records = [], cards = [];
 function esc(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+  function sortUsers(list){
+  return [...list].sort((a,b) => {
+    if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
+    return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'});
+  });
+}
+function optionHTML(x){
+  const ico = x.role === 'dominant' ? '♛' : '⛓';
+  const tag = admins.includes(x.id) ? ' — ADMIN' : '';
+  return `<option value="${x.id}">${ico} ${esc(x.display_name)}${tag}</option>`;
+}
 
 function avatarHTML(url, fallback, small) {
   const sizeClass = small ? 'ava small' : 'ava';
@@ -140,7 +151,7 @@ async function render() {
     html += `
       <label class="small">Nombrar nueva Administradora</label>
       <select id="newadmin">
-        ${candidates.map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
+        ${sortUsers(candidates).map(x => `<option value="${x.id}">♛ ${esc(x.display_name)}</option>`).join('')}
       </select>
       <button onclick="makeAdmin()">Dar privilegios</button>
     `;
@@ -196,7 +207,7 @@ async function render() {
     html += `
       <label class="small">Nombrar nueva Moderadora</label>
       <select id="newmod">
-        ${modCandidates.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+        ${sortUsers(modCandidates).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
       </select>
       <button onclick="makeMod()">Nombrar Moderadora</button>
     `;
@@ -223,7 +234,7 @@ async function render() {
     html += `
       <label class="small">Nombrar nuevo Perro guardián</label>
       <select id="newchatmod">
-        ${guardianCandidates.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+        ${sortUsers(guardianCandidates).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
       </select>
       <button onclick="makeChatMod()">Nombrar Perro guardián</button>
     `;
@@ -236,7 +247,7 @@ async function render() {
       <label class="small">Elegir miembro para gestionar</label>
       <select id="member_pick" onchange="renderMemberCard()">
         <option value="">— Seleccionar —</option>
-        ${users.map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}${admins.includes(x.id) ? ' — ADMIN' : ''}</option>`).join('')}
+        ${sortUsers(users).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}${admins.includes(x.id) ? ' — ADMIN' : ''}</option>`).join('')}
       </select>
       <div id="member_card"></div>
     </div></details>
