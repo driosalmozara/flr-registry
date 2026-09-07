@@ -434,8 +434,8 @@
           return `
             <div style="display:flex;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#161625;border-radius:8px;">
               <span>${icon}</span>
-              <b style="min-width:80px;">${c.contact_type}:</b>
-              <span style="flex:1;">${escapeHtml(display)}</span>
+              <b style="min-width:80px;">${platform}:</b>
+              <button onclick="window.open('${escapeHtml(socialHref(c))}','_blank','noopener')" style="flex:1;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;">🔗 Abrir perfil</button>
               ${!profileLocked ? `<button onclick="deleteContact('${c.id}')" style="background:#dc2626;padding:4px 8px;font-size:12px;">✕</button>` : ''}
             </div>
           `;
@@ -443,6 +443,21 @@
       }
     }
 
+        function socialHref(c){
+      const v = (c.value||'').trim();
+      if (/^https?:\/\//i.test(v)) return v;
+      const user = v.replace(/^@/,'');
+      const map = {
+        facebook: 'https://facebook.com/' + user,
+        instagram: 'https://instagram.com/' + user,
+        x: 'https://x.com/' + user,
+        threads: 'https://threads.net/@' + user,
+        tiktok: 'https://tiktok.com/@' + user,
+        snapchat: 'https://snapchat.com/add/' + user,
+        linkedin: 'https://linkedin.com/in/' + user
+      };
+      return map[c.platform] || v;
+    }
     function getSocialIcon(platform) {
       const icons = {
         facebook: '📘',
@@ -1455,10 +1470,13 @@ function getFetishDetails(containerId) {
         const label = c.contact_type === 'social' ? (c.platform === 'custom' ? c.custom_platform : c.platform) : c.contact_type;
         const display = (c.contact_type === 'phone' || c.contact_type === 'whatsapp') ? `${c.country_code || ''} ${c.value}` : c.value;
         const icon = c.contact_type === 'social' ? getSocialIcon(c.platform) : getContactIcon(c.contact_type);
+        const middle = c.contact_type === 'social'
+          ? `<button onclick="window.open('${escapeHtml(socialHref(c))}','_blank','noopener')" style="flex:1;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;">🔗 Abrir perfil</button>`
+          : `<span class="small" style="flex:1;">${escapeHtml(display)}</span>`;
         return `<div style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
           <span>${icon}</span>
           <b class="small" style="min-width:70px;">${escapeHtml(label)}:</b>
-          <span class="small" style="flex:1;">${escapeHtml(display)}</span>
+          ${middle}
           <button class="danger" style="padding:2px 8px;font-size:11px;" onclick="deleteSubContact('${c.id}','${subId}')">✕</button>
         </div>`;
       }).join('');
