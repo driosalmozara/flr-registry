@@ -617,7 +617,9 @@
 
     function checkImpersonation(loggedIn) {
       const bar = document.getElementById('impbar');
-      if (loggedIn && localStorage.getItem('flr_impersonating') === '1') bar.classList.remove('hidden');
+      const imp = localStorage.getItem('flr_impersonating') === '1';
+      const backup = !!localStorage.getItem('flr_admin_backup');
+      if (loggedIn && (imp || backup)) bar.classList.remove('hidden');
       else bar.classList.add('hidden');
     }
 
