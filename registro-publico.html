@@ -74,7 +74,29 @@ function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear()
 function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
 function dayMonth(iso){ const p=(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : ''; }
 function getSocialIcon(pl){ const i={facebook:'📘',instagram:'📷',x:'🐦',threads:'🧵',tiktok:'🎵',snapchat:'👻',linkedin:'💼',custom:'🌐'}; return i[pl]||'🌐'; }
-function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
+const FETISH_NAMES = { findom:'Findom', bondage:'Bondage', pies:'Fetichismo de Pies', partialism:'Parcialismos', hirsutophilia:'Hirsutofilia', objectification:'Cosificación', cbt:'CBT', pegging:'Pegging', rain:'Lluvias', scat:'Scat', needles:'Agujas', branding:'Marcas', blood:'Sangre', feminization:'Feminización', sissification:'Sissificación', petplay:'Petplay', cuckold:'Cuckold', hotwife:'Hotwife', sodomy:'Sodomía', other:'Otro' };
+
+function fetishesHTML(p){
+  let out = '';
+  const fet = Array.isArray(p.fetishes) ? p.fetishes : [];
+  const lim = Array.isArray(p.limits) ? p.limits : [];
+  const fd = p.fetishes_details || {};
+  const ld = p.limits_details || {};
+  if (p.show_fetishes_public && fet.length) {
+    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:var(--gold);">🔥 Gustos:</b><br>' + fet.map(id => {
+      const det = fd[id] ? ' (' + esc(fd[id]) + ')' : '';
+      return '<span class="badge" style="margin:2px;">' + esc(FETISH_NAMES[id] || id) + det + '</span>';
+    }).join(' ') + '</div>';
+  }
+  if (p.show_limits_public && lim.length) {
+    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:#dc2626;">🚫 Límites:</b><br>' + lim.map(id => {
+      const det = ld[id] ? ' (' + esc(ld[id]) + ')' : '';
+      return '<span class="badge" style="border-color:#dc2626;color:#dc2626;margin:2px;">' + esc(FETISH_NAMES[id] || id) + det + '</span>';
+    }).join(' ') + '</div>';
+  }
+  return out;
+}
+  function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
   function staffIcons(userId){
   let s = '';
   if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
@@ -84,7 +106,7 @@ function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈�
 }
 
 async function init(){
-  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified').order('display_name').limit(500);
+  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public').order('display_name').limit(500);
   allProfiles = prof || [];
 
   const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
@@ -187,6 +209,7 @@ function cardHTML(p, info){
       <div style="text-align:center;">${roleBadge}</div>
       ${birthdayBanner(p)}
       <div style="text-align:center;">${extrasHTML(p)}</div>
+      ${fetishesHTML(p)}
       ${p.country && p.social_links_public ? `<div style="text-align:center;" class="small">🌎 ${esc(p.country)}</div>` : ''}
       ${p.bio ? `<p class="small" style="margin:0;white-space:pre-wrap;">${esc(p.bio)}</p>` : ''}
       ${contactsHTML(p)}
