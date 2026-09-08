@@ -54,6 +54,42 @@ details .body{padding:14px 18px}
 #emoji-panel .emo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
 #emoji-panel .emo-item{background:transparent;border:none;font-size:20px;padding:4px;cursor:pointer;border-radius:6px;transition:background .15s}
 #emoji-panel .emo-item:hover{background:rgba(212,175,55,.15)}
+  /* ── Móvil: compactar iconos y evitar desbordes ── */
+@media (max-width:600px){
+  main{padding:10px;}
+  header{padding:10px 12px;}
+  header h1{font-size:18px;}
+  .card{padding:12px;margin-bottom:10px;}
+  .item{padding:8px 10px;}
+  button{padding:8px 10px;font-size:13px;margin-right:4px;}
+  button.wide{padding:10px 8px;font-size:14px;}
+  summary{padding:10px 12px;font-size:14px;}
+  .newrow select{min-width:0;width:100%;}
+  /* Zona de mensajes más alta y legible */
+  .pm-pane{height:52vh;font-size:12px;padding:8px;}
+  .pm-line{margin:2px 0;}
+  /* Adjuntos: nunca desbordan la pantalla */
+  .pm-att img{max-width:100%;height:auto;max-height:220px;}
+  .pm-att video{max-width:100%;}
+  /* Fila de escritura: iconos compactos, input con todo el resto */
+  .pm-inputrow{gap:4px;}
+  .pm-inputrow input[type=text]{flex:1 1 55%;min-width:0;font-size:14px;padding:9px 10px;}
+  .attach-btn,#emoji-btn,#gif-btn{padding:8px 9px;font-size:14px;line-height:1;}
+  #gif-btn{font-size:11px;font-weight:700;}
+  /* Panel de emojis: más grande y fácil de tocar */
+  #emoji-panel{max-width:94vw;width:94vw;max-height:40vh;left:50%;transform:translateX(-50%);}
+  #emoji-panel .emo-grid{grid-template-columns:repeat(7,1fr);}
+  #emoji-panel .emo-item{font-size:22px;padding:6px;}
+}
+/* Pantallas muy estrechas: el input pasa a su propia fila */
+@media (max-width:480px){
+  .pm-inputrow{flex-wrap:wrap;}
+  .pm-inputrow input[type=text]{flex:1 1 100%;order:1;}
+  .attach-btn{order:2;}
+  #emoji-btn{order:3;}
+  #gif-btn{order:4;}
+  .pm-inputrow > button:last-child{order:5;margin-left:auto;}
+}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
