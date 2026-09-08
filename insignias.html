@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Gestión de Insignias — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3{color:var(--gold)}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+input,select{width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:9px 12px;margin:5px 0 10px}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;width:100%;margin-top:8px}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button.danger{background:#7f1d1d;color:#fff;border:1px solid #991b1b}
+.badge-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;background:#0b0b12;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+.badge-info{flex:1}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css">
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">🏅 Gestión de Insignias</h1>
+  <div>
+    <a class="navlink" href="admin.html">Admin</a>
+    <a class="navlink" href="index.html">Inicio</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="card">Verificando permisos de Staff...</div>
+  
+  <div id="app" style="display:none;">
+    <div class="card">
+      <h2 style="margin-top:0;">Otorgar Insignia</h2>
+      <p class="small">Busca al miembro y selecciona el reconocimiento a otorgar. Si el miembro ya la tenía revocada, se reactivará automáticamente.</p>
+      
+      <label class="small">Miembro</label>
+      <select id="sel-user"><option value="">Cargando miembros...</option></select>
+      
+      <label class="small">Insignia</label>
+      <select id="sel-badge"><option value="">Cargando insignias...</option></select>
+      
+      <button onclick="grantBadge()">✨ Otorgar Insignia</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;">Insignias Activas en la Casa</h2>
+      <p class="small">Listado de todos los reconocimientos vigentes. Puedes revocarlos en cualquier momento.</p>
+      <div id="active-list"><p class="small">Cargando...</p></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    document.getElementById('loading').innerHTML = '<h2>Acceso denegado</h2><p class="small">Debes iniciar sesión.</p><a href="index.html" class="navlink">Ir a inicio</a>';
+    return;
+  }
+
+  // Verificar si es Staff
+  const [adm, mod] = await Promise.all([
+    db.from('app_admins').select('user_id').eq('user_id', session.user.id).maybeSingle(),
+    db.from('app_moderators').select('user_id').eq('user_id', session.user.id).maybeSingle()
+  ]);
+
+  if (!adm.data && !mod.data) {
+    document.getElementById('loading').innerHTML = '<h2>⛔ Acceso Restringido</h2><p class="small">Esta sección es exclusiva para Administradoras y Moderadoras de la casa.</p>';
+    return;
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  
+  await loadCatalogs();
+  await loadActiveBadges();
+}
+
+async function loadCatalogs() {
+  const [{ data: profiles }, { data: badges }] = await Promise.all([
+    db.from('profiles').select('id, display_name, role').order('display_name'),
+    db.from('badges').select('*').order('name')
+  ]);
+
+  const userSel = document.getElementById('sel-user');
+  userSel.innerHTML = '<option value="">Selecciona un miembro...</option>' + 
+    (profiles || []).map(p => `<option value="${p.id}">${esc(p.display_name)} (${p.role === 'dominant' ? '♛' : '⛓'})</option>`).join('');
+
+  const badgeSel = document.getElementById('sel-badge');
+  badgeSel.innerHTML = '<option value="">Selecciona una insignia...</option>' + 
+    (badges || []).map(b => `<option value="${b.id}">${b.emoji} ${esc(b.name)}</option>`).join('');
+}
+
+async function loadActiveBadges() {
+  const { data } = await db.from('member_badges')
+    .select('id, user_id, granted_at, badge:badges(name, emoji, color, description), user:profiles(display_name)')
+    .is('revoked_at', null)
+    .order('granted_at', { ascending: false });
+
+  const list = document.getElementById('active-list');
+  if (!data || !data.length) {
+    list.innerHTML = '<p class="small">Aún no se ha otorgado ninguna insignia.</p>';
+    return;
+  }
+
+  list.innerHTML = data.map(m => `
+    <div class="badge-item">
+      <div class="badge-info">
+        <b style="color:${m.badge.color || 'var(--gold)'}">${m.badge.emoji} ${esc(m.badge.name)}</b>
+        <div class="small">Otorgada a <b>${esc(m.user.display_name)}</b> el ${new Date(m.granted_at).toLocaleDateString()}</div>
+      </div>
+      <button class="danger" style="width:auto;padding:6px 12px;margin:0;" onclick="revokeBadge('${m.id}')">Revocar</button>
+    </div>
+  `).join('');
+}
+
+async function grantBadge() {
+  const userId = document.getElementById('sel-user').value;
+  const badgeId = document.getElementById('sel-badge').value;
+  if (!userId || !badgeId) return alert('Selecciona un miembro y una insignia.');
+
+  const { data, error } = await db.rpc('staff_manage_badge', {
+    p_action: 'grant',
+    p_user_id: userId,
+    p_badge_id: badgeId
+  });
+
+  if (error) return alert('Error: ' + error.message);
+  if (!data.ok) return alert(data.error);
+
+  alert('✨ Insignia otorgada con éxito. Ya aparecerá en el Salón.');
+  await loadActiveBadges();
+}
+
+async function revokeBadge(mbId) {
+  if (!confirm('¿Revocar esta insignia? Desaparecerá del perfil y del Salón.')) return;
+  
+  const { data, error } = await db.rpc('staff_manage_badge', {
+    p_action: 'revoke',
+    p_user_id: '00000000-0000-0000-0000-000000000000', // Dummy, el RPC usa el ID de la tabla
+    p_badge_id: '00000000-0000-0000-0000-000000000000',
+    p_member_badge_id: mbId
+  });
+
+  if (error) return alert('Error: ' + error.message);
+  if (!data.ok) return alert(data.error);
+
+  alert('Insignia revocada.');
+  await loadActiveBadges();
+}
+
+init();
+</script>
+</body>
+</html>
