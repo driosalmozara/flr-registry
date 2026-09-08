@@ -121,7 +121,7 @@ function fetishesHTML(p){
 }
 
 async function init(){
-  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public').order('display_name').limit(500);
+  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public, show_physical_public, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy').order('display_name').limit(500);
   allProfiles = prof || [];
 
   const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
@@ -206,6 +206,33 @@ function contactsHTML(p){
   return out;
 }
 
+  function physicalHTML(p){
+  if (!p.show_physical_public) return '';
+  const parts = [];
+  if (p.physical_weight) parts.push(`⚖ ${p.physical_weight} kg`);
+  if (p.physical_height) parts.push(`📏 ${p.physical_height} m`);
+  if (p.physical_religion) parts.push(`🙏 ${esc(p.physical_religion)}`);
+  if (p.physical_tattoos) parts.push(`🖋 Tatuajes${p.physical_tattoos_detail ? ': ' + esc(p.physical_tattoos_detail) : ''}`);
+  if (p.physical_piercings) parts.push(`💎 Piercings${p.physical_piercings_detail ? ': ' + esc(p.physical_piercings_detail) : ''}`);
+  if (p.physical_alcohol) parts.push(`🍷 Alcohol: ${p.physical_alcohol}`);
+  if (p.physical_tobacco || p.physical_tobacco === 0) parts.push(`🚬 ${p.physical_tobacco}/día`);
+  if (p.physical_drugs) parts.push(`💊 Drogas: ${esc(p.physical_drugs)}`);
+  if (p.physical_treatments) parts.push(`⚕ Tratamientos: ${esc(p.physical_treatments)}`);
+  if (Array.isArray(p.physical_stds) && p.physical_stds.length) {
+    const names = p.physical_stds.map(s => s === 'vih' ? 'VIH' : s === 'sifilis' ? 'Sífilis' : s === 'gonorrea' ? 'Gonorrea' : (p.physical_stds_other ? esc(p.physical_stds_other) : 'Otra'));
+    parts.push(`🏥 ETS: ${names.join(', ')}`);
+  }
+  if (p.physical_hair && typeof p.physical_hair === 'object') {
+    const hairText = Object.entries(p.physical_hair).map(([z, st]) => `${z}: ${st}`).join(', ');
+    parts.push(`🧔 Vello — ${hairText}`);
+  }
+  if (p.physical_circumcised) parts.push('✂ Circuncidado');
+  if (p.physical_castrated && p.physical_castrated !== 'no') parts.push(`🚫 Castrado (${p.physical_castrated === 'uno' ? 'un testículo' : 'ambos'})`);
+  if (p.physical_vasectomy) parts.push('🚫 Vasectomizado');
+  if (p.physical_other) parts.push(`📝 ${esc(p.physical_other)}`);
+  if (!parts.length) return '';
+  return `<div style="margin:8px 0;padding:10px;background:#161625;border:1px solid var(--line);border-radius:10px;text-align:left;"><b class="small" style="color:var(--gold);">🧍 Físico y Hábitos</b><div class="small" style="margin-top:6px;line-height:1.7;">${parts.join(' · ')}</div></div>`;
+}
 function cardHTML(p, info){
   const showAva = p.show_avatar_public && (info.group !== 'owned' || info.rec.show_avatar !== false);
   const ownerName = info.ownerId ? (allProfiles.find(x => x.id === info.ownerId)?.display_name || '') : '';
@@ -224,6 +251,7 @@ function cardHTML(p, info){
       ${birthdayBanner(p)}
       <div style="text-align:center;">${extrasHTML(p)}</div>
       ${fetishesHTML(p)}
+      ${physicalHTML(p)}
       ${p.country && p.social_links_public ? `<div style="text-align:center;" class="small">🌎 ${esc(p.country)}</div>` : ''}
       ${p.bio ? `<p class="small" style="margin:0;white-space:pre-wrap;">${esc(p.bio)}</p>` : ''}
       ${contactsHTML(p)}
