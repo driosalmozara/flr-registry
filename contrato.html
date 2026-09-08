@@ -192,7 +192,14 @@ async function init() {
   if (me.role === 'dominant') await renderDominant();
   else await renderSubmissive();
 }
-
+<div class="clause">
+<h3>Cláusula de Protección de Datos Sensibles</h3>
+<p>Los datos relativos a <b>consumo de drogas</b>, <b>estado de salud (incluyendo ETS)</b> y <b>tratamientos médicos u hormonales</b> constituyen datos personales sensibles de quien los declara.</p>
+<p>a) Estos datos <b>nunca</b> se mostrarán en el Salón de miembros ni en ningún espacio público de la plataforma.</p>
+<p>b) Solo podrán conocerlos las partes unidas por una relación confirmada, exclusivamente para el cuidado, la seguridad y el consentimiento informado de las prácticas.</p>
+<p>c) Quien acceda a estos datos se obliga a guardar <b>confidencialidad absoluta</b>. Su difusión, publicación o uso distinto al pactado podrá constituir <b>infracción de la legislación de protección de datos personales</b> vigente en el domicilio de las partes, además de falta grave en la casa, sancionable por el Staff.</p>
+<p>d) El titular de los datos puede modificarlos o retirar su consentimiento en cualquier momento desde «Mi perfil», sin necesidad de autorización de su Dueña.</p>
+</div>
 function contractHTML(c, isDom, activeTransfer, fromDom, toDom) {
   let html = `
     <p>Estado: <span class="badge">${escapeHtml(c.status)}</span></p>
