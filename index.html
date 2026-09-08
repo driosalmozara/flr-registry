@@ -373,8 +373,9 @@ Mostrar mi físico y hábitos en el Salón de miembros
       target.classList.toggle('active', active);
     }
     function isMaleGender(g){ return ['Hombre','Hombre Travesti','Hombre Transexual','Hombre Transgénero'].includes(g); }
-    function renderPhysicalSection(prefix, data = {}, locked = false, showMale = false) {
-      const dis = locked ? 'disabled' : '';
+function renderPhysicalSection(prefix, data = {}, locked = false, showMale = false) {
+const dis = locked ? 'disabled' : '';
+const disPriv = ''; // Datos sensibles: SIEMPRE editables por su dueño, incluso con perfil gestionado
       const v = (k) => data[k] !== undefined && data[k] !== null ? data[k] : '';
       const checked = (k) => data[k] ? 'checked' : '';
       const sel = (k, val) => data[k] === val ? 'selected' : '';
@@ -421,20 +422,23 @@ Mostrar mi físico y hábitos en el Salón de miembros
             <input type="number" id="${prefix}_tobacco" min="0" max="100" placeholder="Ej: 5" value="${data.physical_tobacco || data.physical_tobacco === 0 ? data.physical_tobacco : ''}" ${dis}/>
           </div>
         </div>
-        <label class="small">Drogas (cuáles)</label>
-        <input id="${prefix}_drugs" placeholder="Ej: ninguna, cannabis ocasional..." value="${escapeHtml(v('physical_drugs'))}" ${dis}/>
-        <label class="small">Tratamientos médicos u hormonales (cuáles)</label>
-        <input id="${prefix}_treatments" placeholder="Ej: ninguno, testosterona, antidepresivos..." value="${escapeHtml(v('physical_treatments'))}" ${dis}/>
-        <label class="small">ETS</label>
-        <div class="stds-grid">
-          ${['vih','sifilis','gonorrea','otra'].map(std => `
-            <label><input type="checkbox" class="${prefix}_std" value="${std}" ${(Array.isArray(data.physical_stds) && data.physical_stds.includes(std)) ? 'checked' : ''} ${dis}/> ${std === 'vih' ? 'VIH' : std === 'sifilis' ? 'Sífilis' : std === 'gonorrea' ? 'Gonorrea' : 'Otra'}</label>
-          `).join('')}
-        </div>
-        <div id="${prefix}_stds_other_box" class="physical-cond ${(Array.isArray(data.physical_stds) && data.physical_stds.includes('otra'))?'active':''}">
-          <label class="small">Especificar otra ETS</label>
-          <input id="${prefix}_stds_other" placeholder="Ej: herpes, clamidia..." value="${escapeHtml(v('physical_stds_other'))}" ${dis}/>
-        </div>
+<div class="small" style="margin:10px 0;padding:10px 12px;background:#161625;border-left:3px solid #4ade80;border-radius:0 8px 8px 0;line-height:1.6;">
+🔒 <b>Privacidad reforzada:</b> drogas, ETS y tratamientos médicos u hormonales <b>nunca</b> se muestran en el Salón de miembros. Solo se comparten con quien tengas una relación confirmada, nunca de manera pública. Puedes editarlos siempre, incluso si tu Dueña gestiona el resto de tu perfil.
+</div>
+<label class="small">Drogas (cuáles)</label>
+<input id="${prefix}_drugs" placeholder="Ej: ninguna, cannabis ocasional..." value="${escapeHtml(v('physical_drugs'))}" ${disPriv}/>
+<label class="small">Tratamientos médicos u hormonales (cuáles)</label>
+<input id="${prefix}_treatments" placeholder="Ej: ninguno, testosterona, antidepresivos..." value="${escapeHtml(v('physical_treatments'))}" ${disPriv}/>
+<label class="small">ETS</label>
+<div class="stds-grid">
+${['vih','sifilis','gonorrea','otra'].map(std => `
+<label><input type="checkbox" class="${prefix}_std" value="${std}" ${(Array.isArray(data.physical_stds) && data.physical_stds.includes(std)) ? 'checked' : ''} ${disPriv}/> ${std === 'vih' ? 'VIH' : std === 'sifilis' ? 'Sífilis' : std === 'gonorrea' ? 'Gonorrea' : 'Otra'}</label>
+`).join('')}
+</div>
+<div id="${prefix}_stds_other_box" class="physical-cond ${(Array.isArray(data.physical_stds) && data.physical_stds.includes('otra'))?'active':''}">
+<label class="small">Especificar otra ETS</label>
+<input id="${prefix}_stds_other" placeholder="Ej: herpes, clamidia..." value="${escapeHtml(v('physical_stds_other'))}" ${disPriv}/>
+</div>
         <script>document.querySelectorAll('.${prefix}_std').forEach(c => c.addEventListener('change', function(){ document.getElementById('${prefix}_stds_other_box').classList.toggle('active', document.querySelector('.${prefix}_std[value="otra"]').checked); }));<\/script>
         <label class="small" style="margin-top:10px;">Otra información</label>
         <textarea id="${prefix}_other_info" rows="2" placeholder="Cualquier otro detalle físico o de hábitos que desees compartir..." ${dis}>${escapeHtml(v('physical_other'))}</textarea>`;
@@ -1390,9 +1394,9 @@ ${badgesHTML(window.myBadges)}
             <p class="small" style="margin:0 0 10px;">Selecciona lo que NO te gusta. Un mismo fetiche no puede estar en ambas secciones.</p>
             <div id="limits-container"></div>
           </div>
-                    ${renderPhysicalSection('prof', currentProfile, isLocked, currentProfile.role === 'submissive' ? isMaleGender(currentProfile.gender) : isMaleGender(currentProfile.gender))}
-
-          <label class="small" style="margin-top:16px;">Fecha de nacimiento (dd/mm/aaaa)</label>
+${renderPhysicalSection('prof', currentProfile, isLocked, currentProfile.role === 'submissive' ? isMaleGender(currentProfile.gender) : isMaleGender(currentProfile.gender))}
+${isLocked ? '<button class="secondary" style="margin-top:8px;" onclick="savePrivatePhysical()">🔒 Guardar datos privados</button>' : ''}
+<label class="small" style="margin-top:16px;">Fecha de nacimiento (dd/mm/aaaa)</label>
           <input id="profile-birth" value="${fromISO(currentProfile.birth_date)}" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" ${isLocked ? 'disabled' : ''} />
           <label class="small">Género</label>
           <select id="profile-gender" onchange="toggleDetail(this.value,'profile-gender-detail')" ${isLocked ? 'disabled' : ''}>${genderOptions(currentProfile.role, currentProfile.gender)}</select>
@@ -1550,6 +1554,20 @@ document.querySelectorAll('.prof_std').forEach(c => c.addEventListener('change',
 }));
 }
 
+    async function savePrivatePhysical() {
+const drugs = (document.getElementById('prof_drugs')||{value:''}).value.trim();
+const treatments = (document.getElementById('prof_treatments')||{value:''}).value.trim();
+const stds = Array.from(document.querySelectorAll('.prof_std:checked')).map(c => c.value);
+const stds_other = stds.includes('otra') ? ((document.getElementById('prof_stds_other')||{value:''}).value.trim() || null) : null;
+const { error } = await db.from('profiles').update({
+physical_drugs: drugs || null,
+physical_treatments: treatments || null,
+physical_stds: stds.length ? stds : null,
+physical_stds_other: stds_other
+}).eq('id', currentUser.id);
+if (error) return alert(error.message);
+alert('🔒 Datos privados guardados. Nunca se mostrarán públicamente.');
+}
     async function saveMyProfile() {
       const display_name = document.getElementById('profile-display').value.trim();
       const bio = document.getElementById('profile-bio').value.trim();
