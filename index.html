@@ -514,6 +514,69 @@ Mostrar mi físico y hábitos en el Salón de miembros
   });
 }
 
+    async function fetchBadgesCatalog(){
+  const { data } = await db.from('badges').select('*').order('name');
+  window.badgesCatalog = data || [];
+}
+async function fetchMyBadges(){
+  const { data } = await db.from('member_badges')
+    .select('id, visible_in_salon, badge:badges(id, code, name, emoji, color, description)')
+    .eq('user_id', currentUser.id).is('revoked_at', null);
+  window.myBadges = data || [];
+}
+function badgesHTML(list){
+  if (!list || !list.length) return '';
+  return `<div style="margin:6px 0;text-align:center;">` + list.map(b => {
+    const badge = b.badge || b;
+    return `<span class="badge" style="border-color:${badge.color || 'var(--gold)'};color:${badge.color || 'var(--gold)'};" title="${escapeHtml(badge.description || badge.name)}">${badge.emoji} ${escapeHtml(badge.name)}</span>`;
+  }).join(' ') + `</div>`;
+}
+async function loadSubBadges(subId){
+  const { data } = await db.from('member_badges')
+    .select('id, visible_in_salon, badge:badges(id, code, name, emoji, color, description)')
+    .eq('user_id', subId).is('revoked_at', null);
+  const box = document.getElementById('subbadges-' + subId);
+  if (!box) return;
+  const list = data || [];
+  if (!list.length){ box.innerHTML = '<p class="small">Tu sumiso no tiene insignias todavía.</p>'; return; }
+  box.innerHTML = list.map(b => `
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
+      <input type="checkbox" style="width:auto;margin:0;" ${b.visible_in_salon ? 'checked' : ''} onchange="toggleSubBadgeVisibility('${subId}','${b.id}',this.checked)"/>
+      <span style="color:${b.badge.color || 'var(--gold)'};">${b.badge.emoji} <b>${escapeHtml(b.badge.name)}</b></span>
+    </label>
+  `).join('');
+}
+async function toggleSubBadgeVisibility(subId, mbId, show){
+  const { error } = await db.from('member_badges')
+    .update({ visible_in_salon: show }).eq('id', mbId).eq('user_id', subId);
+  if (error) return alert(error.message);
+}
+    async function fetchBadgesCatalog(){
+  const { data } = await db.from('badges').select('*').order('name');
+  window.badgesCatalog = data || [];
+}
+async function fetchMyBadges(){
+  const { data } = await db.from('member_badges')
+    .select('id, visible_in_salon, badge:badges(id, code, name, emoji, color, description)')
+    .eq('user_id', currentUser.id).is('revoked_at', null);
+  window.myBadges = data || [];
+}
+function badgesHTML(list, centered = true){
+  if (!list || !list.length) return '';
+  const items = list.map(b => {
+    const badge = b.badge || b;
+    return `<span class="badge" style="border-color:${badge.color || 'var(--gold)'};color:${badge.color || 'var(--gold)'};" title="${escapeHtml(badge.description || badge.name)}">${badge.emoji} ${escapeHtml(badge.name)}</span>`;
+  }).join(' ');
+  return `<div style="margin:6px 0;${centered ? 'text-align:center;' : ''}">${items}</div>`;
+}
+async function toggleMyBadgeVisibility(badgeId, show){
+  const { error } = await db.from('member_badges')
+    .update({ visible_in_salon: show })
+    .eq('user_id', currentUser.id).eq('badge_id', badgeId).is('revoked_at', null);
+  if (error) return alert(error.message);
+  await fetchMyBadges();
+  renderMyProfile();
+}
     const COUNTRIES = [
       'Afganistán','Albania','Alemania','Andorra','Angola','Antigua y Barbuda','Arabia Saudita','Argelia','Argentina','Armenia','Australia','Austria','Azerbaiyán',
       'Bahamas','Bangladés','Barbados','Baréin','Bélgica','Belice','Benín','Bielorrusia','Birmania (Myanmar)','Bolivia','Bosnia y Herzegovina','Botsuana','Brasil','Brunéi','Bulgaria','Burkina Faso','Burundi','Bután',
@@ -988,10 +1051,16 @@ function getFetishDetails(containerId) {
 
       show('app');
 
-      if (currentProfile.role === 'dominant') await renderDominant();
-      else await renderSubmissive();
+await fetchBadgesCatalog();
+await fetchMyBadges();
+show('app');
+await fetchBadgesCatalog();
+await fetchMyBadges();
+if (currentProfile.role === 'dominant') await renderDominant();else await renderSubmissive();
+await renderMyProfile();
 
-      await renderMyProfile();
+            await fetchBadgesCatalog();
+      await fetchMyBadges();
       await loadContacts();
 
       if (!currentProfile.tour_done) offerTour();
@@ -1179,14 +1248,13 @@ show_physical_public: document.getElementById('reg-physical-public').checked,
       if (role === 'dominant') {
         const regOn = await regLockIsOn();
         if (regOn) {
-          await db.auth.signOut();
-          alert('👑 Registro recibido.\n\nTu entrada a la casa será revisada por el Staff. Recibirás una notificación.');
+alert('👑 Registro recibido.\n\nTu entrada a la casa será revisada por el Staff. Recibirás una notificación.');
           window.location.href = 'index.html';
         } else {
           const domOn = await domLockIsOn();
-          alert(domOn
-            ? '👑 Bienvenida a la casa.\n\nQuedas como Dominante PENDIENTE DE VERIFICACIÓN: puedes usar la plataforma, pero no tener sumisos hasta que el Staff te verifique.'
-            : '👑 Bienvenida, Diosa. Tu cuenta está activa con plenos derechos desde este instante.');
+alert(domOn
+? '👑 Bienvenida a la casa.\n\nQuedas como Dominante PENDIENTE DE VERIFICACIÓN: puedes usar la plataforma, pero no tener sumisos hasta que el Staff te verifique.'
+: '👑 Bienvenida, Diosa. Tu cuenta está activa con plenos derechos desde este instante.');
           window.location.reload();
         }
       } else {
@@ -1280,8 +1348,10 @@ show_physical_public: false,
       ).join('');
 
       const profileCard = `
-        <div class="card" id="my-profile-card">
-          <h2>Mi perfil</h2>
+<div class="card" id="my-profile-card">
+<h2>Mi perfil</h2>
+${badgesHTML(window.myBadges)}
+
           <div class="avatar-block">
             <h3 style="margin:0 0 10px;">📸 Mi foto de perfil</h3>
             <img class="avatar-preview" id="myAvatar" src="${escapeHtml(currentProfile.avatar_url || '')}" onerror="this.style.display='none'" />
@@ -1371,6 +1441,18 @@ show_physical_public: false,
             </div>
           </div>
           ${!isLocked ? '<button onclick="saveMyProfile()">Guardar mi perfil</button>' : ''}
+                    ${(!isLocked && window.myBadges && window.myBadges.length) ? `
+          <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;">
+            <h3 style="margin-top:0;">🏅 Mis insignias</h3>
+            <p class="small" style="margin:0 0 10px;">Estas insignias te fueron otorgadas por el Staff. Puedes elegir si se muestran en el Salón.</p>
+            ${window.myBadges.map(b => `
+              <label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;">
+                <input type="checkbox" style="width:auto;margin:0;" ${b.visible_in_salon ? 'checked' : ''} onchange="toggleMyBadgeVisibility('${b.badge.id}', this.checked)"/>
+                <span>${b.badge.emoji} <b>${escapeHtml(b.badge.name)}</b></span>
+                <span class="small" style="margin-left:auto;">${escapeHtml(b.badge.description || '')}</span>
+              </label>
+            `).join('')}
+          </div>` : ''}
           <button class="secondary" onclick="startTour()">🎬 Ver tour</button>
         </div>
       `;
@@ -1669,6 +1751,32 @@ fetishes, limits, fetishes_details, limits_details,
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="porientpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_orientation_public ? 'checked' : ''}> Mostrar su orientación</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="prolepub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_playrole_public ? 'checked' : ''}> Mostrar su rol</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pphysicalpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_physical_public ? 'checked' : ''}> Mostrar su físico y hábitos</label>`;
+                        html += `<div style="margin-top:12px;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+              <h4 style="margin:0 0 8px;">🏅 Insignias de tu sumiso</h4>
+              <p class="small" style="margin:0 0 8px;">Las insignias las otorga el Staff. Tú decides si se muestran en el Salón.</p>
+              <div id="subbadges-${sub.submissive_id}"><p class="small">Pulsa 🔄 para cargar.</p></div>
+              <button class="secondary" onclick="loadSubBadges('${sub.submissive_id}')">🔄 Ver insignias</button>
+            </div>`;
+            async function loadSubBadges(subId){
+  const { data } = await db.from('member_badges')
+    .select('id, visible_in_salon, badge:badges(id, code, name, emoji, color, description)')
+    .eq('user_id', subId).is('revoked_at', null);
+  const box = document.getElementById('subbadges-' + subId);
+  if (!box) return;
+  const list = data || [];
+  if (!list.length){ box.innerHTML = '<p class="small">Tu sumiso no tiene insignias todavía.</p>'; return; }
+  box.innerHTML = list.map(b => `
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
+      <input type="checkbox" style="width:auto;margin:0;" ${b.visible_in_salon ? 'checked' : ''} onchange="toggleSubBadgeVisibility('${subId}','${b.id}',this.checked)"/>
+      <span style="color:${b.badge.color || 'var(--gold)'};">${b.badge.emoji} <b>${escapeHtml(b.badge.name)}</b></span>
+    </label>
+  `).join('');
+}
+async function toggleSubBadgeVisibility(subId, mbId, show){
+  const { error } = await db.from('member_badges')
+    .update({ visible_in_salon: show }).eq('id', mbId).eq('user_id', subId);
+  if (error) return alert(error.message);
+}
 html += renderPhysicalSection('sub_' + sub.submissive_id, sub.profiles || {}, false, isMaleGender(sub.profiles?.gender));
                         html += `<div style="margin-top:12px;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
               <h4 style="margin:0 0 6px;">🔥 Gustos y Fetiches de tu sumiso</h4>
@@ -1727,6 +1835,26 @@ document.querySelectorAll('.sub_' + sub.submissive_id + '_std').forEach(c => c.a
 });
     }
 
+    async function loadSubBadges(subId){
+  const { data } = await db.from('member_badges')
+    .select('id, visible_in_salon, badge:badges(id, code, name, emoji, color, description)')
+    .eq('user_id', subId).is('revoked_at', null);
+  const box = document.getElementById('subbadges-' + subId);
+  if (!box) return;
+  const list = data || [];
+  if (!list.length){ box.innerHTML = '<p class="small">Tu sumiso no tiene insignias todavía.</p>'; return; }
+  box.innerHTML = list.map(b => `
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;background:#161625;border-radius:8px;">
+      <input type="checkbox" style="width:auto;margin:0;" ${b.visible_in_salon ? 'checked' : ''} onchange="toggleSubBadgeVisibility('${subId}','${b.id}',this.checked)"/>
+      <span style="color:${b.badge.color || 'var(--gold)'};">${b.badge.emoji} <b>${escapeHtml(b.badge.name)}</b></span>
+    </label>
+  `).join('');
+}
+async function toggleSubBadgeVisibility(subId, mbId, show){
+  const { error } = await db.from('member_badges')
+    .update({ visible_in_salon: show }).eq('id', mbId).eq('user_id', subId);
+  if (error) return alert(error.message);
+}
     function messageSub(subId) {
       window.location.href = 'mensajes.html?start=' + subId;
     }
