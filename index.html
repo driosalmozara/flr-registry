@@ -415,6 +415,27 @@
       document.getElementById('myAvatar').src = data.publicUrl + '?t=' + Date.now();
       alert('Foto de perfil actualizada.');
     }
+        async function uploadSubAvatar(subId) {
+      const file = document.getElementById('subfile_' + subId).files[0];
+      if (!file) return alert('Selecciona una imagen.');
+      if (!file.type.startsWith('image/')) return alert('El archivo debe ser una imagen.');
+      const { data: oldProf } = await db.from('profiles').select('avatar_url').eq('id', subId).maybeSingle();
+      const oldUrl = (oldProf && oldProf.avatar_url) || '';
+      const path = subId + '/' + Date.now() + '.' + extOf(file.name);
+      const { error } = await db.storage.from('avatars').upload(path, file);
+      if (error) return alert(error.message);
+      const { data } = db.storage.from('avatars').getPublicUrl(path);
+      const { error: updateError } = await db.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', subId);
+      if (updateError) return alert(updateError.message);
+      if (oldUrl) {
+        try {
+          const oldPath = decodeURIComponent(oldUrl.split('/avatars/')[1] || '');
+          if (oldPath) await db.storage.from('avatars').remove([oldPath]);
+        } catch(e){}
+      }
+      alert('Foto de perfil del sumiso actualizada.');
+      window.location.reload();
+    }
     function avatarHTML(url, fallback) {
       if (url) return `<img class="ava" src="${escapeHtml(url)}" />`;
       return `<div class="ava empty">${fallback}</div>`;
@@ -1368,6 +1389,15 @@ function getFetishDetails(containerId) {
 
           html += `<div class="item">`;
           html += `<div class="rowitem">${avatarHTML(sub.profiles?.avatar_url, '⛓')}<h3 style="margin:0;">${escapeHtml(sub.profiles?.display_name || 'Sumiso')}</h3></div>`;
+                    html += `<div style="display:flex;gap:10px;align-items:center;margin:8px 0;padding:8px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
+            <img src="${escapeHtml(sub.profiles?.avatar_url || '')}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0b0b12;flex:none;" onerror="this.style.display='none'"/>
+            <div style="flex:1;">
+              <b class="small">📸 Foto de perfil de tu sumiso</b>
+              <input type="file" id="subfile_${sub.submissive_id}" accept="image/*" style="display:none;" onchange="uploadSubAvatar('${sub.submissive_id}')" />
+              <br/>
+              <button type="button" class="secondary" style="margin-top:6px;" onclick="document.getElementById('subfile_${sub.submissive_id}').click()">Cambiar foto</button>
+            </div>
+          </div>`;
           html += `<label class="small" style="display:flex;gap:8px;align-items:center;margin:6px 0;cursor:pointer;">
   <input type="checkbox" style="width:auto;margin:0;" ${sub.profiles?.autonomy ? 'checked' : ''} onchange="setAutonomy('${sub.submissive_id}', this.checked)" />
   🕊 Autonomía del sumiso
