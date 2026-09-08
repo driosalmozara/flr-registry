@@ -647,7 +647,8 @@
     }
 
     async function saveVisibility() {
-      const available_public = document.getElementById('vis_avail').checked;
+      const availEl = document.getElementById('vis_avail');
+      const available_public = availEl ? availEl.checked : currentProfile.available_public;
       const show_avatar_public = document.getElementById('vis_ava').checked;
       const show_social_public = document.getElementById('vis_social').checked;
       const show_contact_public = document.getElementById('vis_contact').checked;
@@ -1078,9 +1079,11 @@ function getFetishDetails(containerId) {
       const dashboard = document.getElementById('dashboard');
 
       let isLocked = false;
+      let hasOwner = false;
       if (currentProfile.role === 'submissive') {
         const { data: rel } = await db.from('relationships').select('id')
           .eq('submissive_id', currentUser.id).eq('status', 'confirmed').maybeSingle();
+        hasOwner = !!rel;
         if (rel) isLocked = !currentProfile.autonomy;
       }
       profileLocked = isLocked;
@@ -1188,10 +1191,19 @@ function getFetishDetails(containerId) {
         <div class="card">
           <h2>👁 Visibilidad y Privacidad</h2>
           <p class="small">Controla qué se muestra de ti en el Salón de miembros.</p>
-          <label>
-            <input type="checkbox" id="vis_avail" ${currentProfile.available_public ? 'checked' : ''} />
-            ${currentProfile.role === 'dominant' ? 'Aparecer en el Salón como Dominante' : 'Aparecer en el Salón como "Sumiso sin Dueña"'}
-          </label>
+          ${currentProfile.role === 'dominant' ? `
+            <label>
+              <input type="checkbox" id="vis_avail" ${currentProfile.available_public ? 'checked' : ''} />
+              Aparecer en el Salón como Dominante
+            </label>
+          ` : (!hasOwner ? `
+            <label>
+              <input type="checkbox" id="vis_avail" ${currentProfile.available_public ? 'checked' : ''} />
+              Aparecer en el Salón como "Sumiso sin Dueña"
+            </label>
+          ` : `
+            <p class="small" style="color:#a1a1aa;margin:6px 0;">⛓ Apareces en el Salón como <b>Sumiso en Propiedad</b>. Esa visibilidad la controla tu Dueña desde su panel; tú no puedes ponerte como "sin Dueña" mientras la tengas.</p>
+          `)}
           <label>
             <input type="checkbox" id="vis_ava" ${currentProfile.show_avatar_public ? 'checked' : ''} />
             Mostrar mi avatar en el Salón
