@@ -78,6 +78,18 @@
     .fetish-item strong{font-size:13px;font-weight:600;}
     .fetish-info{margin-top:6px;padding:6px 8px;background:#1a1a2e;border-radius:6px;font-size:12px;color:#d4d4d8;line-height:1.4;}
     .fetish-detail{margin:6px 0 0 !important;padding:6px 10px !important;font-size:13px;}
+        .physical-section{margin:14px 0;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;}
+    .physical-section h3{margin:0 0 12px;color:var(--gold);}
+    .physical-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0;}
+    .physical-row.three{grid-template-columns:1fr 1fr 1fr;}
+    .physical-zone{padding:10px;background:#161625;border:1px solid var(--line);border-radius:10px;margin:6px 0;}
+    .physical-zone label{display:block;font-size:12px;color:#a1a1aa;margin-bottom:6px;}
+    .physical-zone select{margin:0;}
+    .physical-cond{margin-top:8px;display:none;padding:10px;background:#161625;border-left:3px solid var(--gold);border-radius:0 8px 8px 0;}
+    .physical-cond.active{display:block;}
+    .stds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:8px 0;}
+    .stds-grid label{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#161625;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;}
+    .stds-grid input{width:auto !important;margin:0 !important;}
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
@@ -220,6 +232,11 @@
               <input id="reg-social-public" type="checkbox" style="width:auto; margin-right:6px;" />
               Mostrar mi país y redes en el Salón de miembros
             </label>
+            <label class="small" style="margin-top:4px;">
+<input id="reg-physical-public" type="checkbox" style="width:auto; margin-right:6px;" />
+Mostrar mi físico y hábitos en el Salón de miembros
+</label>
+<div id="reg-physical-container"></div>
                         <div style="margin:14px 0;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
               <h4 style="margin:0 0 6px;">🔥 Mis Gustos y Fetiches (opcional)</h4>
               <p class="small" style="margin:0 0 8px;">Pulsa ⓘ para ver cada descripción.</p>
@@ -271,6 +288,7 @@
       <input id="setup-orientation-detail" style="display:none;" placeholder="Detalla tu orientación" />
       <label class="small">Rol en la dinámica</label>
       <select id="setup-playrole"></select>
+      <div id="setup-physical-container"></div>
       <select id="setup-country">
         <option value="">País de residencia...</option>
       </select>
@@ -346,6 +364,149 @@
     function orientationOptions(role, cur){ const l = role==='dominant'?['Heterosexual','Lesbiana','Bisexual','Otro']:['Heterosexual','Homosexual','Bisexual','Otro']; return l.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join(''); }
     function roleOptions(role, cur){ return (role==='dominant'?ROLES_DOM:ROLES_SUB).map(r=>`<option value="${r}" ${cur===r?'selected':''}>${r}</option>`).join(''); }
     function toggleDetail(value, detailId){ const d=document.getElementById(detailId); if(d) d.style.display = (value==='Otro')?'block':'none'; }
+        function togglePhysicalCond(triggerId, targetId) {
+      const trigger = document.getElementById(triggerId);
+      const target = document.getElementById(targetId);
+      if (!trigger || !target) return;
+      const active = trigger.type === 'checkbox' ? trigger.checked : (trigger.value && trigger.value !== '' && trigger.value !== 'abstemio' && trigger.value !== 'no');
+      target.classList.toggle('active', active);
+    }
+    function isMaleGender(g){ return ['Hombre','Hombre Travesti','Hombre Transexual','Hombre Transgénero'].includes(g); }
+    function renderPhysicalSection(prefix, data = {}, locked = false, showMale = false) {
+      const dis = locked ? 'disabled' : '';
+      const v = (k) => data[k] !== undefined && data[k] !== null ? data[k] : '';
+      const checked = (k) => data[k] ? 'checked' : '';
+      const sel = (k, val) => data[k] === val ? 'selected' : '';
+      let html = `<div class="physical-section">
+        <h3>🧍 Físico y Hábitos (opcional)</h3>
+        <p class="small" style="margin:0 0 10px;">Completa solo lo que desees compartir. Toda esta información es voluntaria.</p>
+        <div class="physical-row">
+          <div><label class="small">Peso (kg)</label><input type="number" id="${prefix}_weight" min="20" max="300" step="0.1" placeholder="Ej: 75" value="${escapeHtml(String(v(prefix === 'reg' || prefix === 'setup' ? 'physical_weight' : 'physical_weight')))}" ${dis}/></div>
+          <div><label class="small">Estatura (m)</label><input type="number" id="${prefix}_height" min="1" max="2.5" step="0.01" placeholder="Ej: 1.75" value="${escapeHtml(String(v('physical_height')))}" ${dis}/></div>
+        </div>
+        <label class="small">Religión</label>
+        <input id="${prefix}_religion" placeholder="Ej: Católica, Atea, Budista..." value="${escapeHtml(v('physical_religion'))}" ${dis}/>
+        <div class="physical-row">
+          <div>
+            <label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="${prefix}_tattoos" style="width:auto;margin:0;" ${checked('physical_tattoos')} onchange="togglePhysicalCond('${prefix}_tattoos','${prefix}_tattoos_detail_box')" ${dis}/> Tengo tatuajes</label>
+            <div id="${prefix}_tattoos_detail_box" class="physical-cond ${data.physical_tattoos?'active':''}">
+              <label class="small">Cuántos, dónde y detalles</label>
+              <textarea id="${prefix}_tattoos_detail" rows="2" placeholder="Ej: 3 tatuajes: dragón en espalda, rosa en antebrazo..." ${dis}>${escapeHtml(v('physical_tattoos_detail'))}</textarea>
+            </div>
+          </div>
+          <div>
+            <label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="${prefix}_piercings" style="width:auto;margin:0;" ${checked('physical_piercings')} onchange="togglePhysicalCond('${prefix}_piercings','${prefix}_piercings_detail_box')" ${dis}/> Tengo piercings</label>
+            <div id="${prefix}_piercings_detail_box" class="physical-cond ${data.physical_piercings?'active':''}">
+              <label class="small">Cuántos, dónde y detalles</label>
+              <textarea id="${prefix}_piercings_detail" rows="2" placeholder="Ej: 2 piercings: aros en orejas, barbell en lengua..." ${dis}>${escapeHtml(v('physical_piercings_detail'))}</textarea>
+            </div>
+          </div>
+        </div>
+        <label class="small">Alcohol</label>
+        <select id="${prefix}_alcohol" ${dis}>
+          <option value="">— Sin especificar —</option>
+          <option value="abstemio" ${sel('physical_alcohol','abstemio')}>Abstemio</option>
+          <option value="socialmente" ${sel('physical_alcohol','socialmente')}>Socialmente</option>
+          <option value="habitualmente" ${sel('physical_alcohol','habitualmente')}>Habitualmente</option>
+        </select>
+        <div>
+          <label class="small">Tabaco</label>
+          <select id="${prefix}_tobacco_sel" onchange="togglePhysicalCond('${prefix}_tobacco_sel','${prefix}_tobacco_detail_box')" ${dis}>
+            <option value="no" ${!data.physical_tobacco && data.physical_tobacco !== 0 ? 'selected' : ''}>No fumo</option>
+            <option value="si" ${data.physical_tobacco || data.physical_tobacco === 0 ? 'selected' : ''}>Sí fumo</option>
+          </select>
+          <div id="${prefix}_tobacco_detail_box" class="physical-cond ${(data.physical_tobacco || data.physical_tobacco === 0)?'active':''}">
+            <label class="small">Cigarrillos al día</label>
+            <input type="number" id="${prefix}_tobacco" min="0" max="100" placeholder="Ej: 5" value="${data.physical_tobacco || data.physical_tobacco === 0 ? data.physical_tobacco : ''}" ${dis}/>
+          </div>
+        </div>
+        <label class="small">Drogas (cuáles)</label>
+        <input id="${prefix}_drugs" placeholder="Ej: ninguna, cannabis ocasional..." value="${escapeHtml(v('physical_drugs'))}" ${dis}/>
+        <label class="small">Tratamientos médicos u hormonales (cuáles)</label>
+        <input id="${prefix}_treatments" placeholder="Ej: ninguno, testosterona, antidepresivos..." value="${escapeHtml(v('physical_treatments'))}" ${dis}/>
+        <label class="small">ETS</label>
+        <div class="stds-grid">
+          ${['vih','sifilis','gonorrea','otra'].map(std => `
+            <label><input type="checkbox" class="${prefix}_std" value="${std}" ${(Array.isArray(data.physical_stds) && data.physical_stds.includes(std)) ? 'checked' : ''} ${dis}/> ${std === 'vih' ? 'VIH' : std === 'sifilis' ? 'Sífilis' : std === 'gonorrea' ? 'Gonorrea' : 'Otra'}</label>
+          `).join('')}
+        </div>
+        <div id="${prefix}_stds_other_box" class="physical-cond ${(Array.isArray(data.physical_stds) && data.physical_stds.includes('otra'))?'active':''}">
+          <label class="small">Especificar otra ETS</label>
+          <input id="${prefix}_stds_other" placeholder="Ej: herpes, clamidia..." value="${escapeHtml(v('physical_stds_other'))}" ${dis}/>
+        </div>
+        <script>document.querySelectorAll('.${prefix}_std').forEach(c => c.addEventListener('change', function(){ document.getElementById('${prefix}_stds_other_box').classList.toggle('active', document.querySelector('.${prefix}_std[value="otra"]').checked); }));<\/script>
+        <label class="small" style="margin-top:10px;">Otra información</label>
+        <textarea id="${prefix}_other_info" rows="2" placeholder="Cualquier otro detalle físico o de hábitos que desees compartir..." ${dis}>${escapeHtml(v('physical_other'))}</textarea>`;
+      if (showMale) {
+        const zones = ['axilas','pecho','abdomen','brazos','piernas','espalda','trasero','pubis','genitales'];
+        const hair = data.physical_hair || {};
+        html += `<h4 style="color:var(--gold);margin:16px 0 8px;">🧔 Vello corporal</h4>
+          <p class="small" style="margin:0 0 8px;">Selecciona el estado de cada zona (solo las que quieras indicar).</p>
+          <div class="physical-row">` +
+          zones.map(z => `
+            <div class="physical-zone">
+              <label>${z.charAt(0).toUpperCase() + z.slice(1)}</label>
+              <select id="${prefix}_hair_${z}" ${dis}>
+                <option value="">— Sin especificar —</option>
+                <option value="natural" ${hair[z]==='natural'?'selected':''}>Natural</option>
+                <option value="afeitado" ${hair[z]==='afeitado'?'selected':''}>Afeitado o recortado</option>
+                <option value="depilado" ${hair[z]==='depilado'?'selected':''}>Depilado</option>
+              </select>
+            </div>`).join('') + `</div>`;
+        html += `<div class="physical-row three">
+          <div>
+            <label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="${prefix}_circumcised" style="width:auto;margin:0;" ${checked('physical_circumcised')} ${dis}/> Circuncidado</label>
+          </div>
+          <div>
+            <label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="${prefix}_vasectomy" style="width:auto;margin:0;" ${checked('physical_vasectomy')} ${dis}/> Vasectomizado</label>
+          </div>
+          <div>
+            <label class="small">Castrado</label>
+            <select id="${prefix}_castrated" ${dis}>
+              <option value="no" ${sel('physical_castrated','no') || !data.physical_castrated ? 'selected' : ''}>No</option>
+              <option value="uno" ${sel('physical_castrated','uno')}>Un testículo</option>
+              <option value="ambos" ${sel('physical_castrated','ambos')}>Ambos testículos</option>
+            </select>
+          </div>
+        </div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+    function collectPhysical(prefix) {
+      const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      const chk = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+      const weight = parseFloat(val(prefix + '_weight')) || null;
+      const height = parseFloat(val(prefix + '_height')) || null;
+      const tobaccoSel = val(prefix + '_tobacco_sel');
+      const tobaccoNum = tobaccoSel === 'si' ? (parseInt(val(prefix + '_tobacco')) || 0) : null;
+      const stds = Array.from(document.querySelectorAll('.' + prefix + '_std:checked')).map(c => c.value);
+      const hair = {};
+      ['axilas','pecho','abdomen','brazos','piernas','espalda','trasero','pubis','genitales'].forEach(z => {
+        const v = val(prefix + '_hair_' + z);
+        if (v) hair[z] = v;
+      });
+      return {
+        physical_weight: weight,
+        physical_height: height,
+        physical_religion: val(prefix + '_religion') || null,
+        physical_tattoos: chk(prefix + '_tattoos'),
+        physical_tattoos_detail: val(prefix + '_tattoos_detail') || null,
+        physical_piercings: chk(prefix + '_piercings'),
+        physical_piercings_detail: val(prefix + '_piercings_detail') || null,
+        physical_alcohol: val(prefix + '_alcohol') || null,
+        physical_tobacco: tobaccoNum,
+        physical_drugs: val(prefix + '_drugs') || null,
+        physical_treatments: val(prefix + '_treatments') || null,
+        physical_stds: stds.length ? stds : null,
+        physical_stds_other: stds.includes('otra') ? (val(prefix + '_stds_other') || null) : null,
+        physical_other: val(prefix + '_other_info') || null,
+        physical_hair: Object.keys(hair).length ? hair : null,
+        physical_circumcised: chk(prefix + '_circumcised'),
+        physical_castrated: val(prefix + '_castrated') || 'no',
+        physical_vasectomy: chk(prefix + '_vasectomy')
+      };
+    }
     function sortUsers(list){
   return [...list].sort((a,b) => {
     if (a.role !== b.role) return a.role === 'dominant' ? -1 : 1;
@@ -661,8 +822,10 @@
       const show_fetishes_public = document.getElementById('vis_fetishes').checked;
       const show_limits_public = document.getElementById('vis_limits').checked;
       
-      const { error } = await db.from('profiles')
-        .update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_fetishes_public, show_limits_public })
+const physEl = document.getElementById('vis_physical');
+const show_physical_public = physEl ? physEl.checked : currentProfile.show_physical_public;
+const { error } = await db.from('profiles')
+.update({ available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_fetishes_public, show_limits_public, show_physical_public })
         .eq('id', currentUser.id);
         
       if (error) return alert(error.message);
@@ -838,6 +1001,20 @@ function getFetishDetails(containerId) {
       document.getElementById(id).type = showPass ? 'text' : 'password';
     }
 
+        function renderPhysicalReg(){
+      const container = document.getElementById('reg-physical-container');
+      if (!container) return;
+      const gender = document.getElementById('reg-gender').value;
+      container.innerHTML = renderPhysicalSection('reg', {}, false, isMaleGender(gender));
+          attachStdsListener('reg');
+    }
+    function attachStdsListener(prefix){
+  document.querySelectorAll('.' + prefix + '_std').forEach(c => c.addEventListener('change', function(){
+    const box = document.getElementById(prefix + '_stds_other_box');
+    const otra = document.querySelector('.' + prefix + '_std[value="otra"]');
+    if (box && otra) box.classList.toggle('active', otra.checked);
+  }));
+}
     function showRegister(ev) {
       if (ev) ev.preventDefault();
       const w = document.getElementById('register-card-wrapper');
@@ -845,6 +1022,7 @@ function getFetishDetails(containerId) {
       renderFetishOptions('reg-fetishes-container', [], {}, false);
       renderFetishOptions('reg-limits-container', [], {}, false);
             renderRegContacts();
+            renderPhysicalReg();
     }
     function hideRegister(ev) {
       if (ev) ev.preventDefault();
@@ -939,8 +1117,13 @@ function getFetishDetails(containerId) {
       const r = document.getElementById(prefix + '-playrole');
       if (g) { g.innerHTML = genderOptions(role, g.value); toggleDetail(g.value, prefix+'-gender-detail'); }
       if (o) { o.innerHTML = orientationOptions(role, o.value); toggleDetail(o.value, prefix+'-orientation-detail'); }
-      if (r) { r.innerHTML = roleOptions(role, r.value); }
-    }
+if (r) { r.innerHTML = roleOptions(role, r.value); }
+if (prefix === 'reg' && document.getElementById('reg-physical-container')) renderPhysicalReg();
+if (prefix === 'setup' && document.getElementById('setup-physical-container')) {
+  document.getElementById('setup-physical-container').innerHTML = renderPhysicalSection('setup', {}, false, isMaleGender(document.getElementById('setup-gender').value));
+attachStdsListener('setup');
+}
+}
 
     async function register() {
       if (!db) return alert('Configura Supabase primero.');
@@ -983,8 +1166,10 @@ function getFetishDetails(containerId) {
         fetishes: getSelectedFetishes('reg-fetishes-container'),
         limits: getSelectedFetishes('reg-limits-container'),
         fetishes_details: getFetishDetails('reg-fetishes-container'),
-        limits_details: getFetishDetails('reg-limits-container')
-      }).eq('id', data.user.id);
+limits_details: getFetishDetails('reg-limits-container'),
+show_physical_public: document.getElementById('reg-physical-public').checked,
+...collectPhysical('reg')
+}).eq('id', data.user.id);
             if (regContacts.length) {
         const rows = regContacts.map(c => ({ user_id: data.user.id, contact_type: 'social', platform: c.platform, custom_platform: c.custom_platform, value: c.value }));
         await db.from('member_contacts').insert(rows);
@@ -1031,8 +1216,10 @@ function getFetishDetails(containerId) {
         gender_detail: gender==='Otro' ? ((document.getElementById('setup-gender-detail').value||'').trim()||null) : null,
         orientation: document.getElementById('setup-orientation').value,
         orientation_detail: document.getElementById('setup-orientation').value==='Otro' ? ((document.getElementById('setup-orientation-detail').value||'').trim()||null) : null,
-        play_role: document.getElementById('setup-playrole').value
-      }).eq('id', currentUser.id);
+play_role: document.getElementById('setup-playrole').value,
+show_physical_public: false,
+...collectPhysical('setup')
+}).eq('id', currentUser.id);
 
       if (role === 'dominant') {
         const regOn = await regLockIsOn();
@@ -1116,8 +1303,8 @@ function getFetishDetails(containerId) {
           <p class="small" style="margin:0 0 6px;">Describe con libertad lo que te gusta, tus fetiches, preferencias y cualquier detalle que quieras compartir. Extensión libre.</p>
           <textarea id="profile-bio-ext" rows="8" placeholder="Aquí puedes escribir con toda libertad sobre tus gustos, fetiches, límites suaves, fantasías, prácticas favoritas, juguetes, protocolos preferidos, dinámicas que te atraen..." ${isLocked ? 'disabled' : ''}>${escapeHtml(currentProfile.bio_extended || '')}</textarea>
           
-          <div style="margin-top:20px;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;">
-            <h3 style="margin-top:0;">🔥 Mis Gustos y Fetiches (opcional)</h3>
+<div style="margin-top:20px;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;">
+<h3 style="margin-top:0;">🔥 Mis Gustos y Fetiches (opcional)</h3>
             <p class="small" style="margin:0 0 10px;">Selecciona los fetiches que te gustan. Pulsa ⓘ para ver la descripción de cada uno.</p>
             <div id="fetishes-container"></div>
           </div>
@@ -1127,6 +1314,7 @@ function getFetishDetails(containerId) {
             <p class="small" style="margin:0 0 10px;">Selecciona lo que NO te gusta. Un mismo fetiche no puede estar en ambas secciones.</p>
             <div id="limits-container"></div>
           </div>
+                    ${renderPhysicalSection('prof', currentProfile, isLocked, currentProfile.role === 'submissive' ? isMaleGender(currentProfile.gender) : isMaleGender(currentProfile.gender))}
 
           <label class="small" style="margin-top:16px;">Fecha de nacimiento (dd/mm/aaaa)</label>
           <input id="profile-birth" value="${fromISO(currentProfile.birth_date)}" placeholder="dd/mm/aaaa" oninput="maskDate(this)" maxlength="10" ${isLocked ? 'disabled' : ''} />
@@ -1248,8 +1436,14 @@ function getFetishDetails(containerId) {
             <input type="checkbox" id="vis_limits" ${currentProfile.show_limits_public ? 'checked' : ''} />
             Mostrar mis límites en el Salón
           </label>
-          <button onclick="saveVisibility()">Guardar visibilidad</button>
-        </div>
+${!isLocked ? `
+<label>
+<input type="checkbox" id="vis_physical" ${currentProfile.show_physical_public ? 'checked' : ''} />
+Mostrar mi físico y hábitos en el Salón
+</label>
+` : ''}
+<button onclick="saveVisibility()">Guardar visibilidad</button>
+</div>
       `;
 
       dashboard.insertAdjacentHTML('afterbegin', profileCard + visibilityCard);
@@ -1260,8 +1454,13 @@ function getFetishDetails(containerId) {
       const currentFetishDetails = currentProfile.fetishes_details || {};
       const currentLimitsDetails = currentProfile.limits_details || {};
       renderFetishOptions('fetishes-container', currentFetishes, currentFetishDetails);
-      renderFetishOptions('limits-container', currentLimits, currentLimitsDetails);
-    }
+renderFetishOptions('limits-container', currentLimits, currentLimitsDetails);
+document.querySelectorAll('.prof_std').forEach(c => c.addEventListener('change', function(){
+  const box = document.getElementById('prof_stds_other_box');
+  const otra = document.querySelector('.prof_std[value="otra"]');
+  if (box && otra) box.classList.toggle('active', otra.checked);
+}));
+}
 
     async function saveMyProfile() {
       const display_name = document.getElementById('profile-display').value.trim();
@@ -1282,14 +1481,16 @@ function getFetishDetails(containerId) {
       const fetishes_details = getFetishDetails('fetishes-container');
       const limits_details = getFetishDetails('limits-container');
       
-      const { error } = await db.from('profiles').update({
-        display_name, bio, bio_extended: bio_extended||null, country, lang,
+const physicalData = collectPhysical('prof');
+const { error } = await db.from('profiles').update({
+display_name, bio, bio_extended: bio_extended||null, country, lang,
         birth_date: toISO(bdt), age,
         gender, gender_detail: gender==='Otro' ? ((document.getElementById('profile-gender-detail').value||'').trim()||null) : null,
         orientation, orientation_detail: orientation==='Otro' ? ((document.getElementById('profile-orientation-detail').value||'').trim()||null) : null,
         play_role: document.getElementById('profile-playrole').value,
-        fetishes, limits, fetishes_details, limits_details
-      }).eq('id', currentUser.id);
+fetishes, limits, fetishes_details, limits_details,
+...physicalData
+}).eq('id', currentUser.id);
       if (error) return alert(error.message);
       alert('Perfil actualizado.');
       window.location.reload();
@@ -1305,7 +1506,7 @@ function getFetishDetails(containerId) {
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, fetishes, limits, fetishes_details, limits_details)')
+        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_physical_public, fetishes, limits, fetishes_details, limits_details, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -1467,6 +1668,8 @@ function getFetishDetails(containerId) {
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pgenderpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_gender_public ? 'checked' : ''}> Mostrar su género</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="porientpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_orientation_public ? 'checked' : ''}> Mostrar su orientación</label>`;
             html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="prolepub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_playrole_public ? 'checked' : ''}> Mostrar su rol</label>`;
+            html += `<label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="pphysicalpub_${sub.submissive_id}" style="width:auto;margin:0;" ${sub.profiles?.show_physical_public ? 'checked' : ''}> Mostrar su físico y hábitos</label>`;
+html += renderPhysicalSection('sub_' + sub.submissive_id, sub.profiles || {}, false, isMaleGender(sub.profiles?.gender));
                         html += `<div style="margin-top:12px;padding:12px;background:#0f0f1a;border:1px solid var(--line);border-radius:10px;">
               <h4 style="margin:0 0 6px;">🔥 Gustos y Fetiches de tu sumiso</h4>
               <div id="subfet-${sub.submissive_id}"></div>
@@ -1513,10 +1716,15 @@ function getFetishDetails(containerId) {
         renderFetishOptions('subfet-' + sub.submissive_id,
           Array.isArray(sub.profiles?.fetishes) ? sub.profiles.fetishes : [],
           sub.profiles?.fetishes_details || {}, false);
-        renderFetishOptions('sublim-' + sub.submissive_id,
-          Array.isArray(sub.profiles?.limits) ? sub.profiles.limits : [],
-          sub.profiles?.limits_details || {}, false);
-      });
+renderFetishOptions('sublim-' + sub.submissive_id,
+Array.isArray(sub.profiles?.limits) ? sub.profiles.limits : [],
+sub.profiles?.limits_details || {}, false);
+document.querySelectorAll('.sub_' + sub.submissive_id + '_std').forEach(c => c.addEventListener('change', function(){
+  const box = document.getElementById('sub_' + sub.submissive_id + '_stds_other_box');
+  const otra = document.querySelector('.sub_' + sub.submissive_id + '_std[value="otra"]');
+  if (box && otra) box.classList.toggle('active', otra.checked);
+}));
+});
     }
 
     function messageSub(subId) {
@@ -1572,8 +1780,10 @@ function getFetishDetails(containerId) {
       const show_birthday_public = document.getElementById('pbdaypub_' + submissiveId).checked;
       const show_gender_public = document.getElementById('pgenderpub_' + submissiveId).checked;
       const show_orientation_public = document.getElementById('porientpub_' + submissiveId).checked;
-      const show_playrole_public = document.getElementById('prolepub_' + submissiveId).checked;
-      const { error } = await db.from('profiles')
+const show_playrole_public = document.getElementById('prolepub_' + submissiveId).checked;
+const show_physical_public = document.getElementById('pphysicalpub_' + submissiveId).checked;
+const physicalData = collectPhysical('sub_' + submissiveId);
+const { error } = await db.from('profiles')
         .update({ 
           country, 
           birth_date: toISO(bdt), age,
@@ -1585,9 +1795,11 @@ function getFetishDetails(containerId) {
           show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public,
           fetishes: getSelectedFetishes('subfet-' + submissiveId),
           limits: getSelectedFetishes('sublim-' + submissiveId),
-          fetishes_details: getFetishDetails('subfet-' + submissiveId),
-          limits_details: getFetishDetails('sublim-' + submissiveId)
-        })
+fetishes_details: getFetishDetails('subfet-' + submissiveId),
+limits_details: getFetishDetails('sublim-' + submissiveId),
+show_physical_public,
+...physicalData
+})
         .eq('id', submissiveId);
       if (error) return alert(error.message);
       alert('Datos y visibilidad del sumiso actualizados.');
@@ -1766,10 +1978,9 @@ function getFetishDetails(containerId) {
       window.location.reload();
     }
 
-    roleGenderSync('reg');
-    roleGenderSync('setup');
-
-    let tourSteps = [], tourIdx = 0;
+roleGenderSync('reg');
+roleGenderSync('setup');
+let tourSteps = [], tourIdx = 0;
 
     function buildTourSteps() {
       const dom = currentProfile.role === 'dominant';
