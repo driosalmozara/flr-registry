@@ -14,17 +14,19 @@ main{max-width:700px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 .small{color:#a1a1aa;font-size:13px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
+button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 label{display:flex;gap:10px;align-items:center;font-size:15px;margin:12px 0}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+.notice{padding:12px 14px;border-left:3px solid var(--gold);background:#0f0f1a;border-radius:0 10px 10px 0;margin:12px 0;font-size:14px;line-height:1.6}
 </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
 <header>
-  <h1 style="margin:0;">♛ Visibilidad pública</h1>
-  <div><a class="navlink" href="index.html">Inicio</a></div>
+  <h1 style="margin:0;">👁 Visibilidad en el Salón</h1>
+  <div><a class="navlink" href="index.html#my-profile-card">Mi perfil</a></div>
 </header>
 <main>
   <div id="content" class="card">Cargando...</div>
@@ -36,6 +38,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null;
+let profile = null;
+let hasOwner = false;
+let isLocked = false;
 
 function escapeHtml(v){
   return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -52,46 +57,69 @@ async function init() {
 
   me = session.user;
 
-  const { data: profile } = await db
+  const { data: p } = await db
     .from('profiles')
-    .select('role, available_public, show_avatar_public, display_name')
+    .select('role, available_public, show_avatar_public, display_name, autonomy')
     .eq('id', me.id)
     .maybeSingle();
 
-  if (!profile) {
+  if (!p) {
     content.innerHTML = '<h2>Completa tu perfil primero</h2><a class="navlink" href="index.html">Ir al inicio</a>';
     return;
   }
+  profile = p;
 
   if (profile.role === 'submissive') {
     const { data: owned } = await db
       .from('relationships')
-      .select('id, profiles!relationships_dominant_id_fkey(display_name)')
+      .select('id')
       .eq('submissive_id', me.id)
       .eq('status', 'confirmed')
       .maybeSingle();
 
-    if (owned) {
-      content.innerHTML = `
-        <h2>Perteneces a ♛ ${escapeHtml(owned.profiles?.display_name || 'tu Dominante')}</h2>
-        <p class="small">
-          Al ser tomado por una Dominante perdiste la libertad de gestionar tu visibilidad.
-          Ahora <b>solo tu Dominante</b> decide si apareces en el registro público
-          y si se muestra tu avatar.
-        </p>
-      `;
-      return;
-    }
+    hasOwner = !!owned;
+    if (owned) isLocked = !profile.autonomy;
   }
 
-  const appearLabel = profile.role === 'dominant'
-    ? 'Aparecer en el registro público como Dominante'
-    : 'Aparecer en el registro público como "Sumiso sin Dueña"';
+  render();
+}
+
+function render() {
+  const content = document.getElementById('content');
+
+  // Sumiso con Dueña y SIN autonomía → no controla visibilidad
+  if (profile.role === 'submissive' && hasOwner && isLocked) {
+    content.innerHTML = `
+      <h2>⛓ Sumiso en propiedad</h2>
+      <div class="notice">
+        <b>Tu Dueña gestiona tu visibilidad en el Salón.</b><br>
+        La aparición en el Salón como "Sumiso en propiedad" la controla ella desde su panel (registro). Tú puedes editar tu perfil si ella te concede autonomía, pero la visibilidad general depende de su decisión.
+      </div>
+      <p class="small">Para cualquier ajuste de visibilidad, contacta con tu Dueña o solicita autonomía.</p>
+      <a class="navlink" href="index.html#my-profile-card" style="display:inline-block;margin-top:12px;">← Volver a Mi perfil</a>
+    `;
+    return;
+  }
+
+  // Dominante / Sumiso libre / Sumiso con autonomía
+  let title, appearLabel, subNote;
+  if (profile.role === 'dominant') {
+    title = '♛ Visibilidad de Dominante';
+    appearLabel = 'Aparecer en el Salón como Dominante';
+    subNote = 'Como Dominante, tú decides si apareces en el Salón de miembros.';
+  } else if (!hasOwner) {
+    title = '⛓ Sumiso sin Dueña';
+    appearLabel = 'Aparecer en el Salón como "Sumiso sin Dueña"';
+    subNote = 'En cuanto una Dominante te confirme, pasarás a aparecer como "Sumiso en propiedad" y ella tomará el control de la visibilidad general.';
+  } else {
+    title = '⛓ Sumiso en propiedad (con autonomía)';
+    appearLabel = 'Aparecer en el Salón como sumiso en propiedad';
+    subNote = 'Tu Dueña te concedió autonomía: controlas tu propia visibilidad, aunque sigues apareciendo como "en propiedad" en el Salón.';
+  }
 
   content.innerHTML = `
-    <h2>${profile.role === 'dominant' ? '♛ Visibilidad de Dominante' : 'Sumiso sin Dueña'}</h2>
-    <p class="small">Mientras no pertenezcas a una Dominante, tú controlas tu visibilidad.
-    ${profile.role === 'dominant' ? 'Como Dominante, tú decides cuándo aparecer.' : 'En cuanto una Dominante te confirme, ella tomará el control.'}</p>
+    <h2>${title}</h2>
+    <p class="small">${subNote}</p>
 
     <label>
       <input type="checkbox" id="avail" ${profile.available_public ? 'checked' : ''} />
@@ -100,11 +128,15 @@ async function init() {
 
     <label>
       <input type="checkbox" id="showava" ${profile.show_avatar_public ? 'checked' : ''} />
-      Mostrar mi avatar en el registro público
+      Mostrar mi avatar en el Salón
     </label>
 
     <button onclick="save()">Guardar</button>
-    <p class="small">Si no has subido avatar, hazlo en la página "Mi avatar".</p>
+    <button class="secondary" onclick="location.href='index.html#my-profile-card'" style="margin-left:8px;">Ver todos los toggles en Mi perfil</button>
+
+    <div class="notice" style="margin-top:20px;">
+      <b>💡 Consejo:</b> desde <a href="index.html#my-profile-card" style="color:var(--gold);">Mi perfil → Visibilidad y Privacidad</a> puedes controlar mucho más: redes sociales, contacto, edad, físico, fetiches, límites y más.
+    </div>
   `;
 }
 
@@ -118,14 +150,13 @@ async function save() {
     .eq('id', me.id);
 
   if (error) return alert(error.message);
-
   alert('Guardado.');
   window.location.reload();
 }
 
 init();
 </script>
-  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
   new google.translate.TranslateElement({
