@@ -21,18 +21,18 @@ button.danger{background:#7f1d1d;color:#fff}
 .anexo{background:rgba(201,162,75,.08);border:2px solid var(--gold);border-radius:14px;padding:18px;margin:18px 0}
 .anexo h3{color:var(--gold);margin-top:0}
 </style>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
 <header>
-    <h1 style="margin:0;">♛ Contrato de sumisión</h1>
-  <div><a class="navlink" href="index.html">Inicio</a></div>
+<h1 style="margin:0;">♛ Contrato de sumisión</h1>
+<div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main>
-  <div id="content" class="card">Cargando...</div>
+<div id="content" class="card">Cargando...</div>
 </main>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
@@ -159,7 +159,7 @@ CLÁUSULA XIII: PROTECCIÓN DE DATOS SENSIBLES
 13.2 Estos datos NUNCA se mostrarán en el Salón de miembros ni en ningún espacio público de la plataforma.
 13.3 Solo podrán conocerlos las partes unidas por una relación confirmada, exclusivamente para el cuidado, la seguridad y el consentimiento informado de las prácticas.
 13.4 Quien acceda a estos datos se obliga a guardar confidencialidad absoluta. Su difusión, publicación o uso distinto al pactado podrá constituir infracción de la legislación de protección de datos personales vigente en el domicilio de las partes, además de falta grave en la casa, sancionable por el Staff.
-13.5 El titular de los datos puede modificarlos o retirar su consentimiento en cualquier momento desde «Mi perfil», sin necesidad de autorización de su Dueña.`;}
+13.5 El titular de los datos puede modificarlos o retirar su consentimiento en cualquier momento desde «Mi perfil», sin necesidad de autorización de su Dueña.`;
 }
 
 let me = null;
@@ -190,12 +190,12 @@ async function init() {
 
   me = profile;
 
-  const { data: { session: s } } = await db.auth.getSession();
-  if (s) {
-    try {
+  try {
+    const { data: { session: s } } = await db.auth.getSession();
+    if (s) {
       await fetch('/api/expire-transfers', { method: 'POST', headers: { Authorization: 'Bearer ' + s.access_token } });
-    } catch (e) { /* endpoint opcional: si no existe, se ignora */ }
-  }
+    }
+  } catch (e) { /* endpoint opcional: si falla, no bloquea la página */ }
 
   if (me.role === 'dominant') await renderDominant();
   else await renderSubmissive();
@@ -228,7 +228,7 @@ function contractHTML(c, isDom, activeTransfer, fromDom, toDom) {
         <p class="small"><b>Firmado por:</b> ${activeTransfer.signed_at ? escapeHtml(new Date(activeTransfer.signed_at).toLocaleString()) : 'pendiente'}</p>
         ${!activeTransfer.signed_at && isDom ? `<button onclick="signAnexo('${activeTransfer.id}')">Firmar anexo de cesión</button>` : ''}
         ${!activeTransfer.signed_at && isDom ? `<button class="danger" onclick="rejectTransfer('${activeTransfer.id}')">Rechazar cesión (retorna el sumiso a su Dominante de origen)</button>` : ''}
-                ${activeTransfer.signed_at && isDom ? `<button class="danger" onclick="archiveTransfer('${activeTransfer.id}')">Archivar cesión consumada (ocultar anexo)</button>` : ''}
+        ${activeTransfer.signed_at && isDom ? `<button class="danger" onclick="archiveTransfer('${activeTransfer.id}')">Archivar cesión consumada (ocultar anexo)</button>` : ''}
       </div>
     `;
   }
@@ -351,37 +351,27 @@ async function createContract(relId) {
 
 async function saveContent(id) {
   const content = document.getElementById('ctext_' + id).value;
-
   const { error } = await db.from('contracts').update({ content }).eq('id', id);
-
   if (error) return alert(error.message);
-
   alert('Texto guardado.');
 }
 
 async function signDominant(id) {
   const { error } = await db.from('contracts').update({ dominant_agreed: true }).eq('id', id);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
 async function signSubmissive(id) {
   const { error } = await db.from('contracts').update({ submissive_agreed: true }).eq('id', id);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
 async function revokeContract(id) {
   if (!confirm('¿Revocar este contrato?')) return;
-
   const { error } = await db.from('contracts').update({ status: 'revoked' }).eq('id', id);
-
   if (error) return alert(error.message);
-
   window.location.reload();
 }
 
@@ -407,12 +397,13 @@ async function rejectTransfer(transferId) {
   window.location.reload();
 }
 
-    async function archiveTransfer(id) {
+async function archiveTransfer(id) {
   if (!confirm('¿Archivar esta cesión consumada?\n\nEl anexo dejará de mostrarse; la cesión queda en el historial del PDF.')) return;
   const { error } = await db.from('transfers').update({ status: 'completada' }).eq('id', id);
   if (error) return alert(error.message);
   window.location.reload();
 }
+
 async function downloadContractPDF(id) {
   const { data: c } = await db
     .from('contracts')
@@ -463,16 +454,16 @@ async function downloadContractPDF(id) {
     pdf.text('ANEXO DE CESIÓN', 40, 60);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(11);
-    
+
     let ay = 90;
     pdf.text('Duración: ' + (activeTransfer.duration === 'indefinida' ? 'Indefinida' : 'Temporal'), 40, ay);
     ay += 18;
-    
+
     if (activeTransfer.expires_at) {
       pdf.text('Retorno automático: ' + new Date(activeTransfer.expires_at).toLocaleDateString(), 40, ay);
       ay += 18;
     }
-    
+
     if (activeTransfer.note) {
       pdf.text('Condiciones especiales:', 40, ay);
       ay += 18;
@@ -480,7 +471,7 @@ async function downloadContractPDF(id) {
       pdf.text(noteLines, 40, ay);
       ay += noteLines.length * 14 + 10;
     }
-    
+
     pdf.text('Firmado por Dominante receptora: ' + (activeTransfer.signed_at ? new Date(activeTransfer.signed_at).toLocaleString() : 'pendiente'), 40, ay);
     ay += 18;
     pdf.text('Cedida por: ' + (activeTransfer.from_profile?.display_name || ''), 40, ay);
@@ -490,18 +481,18 @@ async function downloadContractPDF(id) {
 
   pdf.save('contrato-queendomland.pdf');
 }
+
 async function releaseSubmissive(relId) {
   if (!confirm('¿Estás segura de que deseas LIBERAR a este sumiso?\n\nEsto romperá el vínculo permanentemente.')) return;
-  
   const { data } = await db.rpc('release_submissive', { rel_id: relId });
   if (!data || !data.ok) return alert(data?.error || 'Error al liberar.');
-  
   alert('⛓ Vínculo roto. El sumiso vuelve a ser libre.');
   window.location.reload();
 }
+
 init();
 </script>
-    <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
   new google.translate.TranslateElement({
