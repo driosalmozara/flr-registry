@@ -29,7 +29,8 @@ input,select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-r
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#161625;border:1px solid var(--line);border-radius:999px;font-size:12px;color:#d4d4d8;text-decoration:none}
 .chip:hover{border-color:var(--gold);color:var(--gold)}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.reqbtn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.reqbtn:hover{background:rgba(212,175,55,.12)}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .tab{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:#a1a1aa;cursor:pointer;font-size:13px;font-weight:600}
 .tab.active{background:rgba(212,175,55,.15);border-color:var(--gold);color:var(--gold)}
 details.about{margin-top:4px}
@@ -69,6 +70,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
+  let meId = null, meIsDomVerified = false, myRelPartners = {};
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
@@ -155,7 +157,23 @@ function physicalHTML(p){
 }
 
 async function init(){
-  const { data: prof } = await db.from('profiles').select('id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public, show_physical_public, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy').order('display_name').limit(500);
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    meId = session.user.id;
+    const { data: mp } = await db.from('profiles').select('role, dom_verified').eq('id', meId).maybeSingle();
+    meIsDomVerified = !!(mp && mp.role === 'dominant' && mp.dom_verified);
+    if (meIsDomVerified) {
+      const { data: myRels } = await db.from('relationships')
+        .select('submissive_id, status')
+        .eq('dominant_id', meId)
+        .in('status', ['pending', 'confirmed']);
+      (myRels || []).forEach(function(r) { myRelPartners[r.submissive_id] = r.status; });
+    }
+  }
+  
+  const { data: prof } = await db.from('profiles').select(
+    'id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public, show_physical_public, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy'
+  ).order('display_name').limit(500);
   allProfiles = prof || [];
 
   const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
@@ -205,6 +223,32 @@ function classify(p){
   return (rec && rec.is_public) ? { group:'owned', ownerId: ownerId, rec: rec } : null;
 }
 
+  async function requestSub(subId){
+  if (!meId) { alert('Inicia sesión para solicitar un sumiso.'); window.location.href = 'index.html'; return; }
+  if (!meIsDomVerified) { alert('Solo las Dominantes verificadas pueden solicitar sumisos.'); return; }
+  // Vía RPC (creada para evitar el error RLS); si no existe, cae al insert directo
+  try {
+    const { data, error } = await db.rpc('request_submissive', { p_sub_id: subId });
+    if (!error) {
+      if (data && data.ok) { alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.'); render(); return; }
+      alert((data && data.error) || 'No se pudo enviar la solicitud.');
+      return;
+    }
+    if (!/42883|does not exist|function/i.test(error.message || '')) { alert(error.message); return; }
+  } catch (e) { /* continuar con fallback */ }
+  const { error } = await db.from('relationships').insert({
+    dominant_id: meId, submissive_id: subId, status: 'pending', initiated_by: 'dominant'
+  });
+  if (error) return alert(error.message);
+  await db.from('notifications').insert({
+    user_id: subId, type: 'relationship', title: '♛ Solicitud de Dominante',
+    body: 'Una Dominante ha solicitado tomarte como su sumiso. Revisa tu panel para aceptar o rechazar.',
+    link: 'index.html'
+  });
+  myRelPartners[subId] = 'pending';   // ← línea clave
+  alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.');
+  render();
+}
 function setTab(g, btn){
   currentTab = g;
   document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
@@ -258,6 +302,20 @@ function cardHTML(p, info){
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
     : '<span class="badge green">⛓ En propiedad</span>';
+  
+  let reqBtn = '';
+  if (info.group === 'free' && meIsDomVerified && p.id !== meId) {
+    if (myRelPartners[p.id] === 'pending') {
+      reqBtn = '<div style="text-align:center;margin:8px 0 0;"><button class="reqbtn" disabled>⏳ Solicitud enviada</button></div>';
+    } else if (myRelPartners[p.id] === 'confirmed') {
+      reqBtn = '<div style="text-align:center;margin:8px 0 0;"><button class="reqbtn" disabled>⛓ Ya es tuyo</button></div>';
+    } else {
+      reqBtn = '<div style="text-align:center;margin:8px 0 0;">' +
+        '<button class="reqbtn" onclick="requestSub(\'' + p.id + '\')">⛓ Solicitar como mi sumiso</button>' +
+        '</div>';
+    }
+  }
+  
   return '<div class="member">' +
       (showAva
         ? '<img class="ava" src="' + esc(p.avatar_url||'') + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>♛</div>\'"/>'
@@ -275,6 +333,7 @@ function cardHTML(p, info){
       (p.bio ? '<p class="small" style="margin:0;white-space:pre-wrap;">' + esc(p.bio) + '</p>' : '') +
       contactsHTML(p) +
       (p.show_about_public && p.bio_extended ? '<details class="about"><summary>Sobre mí</summary><p>' + esc(p.bio_extended) + '</p></details>' : '') +
+      reqBtn +
       '<div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=' + p.id + '">📸 Galería</a></div>' +
     '</div>';
 }
