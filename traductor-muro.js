@@ -48,7 +48,8 @@ function detectLang(text){
 function getClient(){
   try { if (typeof db !== 'undefined' && db) return db; } catch(e){}
   if (window.__toastClient) return window.__toastClient;
-  return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (typeof supabase !== 'undefined') return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return null;
 }
 
 let myLang = null;
@@ -57,6 +58,7 @@ const processed = new WeakSet();
 async function initLang(){
   try {
     const client = getClient();
+    if (!client) { myLang = CFG.fallback; return; }
     const { data: { session } } = await client.auth.getSession();
     if (!session){ myLang = CFG.fallback; return; }
     const { data } = await client.from('profiles').select('lang').eq('id', session.user.id).maybeSingle();
@@ -74,6 +76,8 @@ async function translate(text, tl, detected){
       if (out) return out;
     }
   } catch(e){}
+  
+  // Fallback a MyMemory
   const u2 = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0,480)) + '&langpair=' + detected + '|' + tl;
   const r2 = await fetch(u2);
   if (!r2.ok) throw new Error('translate fail');
@@ -89,17 +93,24 @@ function addTranslateBtn(el, lang, original, type){
   
   const wrap = document.createElement('div');
   wrap.className = 'translate-btn-wrap';
-  wrap.style.cssText = 'margin-top:6px;';
+  wrap.style.cssText = 'margin-top:6px; margin-bottom:2px;';
   
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.style.cssText = 'background:transparent;color:#d4af37;border:1px solid rgba(212,175,55,.5);border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer;';
+  btn.className = 'secondary translate-btn';
+  // Estilos adaptados al tema dorado (#d4af37) de Queendomland
+  btn.style.cssText = 'background:transparent !important;color:#d4af37 !important;border:1px solid rgba(212,175,55,.4) !important;border-radius:999px !important;padding:2px 12px !important;font-size:11px !important;font-weight:600 !important;letter-spacing:.05em !important;text-transform:uppercase !important;cursor:pointer !important;min-height:0 !important;line-height:1.6 !important;margin:0 !important;box-shadow:none !important;opacity:.9;transition:all .2s;';
   
-  const label = () => '🌐 Traducir de ' + (NAMES[lang] || lang);
+  // Función label definida correctamente
+  const label = () => `🌐 Traducir (${NAMES[lang] || lang} → ${NAMES[myLang] || myLang})`;
   btn.innerHTML = label();
   
-  let state = 'original', translated = null;
+  let state = 'original';
+  let translated = null;
   
+  btn.onmouseover = () => { btn.style.background = 'rgba(212,175,55,.12)'; };
+  btn.onmouseout = () => { btn.style.background = 'transparent'; };
+
   btn.onclick = async function(){
     if (state === 'translated'){
       el.innerText = original; 
@@ -110,7 +121,7 @@ function addTranslateBtn(el, lang, original, type){
     if (translated){
       el.innerText = translated; 
       state = 'translated';
-      btn.innerHTML = '🌐 Ver original (' + (NAMES[lang]||lang) + ')'; 
+      btn.innerHTML = `🌐 Ver original (${NAMES[lang] || lang})`; 
       return;
     }
     btn.disabled = true; 
@@ -119,10 +130,10 @@ function addTranslateBtn(el, lang, original, type){
       translated = await translate(original, myLang, lang);
       el.innerText = translated; 
       state = 'translated';
-      btn.innerHTML = '🌐 Ver original (' + (NAMES[lang]||lang) + ')';
+      btn.innerHTML = `🌐 Ver original (${NAMES[lang] || lang})`;
       btn.disabled = false;
     } catch(e){
-      btn.innerHTML = '⚠ No se pudo traducir';
+      btn.innerHTML = '⚠ Error al traducir';
       setTimeout(()=>{ btn.disabled = false; btn.innerHTML = label(); }, 2500);
     }
   };
@@ -130,51 +141,26 @@ function addTranslateBtn(el, lang, original, type){
   wrap.appendChild(btn);
   
   // Insertar después del elemento de texto
-  if (type === 'post'){
-    // Para posteos: insertar después del div.post-body
-    el.parentNode.insertBefore(wrap, el.nextSibling);
-  } else {
-    // Para comentarios y respuestas: insertar después del span, dentro del mismo párrafo
-    el.parentNode.insertBefore(wrap, el.nextSibling);
-  }
+  el.parentNode.insertBefore(wrap, el.nextSibling);
 }
 
 function scan(root){
   if (!myLang) return;
   const base = (root && root.querySelectorAll) ? root : document;
   
-  // Posteos
-  base.querySelectorAll(CFG.selectors.post).forEach(el => {
+  const processEl = (el, type) => {
     if (processed.has(el)) return;
     processed.add(el);
     const text = (el.innerText || '').trim();
     if (text.length < CFG.minChars) return;
     const lang = detectLang(text);
     if (!lang || lang === myLang) return;
-    addTranslateBtn(el, lang, text, 'post');
-  });
-  
-  // Comentarios
-  base.querySelectorAll(CFG.selectors.comment).forEach(el => {
-    if (processed.has(el)) return;
-    processed.add(el);
-    const text = (el.innerText || '').trim();
-    if (text.length < CFG.minChars) return;
-    const lang = detectLang(text);
-    if (!lang || lang === myLang) return;
-    addTranslateBtn(el, lang, text, 'comment');
-  });
-  
-  // Respuestas
-  base.querySelectorAll(CFG.selectors.reply).forEach(el => {
-    if (processed.has(el)) return;
-    processed.add(el);
-    const text = (el.innerText || '').trim();
-    if (text.length < CFG.minChars) return;
-    const lang = detectLang(text);
-    if (!lang || lang === myLang) return;
-    addTranslateBtn(el, lang, text, 'reply');
-  });
+    addTranslateBtn(el, lang, text, type);
+  };
+
+  base.querySelectorAll(CFG.selectors.post).forEach(el => processEl(el, 'post'));
+  base.querySelectorAll(CFG.selectors.comment).forEach(el => processEl(el, 'comment'));
+  base.querySelectorAll(CFG.selectors.reply).forEach(el => processEl(el, 'reply'));
 }
 
 function start(){
