@@ -1049,7 +1049,7 @@ function getFetishDetails(containerId) {
       document.getElementById('role-badge').textContent =
         currentProfile.role === 'dominant' ? '♛ Dominante' : '⛓ Sumiso';
 
-const { data: isAdminData } = await db.from('app_admins').select('user_id').eq('user_id', currentUser.id).maybeSingle();
+
 const { data: isAdminData } = await db.from('app_admins').select('user_id').eq('user_id', currentUser.id).maybeSingle();
 const { data: isModData } = await db.from('app_moderators').select('user_id').eq('user_id', currentUser.id).maybeSingle();
 if (isAdminData) {
