@@ -451,12 +451,13 @@ ${['vih','sifilis','gonorrea','otra'].map(std => `
           zones.map(z => `
             <div class="physical-zone">
               <label>${z.charAt(0).toUpperCase() + z.slice(1)}</label>
-              <select id="${prefix}_hair_${z}" ${dis}>
-                <option value="">— Sin especificar —</option>
-                <option value="natural" ${hair[z]==='natural'?'selected':''}>Natural</option>
-                <option value="afeitado" ${hair[z]==='afeitado'?'selected':''}>Afeitado o recortado</option>
-                <option value="depilado" ${hair[z]==='depilado'?'selected':''}>Depilado</option>
-              </select>
+<select id="${prefix}_hair_${z}" ${dis}>
+<option value="">— Sin especificar —</option>
+<option value="natural" ${hair[z]==='natural'?'selected':''}>Natural</option>
+<option value="afeitado" ${hair[z]==='afeitado'?'selected':''}>Afeitado o recortado</option>
+<option value="depilado" ${hair[z]==='depilado'?'selected':''}>Depilado</option>
+<option value="no_tengo" ${hair[z]==='no_tengo'?'selected':''}>No tengo vello en esta zona</option>
+</select>
             </div>`).join('') + `</div>`;
         html += `<div class="physical-row three">
           <div>
