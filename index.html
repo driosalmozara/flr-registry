@@ -1055,6 +1055,11 @@ if (isAdminData) {
   const adminLink = document.getElementById('admin-link');
   if (adminLink) adminLink.style.display = 'inline';
 }
+      const { data: isModData } = await db.from('app_moderators').select('user_id').eq('user_id', currentUser.id).maybeSingle();
+if (isAdminData || isModData) {
+  const badgesLink = document.getElementById('badges-link');
+  if (badgesLink) badgesLink.style.display = 'inline';
+}
 if (isAdminData || isModData) {
   const badgesLink = document.getElementById('badges-link');
   if (badgesLink) badgesLink.style.display = 'inline';
