@@ -181,11 +181,19 @@ async function init(){
   ).order('display_name').limit(500);
   allProfiles = prof || [];
 
-  const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
-  (rels||[]).forEach(function(r){ relBySub[r.submissive_id] = r.dominant_id; });
-
-  const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
-  (recs||[]).forEach(function(r){ if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
+  const { data: owned, error: ownedErr } = await db.rpc('salon_owned_subs');
+  if (!ownedErr && owned) {
+    owned.forEach(function(r){
+      relBySub[r.submissive_id] = r.dominant_id;
+      recordsBySub[r.submissive_id] = { slave_name: r.slave_name, is_public: r.is_public, show_avatar: r.show_avatar };
+    });
+  } else {
+    // Respaldo por si el RPC aún no existe en tu proyecto
+    const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
+    (rels||[]).forEach(function(r){ relBySub[r.submissive_id] = r.dominant_id; });
+    const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
+    (recs||[]).forEach(function(r){ if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
+  }
 
   const staff = await Promise.all([
     db.from('app_admins').select('user_id'),
