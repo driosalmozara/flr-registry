@@ -329,19 +329,16 @@ function render(){
   document.getElementById('list').innerHTML = html;
 }
 
-  async function requestSub(subId){
+async function requestSub(subId){
   if (!meId) { alert('Inicia sesión para solicitar un sumiso.'); window.location.href = 'index.html'; return; }
   if (!meIsDomVerified) { alert('Solo las Dominantes verificadas pueden solicitar sumisos.'); return; }
-  const { data: existing } = await db.from('relationships')
-    .select('id, status')
-    .or(`and(dominant_id.eq.${meId},submissive_id.eq.${subId}),and(dominant_id.eq.${subId},submissive_id.eq.${meId})`)
-    .maybeSingle();
-  if (existing) {
-    alert(existing.status === 'confirmed'
-      ? 'Ya existe un vínculo confirmado entre ambos.'
-      : 'Ya hay una solicitud pendiente entre ambos.');
-    return;
-  }
+  const { data, error } = await db.rpc('request_submissive', { p_sub_id: subId });
+  if (error) return alert(error.message);
+  if (!data || !data.ok) return alert((data && data.error) || 'No se pudo enviar la solicitud.');
+  myRelPartners[subId] = 'pending';
+  alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.');
+  render();
+}
   const { error } = await db.from('relationships').insert({
     dominant_id: meId, submissive_id: subId, status: 'pending', initiated_by: 'dominant'
   });
