@@ -146,7 +146,10 @@ function physicalHTML(p){
   if (p.physical_tobacco || p.physical_tobacco === 0) parts.push('🚬 ' + p.physical_tobacco + '/día');
   if (p.physical_other) parts.push('📝 ' + esc(p.physical_other));
   if (p.physical_hair && typeof p.physical_hair === 'object') {
-    const hairText = Object.entries(p.physical_hair).map(function(e){ return e[0] + ': ' + e[1]; }).join(', ');
+    const hairLabels = { natural: 'Natural', afeitado: 'Afeitado o recortado', depilado: 'Depilado', no_tengo: 'No tiene vello' };
+    const hairText = Object.entries(p.physical_hair).map(function(e){
+      return e[0].charAt(0).toUpperCase() + e[0].slice(1) + ': ' + (hairLabels[e[1]] || e[1]);
+    }).join(', ');
     parts.push('🧔 Vello — ' + hairText);
   }
   if (p.physical_circumcised) parts.push('✂ Circuncidado');
