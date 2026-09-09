@@ -1375,8 +1375,13 @@ ${badgesHTML(window.myBadges)}
               <p class="small" style="color:#fbbf24;margin-top:10px;">⚠ Tu Dominante gestiona tu foto de perfil. Contacta con ella si deseas cambios.</p>
             `}
           </div>
-          ${isLocked ? '<p class="small" style="color:#fbbf24;">⚠ Tu Dominante gestiona estos datos. Contacta con ella si deseas cambios.</p>' : ''}
-          ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
+${isLocked ? `
+<div style="margin:14px 0;padding:14px;background:rgba(251,191,36,.1);border:2px solid #fbbf24;border-radius:12px;">
+  <h4 style="margin:0 0 6px;color:#fbbf24;">⛓ Perfil gestionado por tu Dominante</h4>
+  <p class="small" style="margin:0 0 6px;">Tu Dueña controla tu nombre, bio, avatar, fetiches, límites, físico y visibilidad. Contacta con ella para cualquier cambio.</p>
+  <p class="small" style="margin:0;"><b style="color:#4ade80;">✅ Sí puedes editar:</b> drogas, ETS, tratamientos médicos (sección privada), tu contraseña y eliminar tu cuenta.</p>
+</div>
+` : ''}          ${(!isLocked && currentProfile.role === 'submissive' && currentProfile.autonomy) ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
           <label class="small">Nombre público</label>
           <input id="profile-display" value="${escapeHtml(currentProfile.display_name || '')}" ${isLocked ? 'disabled' : ''} />
           <label class="small">Bio / presentación</label>
@@ -1547,8 +1552,36 @@ Mostrar mi físico y hábitos en el Salón
       const currentLimits = Array.isArray(currentProfile.limits) ? currentProfile.limits : [];
       const currentFetishDetails = currentProfile.fetishes_details || {};
       const currentLimitsDetails = currentProfile.limits_details || {};
-      renderFetishOptions('fetishes-container', currentFetishes, currentFetishDetails);
-renderFetishOptions('limits-container', currentLimits, currentLimitsDetails);
+renderFetishOptions('fetishes-container', currentFetishes, currentFetishDetails, isLocked);
+renderFetishOptions('limits-container', currentLimits, currentLimitsDetails, isLocked);
+
+// Refuerzo visual: asegurar que TODO quede disabled si está bloqueado
+if (isLocked) {
+  setTimeout(function(){
+    ['fetishes-container', 'limits-container'].forEach(function(id){
+      var box = document.getElementById(id);
+      if (box) {
+        box.querySelectorAll('input, textarea, select, button').forEach(function(el){
+          el.disabled = true;
+          el.style.pointerEvents = 'none';
+          el.style.opacity = '0.5';
+        });
+      }
+    });
+    // También bloquear los campos físicos NO privados
+    var physBox = document.querySelector('.physical-section');
+    if (physBox) {
+      physBox.querySelectorAll('input, textarea, select').forEach(function(el){
+        // Dejar editables SOLO drogas, ETS, tratamientos
+        if (el.id && (el.id.includes('_drugs') || el.id.includes('_treatments') || el.id.includes('_stds') || el.id.includes('_stds_other'))) return;
+        if (el.className && el.className.includes('_std')) return;
+        el.disabled = true;
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.5';
+      });
+    }
+  }, 150);
+}
 document.querySelectorAll('.prof_std').forEach(c => c.addEventListener('change', function(){
   const box = document.getElementById('prof_stds_other_box');
   const otra = document.querySelector('.prof_std[value="otra"]');
@@ -1570,8 +1603,11 @@ physical_stds_other: stds_other
 if (error) return alert(error.message);
 alert('🔒 Datos privados guardados. Nunca se mostrarán públicamente.');
 }
-    async function saveMyProfile() {
-      const display_name = document.getElementById('profile-display').value.trim();
+async function saveMyProfile() {
+  if (profileLocked) {
+    return alert('⚠ Tu Dominante gestiona tu perfil.\n\nSolo puedes editar drogas, ETS y tratamientos desde el botón "🔒 Guardar datos privados" que aparece al final de la sección Físico.\n\nPara cambios en nombre, bio, fetiches o físico, contacta con tu Dueña.');
+  }
+  const display_name = document.getElementById('profile-display').value.trim();
       const bio = document.getElementById('profile-bio').value.trim();
       const bio_extended = (document.getElementById('profile-bio-ext')||{value:''}).value;
       const country = document.getElementById('profile-country').value;
