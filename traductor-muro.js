@@ -2,19 +2,19 @@
 (function(){
 'use strict';
 
-/* ═══ CONFIGURACIÓN ═══
-   Ajusta CFG.selectors a las clases reales de muro.html
-   (posteos, respuestas y comentarios). */
 const CFG = {
-  selectors: ['.post-body', '.post-text', '.reply-body', '.comment-body', '.muro-text'],
-  minChars: 40,   // mínimo de caracteres para analizar
-  minWords: 8,    // mínimo de palabras para una detección fiable
+  selectors: {
+    post: '.post-body',
+    comment: '.comment-body',
+    reply: '.reply-body'
+  },
+  minChars: 40,
+  minWords: 8,
   fallback: 'es'
 };
 
 const NAMES = { es:'español', en:'inglés', pt:'portugués', fr:'francés', de:'alemán', it:'italiano' };
 
-/* Palabras vacías por idioma (sin diacríticos) */
 const STOP_RAW = {
 es:['que','de','la','el','en','y','a','los','del','se','las','por','un','para','con','no','una','su','al','lo','como','mas','pero','sus','le','ya','o','este','si','porque','esta','son','entre','cuando','muy','tambien','me','hay','quien','desde','todo','nos','durante','todos','uno','les','ni','contra','otros','ese','eso','ante','ellos','e','esto','mi','antes','algunos','unos','yo','otro','otras','otra','tanto','esa','estos','mucho','quienes','nada','muchos','cual','poco','ella','estar','estas','algunas','algo','nosotros','nosotras','vosotros','vosotras','mio','mia','tuyo','tuya','suyo','suya','mios','mias','tuyos','tuyas','suyos','suyas','te','ti','tu','tus','ellas','os','fue','era','eres','somos','sois','estoy','estamos','estais','estan','he','has','ha','hemos','habeis','han','hizo','hicimos','hicieron'],
 en:['the','of','and','a','to','in','is','you','that','it','he','was','for','on','are','as','with','his','they','i','at','be','this','have','from','or','one','had','by','but','not','what','all','were','we','when','your','can','said','there','use','an','each','which','she','do','how','their','if','will','up','other','about','out','many','then','them','these','so','some','her','would','make','like','him','into','time','has','look','two','more','write','go','see','number','way','could','people','my','than','first','been','call','who','its','now','find','long','down','day','did','get','come','made','may','part','am','us','just','really','very','want','need','know','think','good','great','love','thanks','please'],
@@ -28,7 +28,6 @@ for (const k in STOP_RAW) STOP[k] = new Set(STOP_RAW[k]);
 
 function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 
-/* Detección por frecuencia de palabras vacías */
 function detectLang(text){
   const tokens = norm(text).split(/[^a-z0-9']+/).filter(Boolean);
   if (tokens.length < CFG.minWords) return null;
@@ -41,8 +40,8 @@ function detectLang(text){
   }
   scores.sort((a,b)=>b[1]-a[1]);
   const best = scores[0], second = scores[1] ? scores[1][1] : 0;
-  if (best[1] < 0.08) return null;            // muy pocas pistas
-  if (best[1] < second * 1.4) return null;    // empate → no fiable
+  if (best[1] < 0.08) return null;
+  if (best[1] < second * 1.4) return null;
   return best[0];
 }
 
@@ -65,7 +64,6 @@ async function initLang(){
   } catch(e){ myLang = CFG.fallback; }
 }
 
-/* Traducción: Google (no oficial) con respaldo MyMemory */
 async function translate(text, tl, detected){
   try {
     const u1 = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=' + detected + '&tl=' + tl + '&dt=t&q=' + encodeURIComponent(text);
@@ -85,27 +83,42 @@ async function translate(text, tl, detected){
   return out2;
 }
 
-function addTranslateBtn(el, lang, original){
+function addTranslateBtn(el, lang, original, type){
+  // Evitar duplicados
+  if (el.nextElementSibling && el.nextElementSibling.classList.contains('translate-btn-wrap')) return;
+  
   const wrap = document.createElement('div');
+  wrap.className = 'translate-btn-wrap';
   wrap.style.cssText = 'margin-top:6px;';
+  
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.style.cssText = 'background:transparent;color:#d4af37;border:1px solid rgba(212,175,55,.5);border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer;';
+  
   const label = () => '🌐 Traducir de ' + (NAMES[lang] || lang);
   btn.innerHTML = label();
+  
   let state = 'original', translated = null;
+  
   btn.onclick = async function(){
     if (state === 'translated'){
-      el.innerText = original; state = 'original'; btn.innerHTML = label(); return;
+      el.innerText = original; 
+      state = 'original'; 
+      btn.innerHTML = label(); 
+      return;
     }
     if (translated){
-      el.innerText = translated; state = 'translated';
-      btn.innerHTML = '🌐 Ver original (' + (NAMES[lang]||lang) + ')'; return;
+      el.innerText = translated; 
+      state = 'translated';
+      btn.innerHTML = '🌐 Ver original (' + (NAMES[lang]||lang) + ')'; 
+      return;
     }
-    btn.disabled = true; btn.innerHTML = '⏳ Traduciendo…';
+    btn.disabled = true; 
+    btn.innerHTML = '⏳ Traduciendo…';
     try {
       translated = await translate(original, myLang, lang);
-      el.innerText = translated; state = 'translated';
+      el.innerText = translated; 
+      state = 'translated';
       btn.innerHTML = '🌐 Ver original (' + (NAMES[lang]||lang) + ')';
       btn.disabled = false;
     } catch(e){
@@ -113,27 +126,54 @@ function addTranslateBtn(el, lang, original){
       setTimeout(()=>{ btn.disabled = false; btn.innerHTML = label(); }, 2500);
     }
   };
+  
   wrap.appendChild(btn);
-  el.parentNode.insertBefore(wrap, el.nextSibling);
+  
+  // Insertar después del elemento de texto
+  if (type === 'post'){
+    // Para posteos: insertar después del div.post-body
+    el.parentNode.insertBefore(wrap, el.nextSibling);
+  } else {
+    // Para comentarios y respuestas: insertar después del span, dentro del mismo párrafo
+    el.parentNode.insertBefore(wrap, el.nextSibling);
+  }
 }
-
-const SEL = () => CFG.selectors.join(',');
 
 function scan(root){
   if (!myLang) return;
-  const sel = SEL();
-  const list = [];
   const base = (root && root.querySelectorAll) ? root : document;
-  base.querySelectorAll(sel).forEach(el => list.push(el));
-  if (root && root.nodeType === 1 && root.matches && root.matches(sel)) list.push(root);
-  list.forEach(el => {
+  
+  // Posteos
+  base.querySelectorAll(CFG.selectors.post).forEach(el => {
     if (processed.has(el)) return;
     processed.add(el);
     const text = (el.innerText || '').trim();
     if (text.length < CFG.minChars) return;
     const lang = detectLang(text);
     if (!lang || lang === myLang) return;
-    addTranslateBtn(el, lang, text);
+    addTranslateBtn(el, lang, text, 'post');
+  });
+  
+  // Comentarios
+  base.querySelectorAll(CFG.selectors.comment).forEach(el => {
+    if (processed.has(el)) return;
+    processed.add(el);
+    const text = (el.innerText || '').trim();
+    if (text.length < CFG.minChars) return;
+    const lang = detectLang(text);
+    if (!lang || lang === myLang) return;
+    addTranslateBtn(el, lang, text, 'comment');
+  });
+  
+  // Respuestas
+  base.querySelectorAll(CFG.selectors.reply).forEach(el => {
+    if (processed.has(el)) return;
+    processed.add(el);
+    const text = (el.innerText || '').trim();
+    if (text.length < CFG.minChars) return;
+    const lang = detectLang(text);
+    if (!lang || lang === myLang) return;
+    addTranslateBtn(el, lang, text, 'reply');
   });
 }
 
@@ -145,9 +185,10 @@ function start(){
         (m.addedNodes||[]).forEach(n=>{ if (n.nodeType === 1) scan(n); });
       });
     }).observe(document.body, { childList:true, subtree:true });
-    setInterval(()=>scan(document), 3000); // cubre re-renderizados por innerHTML
+    setInterval(()=>scan(document), 3000);
   });
 }
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
 else start();
 })();
