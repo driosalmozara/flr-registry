@@ -41,6 +41,8 @@ details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+<script>window.QL_TRAD_SELECTORS = ['.salon-bio', '.salon-about'];</script>
+<script src="traductor-muro.js" defer></script>
 </head>
 <body>
 <header>
@@ -333,9 +335,9 @@ function cardHTML(p, info){
       fetishesHTML(p) +
       physicalHTML(p) +
       (p.country && p.social_links_public ? '<div style="text-align:center;" class="small">🌎 ' + esc(p.country) + '</div>' : '') +
-      (p.bio ? '<p class="small" style="margin:0;white-space:pre-wrap;">' + esc(p.bio) + '</p>' : '') +
+      (p.bio ? '<p class="small salon-bio" style="margin:0;white-space:pre-wrap;">' + esc(p.bio) + '</p>' : '') +
       contactsHTML(p) +
-      (p.show_about_public && p.bio_extended ? '<details class="about"><summary>Sobre mí</summary><p>' + esc(p.bio_extended) + '</p></details>' : '') +
+      (p.show_about_public && p.bio_extended ? '<details class="about"><summary>Sobre mí</summary><p class="salon-about">' + esc(p.bio_extended) + '</p></details>' : '') +
       reqBtn +
       '<div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=' + p.id + '">📸 Galería</a></div>' +
     '</div>';
