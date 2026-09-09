@@ -51,7 +51,7 @@ button.mini:hover{color:#dc2626 !important}
 .staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="traductor-muro.js" defer></script>
 </head>
 <body>
 <header>
@@ -310,7 +310,7 @@ async function render() {
             <div class="small">${hh(p.created_at)} ${badge}${p.pinned_by ? ' · 📌 fijada' : ''}</div>
           </div>
         </div>
-        <div style="white-space:pre-wrap;">${esc(p.body || '')}</div>
+        <div class="post-body" style="white-space:pre-wrap;">${esc(p.body || '')}</div>
         ${media}
         ${rbar('post', p.id, false)}
         <div class="acts">
@@ -341,7 +341,7 @@ function commentHTML(c, all) {
   const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id);
   return `
     <div style="margin:8px 0;">
-      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b>${c.comment_as === 'user' ? staffIcons(c.author_id) : ''} <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
+      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b>${c.comment_as === 'user' ? staffIcons(c.author_id) : ''} <span class="comment-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
       <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
       ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
       ${rbar('comment', c.id, true)}
@@ -354,7 +354,7 @@ function commentHTML(c, all) {
       </div>
       ${replies.map(r => `
         <div class="reply">
-          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b>${r.comment_as === 'user' ? staffIcons(r.author_id) : ''} <span style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
+          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b>${r.comment_as === 'user' ? staffIcons(r.author_id) : ''} <span class="reply-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
           <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
           ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
           ${rbar('comment', r.id, true)}
