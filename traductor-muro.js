@@ -3,11 +3,7 @@
 'use strict';
 
 const CFG = {
-  selectors: {
-    post: '.post-body',
-    comment: '.comment-body',
-    reply: '.reply-body'
-  },
+  selectors: window.QL_TRAD_SELECTORS || ['.post-body', '.comment-body', '.reply-body'],
   minChars: 40,
   minWords: 8,
   fallback: 'es'
@@ -158,9 +154,9 @@ function scan(root){
     addTranslateBtn(el, lang, text, type);
   };
 
-  base.querySelectorAll(CFG.selectors.post).forEach(el => processEl(el, 'post'));
-  base.querySelectorAll(CFG.selectors.comment).forEach(el => processEl(el, 'comment'));
-  base.querySelectorAll(CFG.selectors.reply).forEach(el => processEl(el, 'reply'));
+  CFG.selectors.forEach(function(sel){
+    base.querySelectorAll(sel).forEach(function(el){ processEl(el, 'auto'); });
+  });
 }
 
 function start(){
