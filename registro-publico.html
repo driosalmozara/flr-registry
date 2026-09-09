@@ -29,6 +29,8 @@ input,select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-r
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#161625;border:1px solid var(--line);border-radius:999px;font-size:12px;color:#d4d4d8;text-decoration:none}
 .chip:hover{border-color:var(--gold);color:var(--gold)}
+  .reqbtn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.reqbtn:disabled{opacity:.55;cursor:default;border-color:var(--line);color:#a1a1aa}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .tab{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:#a1a1aa;cursor:pointer;font-size:13px;font-weight:600}
 .tab.active{background:rgba(212,175,55,.15);border-color:var(--gold);color:var(--gold)}
@@ -68,6 +70,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
+let meId = null, meIsDomVerified = false, myRelPartners = {};
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
@@ -151,6 +154,18 @@ async function init(){
     (contacts||[]).forEach(c => { (contactsByUser[c.user_id] = contactsByUser[c.user_id] || []).push(c); });
   }
 
+    const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    meId = session.user.id;
+    const { data: mp } = await db.from('profiles').select('role, dom_verified').eq('id', meId).maybeSingle();
+    meIsDomVerified = !!(mp && mp.role === 'dominant' && mp.dom_verified);
+    if (meIsDomVerified) {
+      const { data: myRels } = await db.from('relationships')
+        .select('submissive_id, status')
+        .eq('dominant_id', meId).in('status', ['pending','confirmed']);
+      (myRels || []).forEach(r => { myRelPartners[r.submissive_id] = r.status; });
+    }
+  }
   const countries = [...new Set(allProfiles.map(p => p.country).filter(Boolean))].sort();
   const sel = document.getElementById('fcountry');
   countries.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
@@ -274,8 +289,15 @@ function cardHTML(p, info){
       ${p.bio ? `<p class="small" style="margin:0;white-space:pre-wrap;">${esc(p.bio)}</p>` : ''}
       ${contactsHTML(p)}
       ${p.show_about_public && p.bio_extended ? `<details class="about"><summary>Sobre mí</summary><p>${esc(p.bio_extended)}</p></details>` : ''}
-      <div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=${p.id}">📸 Galería</a></div>
-    </div>`;
+      ${(info.group === 'free' && meIsDomVerified && p.id !== meId) ? `
+        <div style="text-align:center;margin-top:8px;">
+          ${myRelPartners[p.id] === 'pending'
+            ? `<button class="reqbtn" disabled>⏳ Solicitud enviada</button>`
+            : myRelPartners[p.id] === 'confirmed'
+              ? `<button class="reqbtn" disabled>⛓ Ya es tuyo</button>`
+              : `<button class="reqbtn" onclick="requestSub('${p.id}')">⛓ Solicitar como mi sumiso</button>`}
+        </div>` : ''}
+      <div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=${p.id}">📸 Galería</a></div>    </div>`;
 }
 
 function render(){
@@ -307,6 +329,33 @@ function render(){
   document.getElementById('list').innerHTML = html;
 }
 
+  async function requestSub(subId){
+  if (!meId) { alert('Inicia sesión para solicitar un sumiso.'); window.location.href = 'index.html'; return; }
+  if (!meIsDomVerified) { alert('Solo las Dominantes verificadas pueden solicitar sumisos.'); return; }
+  const { data: existing } = await db.from('relationships')
+    .select('id, status')
+    .or(`and(dominant_id.eq.${meId},submissive_id.eq.${subId}),and(dominant_id.eq.${subId},submissive_id.eq.${meId})`)
+    .maybeSingle();
+  if (existing) {
+    alert(existing.status === 'confirmed'
+      ? 'Ya existe un vínculo confirmado entre ambos.'
+      : 'Ya hay una solicitud pendiente entre ambos.');
+    return;
+  }
+  const { error } = await db.from('relationships').insert({
+    dominant_id: meId, submissive_id: subId, status: 'pending', initiated_by: 'dominant'
+  });
+  if (error) return alert(error.message);
+  await db.from('notifications').insert({
+    user_id: subId, type: 'relationship',
+    title: '♛ Solicitud de Dominante',
+    body: 'Una Dominante ha solicitado tomarte como su sumiso. Revisa tu panel para aceptar o rechazar.',
+    link: 'index.html'
+  });
+  myRelPartners[subId] = 'pending';
+  alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.');
+  render();
+}
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
