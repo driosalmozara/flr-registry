@@ -174,10 +174,21 @@ async function init(){
   const { data: mb } = await db.from('member_badges')
     .select('user_id, badge:badges(code, name, emoji, color, description)')
     .eq('visible_in_salon', true).is('revoked_at', null);
+  // Insignias activas y visibles en el Salón (a prueba de fallos)
   window.badgesByUser = {};
-  (mb || []).forEach(m => {
-    if (!window.badgesByUser[m.user_id]) window.badgesByUser[m.user_id] = [];
-    window.badgesByUser[m.user_id].push(m.badge);
+  try {
+    const { data: mb, error: mbErr } = await db.from('member_badges')
+      .select('user_id, badge:badges(code, name, emoji, color, description)')
+      .eq('visible_in_salon', true).is('revoked_at', null);
+    if (!mbErr && Array.isArray(mb)) {
+      mb.forEach(m => {
+        if (!window.badgesByUser[m.user_id]) window.badgesByUser[m.user_id] = [];
+        window.badgesByUser[m.user_id].push(m.badge);
+      });
+    } else if (mbErr) {
+      console.warn('Insignias: consulta fallida (¿tablas creadas?) →', mbErr.message);
+    }
+  } catch (e) { console.warn('Insignias no disponibles:', e); }
   });
 
   render();
