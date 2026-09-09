@@ -29,18 +29,16 @@ input,select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-r
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#161625;border:1px solid var(--line);border-radius:999px;font-size:12px;color:#d4d4d8;text-decoration:none}
 .chip:hover{border-color:var(--gold);color:var(--gold)}
-  .reqbtn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
-.reqbtn:disabled{opacity:.55;cursor:default;border-color:var(--line);color:#a1a1aa}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .tab{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:#a1a1aa;cursor:pointer;font-size:13px;font-weight:600}
 .tab.active{background:rgba(212,175,55,.15);border-color:var(--gold);color:var(--gold)}
 details.about{margin-top:4px}
 details.about summary{cursor:pointer;color:var(--gold);font-size:13px;font-weight:600}
 details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px;line-height:1.6}
-  .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
+.staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
 .staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
 </head>
 <body>
@@ -70,20 +68,31 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
-let meId = null, meIsDomVerified = false, myRelPartners = {};
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
+
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
 function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
 function dayMonth(iso){ const p=(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : ''; }
 function getSocialIcon(pl){ const i={facebook:'📘',instagram:'📷',x:'🐦',threads:'🧵',tiktok:'🎵',snapchat:'👻',linkedin:'💼',custom:'🌐'}; return i[pl]||'🌐'; }
+function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
+
 const FETISH_NAMES = { findom:'Findom', bondage:'Bondage', pies:'Fetichismo de Pies', partialism:'Parcialismos', hirsutophilia:'Hirsutofilia', objectification:'Cosificación', cbt:'CBT', pegging:'Pegging', rain:'Lluvias', scat:'Scat', needles:'Agujas', branding:'Marcas', blood:'Sangre', feminization:'Feminización', sissification:'Sissificación', petplay:'Petplay', cuckold:'Cuckold', hotwife:'Hotwife', sodomy:'Sodomía', other:'Otro' };
 
-  function badgesHTML(list){
+function staffIcons(userId){
+  let s = '';
+  if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
+  if (modIds.has(userId)) s += '<span class="staff-ico mod" title="Moderadora">M</span>';
+  if (chatModIds.has(userId)) s += '<span class="staff-ico" title="Perro Guardián">🐕‍🦺</span>';
+  return s;
+}
+
+function badgesHTML(list){
   if (!list || !list.length) return '';
-  return `<div style="margin:6px 0;text-align:center;">` + list.map(b =>
-    `<span class="badge" style="border-color:${b.color||'var(--gold)'};color:${b.color||'var(--gold)'};" title="${esc(b.description||b.name)}">${b.emoji} ${esc(b.name)}</span>`
-  ).join(' ') + `</div>`;
+  return '<div style="margin:6px 0;text-align:center;">' + list.map(function(b){
+    const badge = b.badge || b;
+    return '<span class="badge" style="border-color:' + (badge.color || 'var(--gold)') + ';color:' + (badge.color || 'var(--gold)') + ';" title="' + esc(badge.description || badge.name) + '">' + badge.emoji + ' ' + esc(badge.name) + '</span>';
+  }).join(' ') + '</div>';
 }
 
 function fetishesHTML(p){
@@ -93,41 +102,56 @@ function fetishesHTML(p){
   const fd = p.fetishes_details || {};
   const ld = p.limits_details || {};
   if (p.show_fetishes_public && fet.length) {
-    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:var(--gold);">🔥 Gustos:</b><br>' + fet.map(id => {
+    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:var(--gold);">🔥 Gustos:</b><br>' + fet.map(function(id){
       const det = fd[id] ? ' (' + esc(fd[id]) + ')' : '';
       return '<span class="badge" style="margin:2px;">' + esc(FETISH_NAMES[id] || id) + det + '</span>';
     }).join(' ') + '</div>';
   }
   if (p.show_limits_public && lim.length) {
-    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:#dc2626;">🚫 Límites:</b><br>' + lim.map(id => {
+    out += '<div style="margin:6px 0;text-align:center;"><b class="small" style="color:#dc2626;">🚫 Límites:</b><br>' + lim.map(function(id){
       const det = ld[id] ? ' (' + esc(ld[id]) + ')' : '';
       return '<span class="badge" style="border-color:#dc2626;color:#dc2626;margin:2px;">' + esc(FETISH_NAMES[id] || id) + det + '</span>';
     }).join(' ') + '</div>';
   }
   return out;
 }
-      function socialHref(c){
-      const v = (c.value||'').trim();
-      if (/^https?:\/\//i.test(v)) return v;
-      const user = v.replace(/^@/,'');
-      const map = {
-        facebook: 'https://facebook.com/' + user,
-        instagram: 'https://instagram.com/' + user,
-        x: 'https://x.com/' + user,
-        threads: 'https://threads.net/@' + user,
-        tiktok: 'https://tiktok.com/@' + user,
-        snapchat: 'https://snapchat.com/add/' + user,
-        linkedin: 'https://linkedin.com/in/' + user
-      };
-      return map[c.platform] || v;
-    }
-  function getContactIcon(t){ const i={phone:'📞',whatsapp:'💬',telegram:'✈️',email:'📧'}; return i[t]||'📱'; }
-  function staffIcons(userId){
-  let s = '';
-  if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
-  if (modIds.has(userId)) s += '<span class="staff-ico mod" title="Moderadora">M</span>';
-  if (chatModIds.has(userId)) s += '<span class="staff-ico" title="Perro Guardián">🐕‍🦺</span>';
-  return s;
+
+function socialHref(c){
+  const v = (c.value||'').trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  const user = v.replace(/^@/,'');
+  const map = {
+    facebook: 'https://facebook.com/' + user,
+    instagram: 'https://instagram.com/' + user,
+    x: 'https://x.com/' + user,
+    threads: 'https://threads.net/@' + user,
+    tiktok: 'https://tiktok.com/@' + user,
+    snapchat: 'https://snapchat.com/add/' + user,
+    linkedin: 'https://linkedin.com/in/' + user
+  };
+  return map[c.platform] || v;
+}
+
+function physicalHTML(p){
+  if (!p.show_physical_public) return '';
+  const parts = [];
+  if (p.physical_weight) parts.push('⚖ ' + p.physical_weight + ' kg');
+  if (p.physical_height) parts.push('📏 ' + p.physical_height + ' m');
+  if (p.physical_religion) parts.push('🙏 ' + esc(p.physical_religion));
+  if (p.physical_tattoos) parts.push('🖋 Tatuajes' + (p.physical_tattoos_detail ? ': ' + esc(p.physical_tattoos_detail) : ''));
+  if (p.physical_piercings) parts.push('💎 Piercings' + (p.physical_piercings_detail ? ': ' + esc(p.physical_piercings_detail) : ''));
+  if (p.physical_alcohol) parts.push('🍷 Alcohol: ' + p.physical_alcohol);
+  if (p.physical_tobacco || p.physical_tobacco === 0) parts.push('🚬 ' + p.physical_tobacco + '/día');
+  if (p.physical_other) parts.push('📝 ' + esc(p.physical_other));
+  if (p.physical_hair && typeof p.physical_hair === 'object') {
+    const hairText = Object.entries(p.physical_hair).map(function(e){ return e[0] + ': ' + e[1]; }).join(', ');
+    parts.push('🧔 Vello — ' + hairText);
+  }
+  if (p.physical_circumcised) parts.push('✂ Circuncidado');
+  if (p.physical_castrated && p.physical_castrated !== 'no') parts.push('🚫 Castrado (' + (p.physical_castrated === 'uno' ? 'un testículo' : 'ambos') + ')');
+  if (p.physical_vasectomy) parts.push('🚫 Vasectomizado');
+  if (!parts.length) return '';
+  return '<div style="margin:8px 0;padding:10px;background:#161625;border:1px solid var(--line);border-radius:10px;text-align:left;"><b class="small" style="color:var(--gold);">🧍 Físico y Hábitos</b><div class="small" style="margin-top:6px;line-height:1.7;">' + parts.join(' · ') + '</div></div>';
 }
 
 async function init(){
@@ -135,61 +159,40 @@ async function init(){
   allProfiles = prof || [];
 
   const { data: rels } = await db.from('relationships').select('submissive_id, dominant_id').eq('status','confirmed');
-  (rels||[]).forEach(r => relBySub[r.submissive_id] = r.dominant_id);
+  (rels||[]).forEach(function(r){ relBySub[r.submissive_id] = r.dominant_id; });
 
   const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
-  (recs||[]).forEach(r => { if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
+  (recs||[]).forEach(function(r){ if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
 
-    const [adm, mod, cm] = await Promise.all([
+  const staff = await Promise.all([
     db.from('app_admins').select('user_id'),
     db.from('app_moderators').select('user_id'),
     db.from('app_chat_mods').select('user_id')
   ]);
-  adminIds = new Set((adm.data||[]).map(x=>x.user_id));
-  modIds = new Set((mod.data||[]).map(x=>x.user_id));
-  chatModIds = new Set((cm.data||[]).map(x=>x.user_id));
-  const ids = allProfiles.map(p => p.id);
+  adminIds = new Set((staff[0].data||[]).map(function(x){ return x.user_id; }));
+  modIds = new Set((staff[1].data||[]).map(function(x){ return x.user_id; }));
+  chatModIds = new Set((staff[2].data||[]).map(function(x){ return x.user_id; }));
+
+  const ids = allProfiles.map(function(p){ return p.id; });
   if (ids.length) {
     const { data: contacts } = await db.from('member_contacts').select('*').in('user_id', ids).order('created_at');
-    (contacts||[]).forEach(c => { (contactsByUser[c.user_id] = contactsByUser[c.user_id] || []).push(c); });
+    (contacts||[]).forEach(function(c){ (contactsByUser[c.user_id] = contactsByUser[c.user_id] || []).push(c); });
   }
 
-    const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    meId = session.user.id;
-    const { data: mp } = await db.from('profiles').select('role, dom_verified').eq('id', meId).maybeSingle();
-    meIsDomVerified = !!(mp && mp.role === 'dominant' && mp.dom_verified);
-    if (meIsDomVerified) {
-      const { data: myRels } = await db.from('relationships')
-        .select('submissive_id, status')
-        .eq('dominant_id', meId).in('status', ['pending','confirmed']);
-      (myRels || []).forEach(r => { myRelPartners[r.submissive_id] = r.status; });
-    }
-  }
-  const countries = [...new Set(allProfiles.map(p => p.country).filter(Boolean))].sort();
-  const sel = document.getElementById('fcountry');
-  countries.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
-
-  // Insignias activas y visibles en el Salón
-  const { data: mb } = await db.from('member_badges')
-    .select('user_id, badge:badges(code, name, emoji, color, description)')
-    .eq('visible_in_salon', true).is('revoked_at', null);
-  // Insignias activas y visibles en el Salón (a prueba de fallos)
   window.badgesByUser = {};
   try {
-    const { data: mb, error: mbErr } = await db.from('member_badges')
+    const { data: mb } = await db.from('member_badges')
       .select('user_id, badge:badges(code, name, emoji, color, description)')
       .eq('visible_in_salon', true).is('revoked_at', null);
-    if (!mbErr && Array.isArray(mb)) {
-      mb.forEach(m => {
-        if (!window.badgesByUser[m.user_id]) window.badgesByUser[m.user_id] = [];
-        window.badgesByUser[m.user_id].push(m.badge);
-      });
-    } else if (mbErr) {
-      console.warn('Insignias: consulta fallida (¿tablas creadas?) →', mbErr.message);
-    }
+    (mb || []).forEach(function(m){
+      if (!window.badgesByUser[m.user_id]) window.badgesByUser[m.user_id] = [];
+      window.badgesByUser[m.user_id].push(m.badge);
+    });
   } catch (e) { console.warn('Insignias no disponibles:', e); }
-  });
+
+  const countries = [...new Set(allProfiles.map(function(p){ return p.country; }).filter(Boolean))].sort();
+  const sel = document.getElementById('fcountry');
+  countries.forEach(function(c){ const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
 
   render();
 }
@@ -199,12 +202,12 @@ function classify(p){
   const ownerId = relBySub[p.id];
   if (!ownerId) return p.available_public ? { group:'free' } : null;
   const rec = recordsBySub[p.id];
-  return (rec && rec.is_public) ? { group:'owned', ownerId, rec } : null;
+  return (rec && rec.is_public) ? { group:'owned', ownerId: ownerId, rec: rec } : null;
 }
 
 function setTab(g, btn){
   currentTab = g;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
   btn.classList.add('active');
   render();
 }
@@ -212,16 +215,16 @@ function setTab(g, btn){
 function birthdayBanner(p){
   if (!p.show_birthday_public || !isBirthdayToday(p.birth_date)) return '';
   const age = p.birth_date ? ageFrom(new Date(+p.birth_date.split('-')[0], +p.birth_date.split('-')[1]-1, +p.birth_date.split('-')[2])) : p.age;
-  return `<div class="bday"><div class="emo">🎈🎉</div><b>¡Feliz cumpleaños, ${esc(p.display_name)}!</b><div class="small">Hoy celebra ${esc(String(age))} años. La casa te saluda. 🎈</div></div>`;
+  return '<div class="bday"><div class="emo">🎈🎉</div><b>¡Feliz cumpleaños, ' + esc(p.display_name) + '!</b><div class="small">Hoy celebra ' + esc(String(age)) + ' años. La casa te saluda. 🎈</div></div>';
 }
 
 function extrasHTML(p){
   let out = '';
-  if (p.show_age_public && p.age != null) out += `<span class="badge">${esc(String(p.age))} años</span>`;
-  if (p.show_birthday_public && p.birth_date) out += `<span class="badge">🎂 ${dayMonth(p.birth_date)}</span>`;
-  if (p.show_gender_public && p.gender) out += `<span class="badge">⚧ ${esc(p.gender)}${p.gender==='Otro'&&p.gender_detail?' ('+esc(p.gender_detail)+')':''}</span>`;
-  if (p.show_orientation_public && p.orientation) out += `<span class="badge">❤ ${esc(p.orientation)}${p.orientation==='Otro'&&p.orientation_detail?' ('+esc(p.orientation_detail)+')':''}</span>`;
-  if (p.show_playrole_public && p.play_role) out += `<span class="badge">⛓ ${esc(p.play_role)}</span>`;
+  if (p.show_age_public && p.age != null) out += '<span class="badge">' + esc(String(p.age)) + ' años</span>';
+  if (p.show_birthday_public && p.birth_date) out += '<span class="badge">🎂 ' + dayMonth(p.birth_date) + '</span>';
+  if (p.show_gender_public && p.gender) out += '<span class="badge">⚧ ' + esc(p.gender) + (p.gender==='Otro'&&p.gender_detail ? ' ('+esc(p.gender_detail)+')' : '') + '</span>';
+  if (p.show_orientation_public && p.orientation) out += '<span class="badge">❤ ' + esc(p.orientation) + (p.orientation==='Otro'&&p.orientation_detail ? ' ('+esc(p.orientation_detail)+')' : '') + '</span>';
+  if (p.show_playrole_public && p.play_role) out += '<span class="badge">⛓ ' + esc(p.play_role) + '</span>';
   return out;
 }
 
@@ -229,98 +232,63 @@ function contactsHTML(p){
   const list = contactsByUser[p.id] || [];
   let out = '';
   if (p.show_social_public) {
-    const socials = list.filter(c => c.contact_type === 'social');
+    const socials = list.filter(function(c){ return c.contact_type === 'social'; });
     if (socials.length) {
-      out += `<div style="display:flex;flex-direction:column;gap:6px;margin:6px 0;">` + socials.map(c => {
+      out += '<div style="display:flex;flex-direction:column;gap:6px;margin:6px 0;">' + socials.map(function(c){
         const label = c.platform === 'custom' ? c.custom_platform : c.platform;
-        return `<button onclick="window.open('${esc(socialHref(c))}','_blank','noopener')" style="display:flex;align-items:center;gap:8px;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">${getSocialIcon(c.platform)} <b>${esc(label)}</b> <span style="margin-left:auto;">🔗 Abrir perfil</span></button>`;
-      }).join('') + `</div>`;
+        return '<button onclick="window.open(\'' + esc(socialHref(c)) + '\',\'_blank\',\'noopener\')" style="display:flex;align-items:center;gap:8px;text-align:left;background:#0b0b12;border:1px solid var(--line);color:var(--gold);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">' + getSocialIcon(c.platform) + ' <b>' + esc(label) + '</b> <span style="margin-left:auto;">🔗 Abrir perfil</span></button>';
+      }).join('') + '</div>';
     }
   }
   if (p.show_contact_public) {
-    const directs = list.filter(c => c.contact_type !== 'social');
+    const directs = list.filter(function(c){ return c.contact_type !== 'social'; });
     if (directs.length) {
-      out += `<div class="chips">` + directs.map(c => {
-        const display = (c.contact_type==='phone'||c.contact_type==='whatsapp') ? `${c.country_code||''} ${c.value}` : c.value;
-        return `<span class="chip">${getContactIcon(c.contact_type)} ${esc(display)}</span>`;
-      }).join('') + `</div>`;
+      out += '<div class="chips">' + directs.map(function(c){
+        const display = (c.contact_type==='phone'||c.contact_type==='whatsapp') ? (c.country_code||'') + ' ' + c.value : c.value;
+        return '<span class="chip">' + getContactIcon(c.contact_type) + ' ' + esc(display) + '</span>';
+      }).join('') + '</div>';
     }
   }
   return out;
 }
 
-  function physicalHTML(p){
-  if (!p.show_physical_public) return '';
-  const parts = [];
-  if (p.physical_weight) parts.push(`⚖ ${p.physical_weight} kg`);
-  if (p.physical_height) parts.push(`📏 ${p.physical_height} m`);
-  if (p.physical_religion) parts.push(`🙏 ${esc(p.physical_religion)}`);
-  if (p.physical_tattoos) parts.push(`🖋 Tatuajes${p.physical_tattoos_detail ? ': ' + esc(p.physical_tattoos_detail) : ''}`);
-  if (p.physical_piercings) parts.push(`💎 Piercings${p.physical_piercings_detail ? ': ' + esc(p.physical_piercings_detail) : ''}`);
-  if (p.physical_alcohol) parts.push(`🍷 Alcohol: ${p.physical_alcohol}`);
-  if (p.physical_tobacco || p.physical_tobacco === 0) parts.push(`🚬 ${p.physical_tobacco}/día`);
-  if (p.physical_drugs) parts.push(`💊 Drogas: ${esc(p.physical_drugs)}`);
-  if (p.physical_treatments) parts.push(`⚕ Tratamientos: ${esc(p.physical_treatments)}`);
-  if (Array.isArray(p.physical_stds) && p.physical_stds.length) {
-    const names = p.physical_stds.map(s => s === 'vih' ? 'VIH' : s === 'sifilis' ? 'Sífilis' : s === 'gonorrea' ? 'Gonorrea' : (p.physical_stds_other ? esc(p.physical_stds_other) : 'Otra'));
-    parts.push(`🏥 ETS: ${names.join(', ')}`);
-  }
-  if (p.physical_hair && typeof p.physical_hair === 'object') {
-    const hairText = Object.entries(p.physical_hair).map(([z, st]) => `${z}: ${st}`).join(', ');
-    parts.push(`🧔 Vello — ${hairText}`);
-  }
-  if (p.physical_circumcised) parts.push('✂ Circuncidado');
-  if (p.physical_castrated && p.physical_castrated !== 'no') parts.push(`🚫 Castrado (${p.physical_castrated === 'uno' ? 'un testículo' : 'ambos'})`);
-  if (p.physical_vasectomy) parts.push('🚫 Vasectomizado');
-  if (p.physical_other) parts.push(`📝 ${esc(p.physical_other)}`);
-  if (!parts.length) return '';
-  return `<div style="margin:8px 0;padding:10px;background:#161625;border:1px solid var(--line);border-radius:10px;text-align:left;"><b class="small" style="color:var(--gold);">🧍 Físico y Hábitos</b><div class="small" style="margin-top:6px;line-height:1.7;">${parts.join(' · ')}</div></div>`;
-}
 function cardHTML(p, info){
   const showAva = p.show_avatar_public && (info.group !== 'owned' || info.rec.show_avatar !== false);
-  const ownerName = info.ownerId ? (allProfiles.find(x => x.id === info.ownerId)?.display_name || '') : '';
+  const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
     : '<span class="badge green">⛓ En propiedad</span>';
-  return `
-    <div class="member">
-      ${showAva
-        ? `<img class="ava" src="${esc(p.avatar_url||'')}" onerror="this.outerHTML='<div class=&quot;ava empty&quot;>♛</div>'"/>`
-        : `<div class="ava empty">👤</div>`}
-      <div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">${info.group==='dom'?'♛ ':'⛓ '}${esc(p.display_name)}</b>${staffIcons(p.id)}</div>
-      ${info.group==='owned' && info.rec?.slave_name ? `<div style="text-align:center;" class="small">como <b>${esc(info.rec.slave_name)}</b></div>` : ''}
-      ${info.group==='owned' && ownerName ? `<div style="text-align:center;" class="small">♛ de <b>${esc(ownerName)}</b></div>` : ''}
-      <div style="text-align:center;">${roleBadge}</div>
-      ${birthdayBanner(p)}
-      <div style="text-align:center;">${extrasHTML(p)}</div>
-      ${fetishesHTML(p)}
-      ${badgesHTML(window.badgesByUser[p.id] || [])}
-      ${physicalHTML(p)}
-      ${p.country && p.social_links_public ? `<div style="text-align:center;" class="small">🌎 ${esc(p.country)}</div>` : ''}
-      ${p.bio ? `<p class="small" style="margin:0;white-space:pre-wrap;">${esc(p.bio)}</p>` : ''}
-      ${contactsHTML(p)}
-      ${p.show_about_public && p.bio_extended ? `<details class="about"><summary>Sobre mí</summary><p>${esc(p.bio_extended)}</p></details>` : ''}
-      ${(info.group === 'free' && meIsDomVerified && p.id !== meId) ? `
-        <div style="text-align:center;margin-top:8px;">
-          ${myRelPartners[p.id] === 'pending'
-            ? `<button class="reqbtn" disabled>⏳ Solicitud enviada</button>`
-            : myRelPartners[p.id] === 'confirmed'
-              ? `<button class="reqbtn" disabled>⛓ Ya es tuyo</button>`
-              : `<button class="reqbtn" onclick="requestSub('${p.id}')">⛓ Solicitar como mi sumiso</button>`}
-        </div>` : ''}
-      <div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=${p.id}">📸 Galería</a></div>    </div>`;
+  return '<div class="member">' +
+      (showAva
+        ? '<img class="ava" src="' + esc(p.avatar_url||'') + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>♛</div>\'"/>'
+        : '<div class="ava empty">👤</div>') +
+      '<div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">' + (info.group==='dom'?'♛ ':'⛓ ') + esc(p.display_name) + '</b>' + staffIcons(p.id) + '</div>' +
+      (info.group==='owned' && info.rec && info.rec.slave_name ? '<div style="text-align:center;" class="small">como <b>' + esc(info.rec.slave_name) + '</b></div>' : '') +
+      (info.group==='owned' && ownerName ? '<div style="text-align:center;" class="small">♛ de <b>' + esc(ownerName) + '</b></div>' : '') +
+      '<div style="text-align:center;">' + roleBadge + '</div>' +
+      badgesHTML(window.badgesByUser[p.id] || []) +
+      birthdayBanner(p) +
+      '<div style="text-align:center;">' + extrasHTML(p) + '</div>' +
+      fetishesHTML(p) +
+      physicalHTML(p) +
+      (p.country && p.social_links_public ? '<div style="text-align:center;" class="small">🌎 ' + esc(p.country) + '</div>' : '') +
+      (p.bio ? '<p class="small" style="margin:0;white-space:pre-wrap;">' + esc(p.bio) + '</p>' : '') +
+      contactsHTML(p) +
+      (p.show_about_public && p.bio_extended ? '<details class="about"><summary>Sobre mí</summary><p>' + esc(p.bio_extended) + '</p></details>' : '') +
+      '<div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=' + p.id + '">📸 Galería</a></div>' +
+    '</div>';
 }
 
 function render(){
   const q = (document.getElementById('q').value || '').trim().toLowerCase();
   const fc = document.getElementById('fcountry').value;
   const groups = { dom: [], free: [], owned: [] };
-  allProfiles.forEach(p => {
+  allProfiles.forEach(function(p){
     const info = classify(p);
     if (!info) return;
     if (fc && p.country !== fc) return;
     if (q && !((p.display_name||'').toLowerCase().includes(q) || (p.country||'').toLowerCase().includes(q))) return;
-    groups[info.group].push({ p, info });
+    groups[info.group].push({ p: p, info: info });
   });
 
   let html = '';
@@ -329,41 +297,17 @@ function render(){
     ['free', '⛓ Sumisos y sumisas sin Dueña'],
     ['owned', '⛓ Sumisos y sumisas en propiedad']
   ];
-  sections.forEach(([key, title]) => {
-    if (currentTab !== 'all' && currentTab !== key) return;
-    const items = groups[key];
+  sections.forEach(function(sec){
+    if (currentTab !== 'all' && currentTab !== sec[0]) return;
+    const items = groups[sec[0]];
     if (!items.length) return;
-    html += `<div class="card"><h3 style="margin-top:0;">${title} (${items.length})</h3><div class="grid">` +
-      items.map(x => cardHTML(x.p, x.info)).join('') + `</div></div>`;
+    html += '<div class="card"><h3 style="margin-top:0;">' + sec[1] + ' (' + items.length + ')</h3><div class="grid">' +
+      items.map(function(x){ return cardHTML(x.p, x.info); }).join('') + '</div></div>';
   });
-  if (!html) html = `<div class="card"><p class="small">No hay miembros que coincidan con tu búsqueda o que hayan decidido mostrarse.</p></div>`;
+  if (!html) html = '<div class="card"><p class="small">No hay miembros que coincidan con tu búsqueda o que hayan decidido mostrarse.</p></div>';
   document.getElementById('list').innerHTML = html;
 }
 
-async function requestSub(subId){
-  if (!meId) { alert('Inicia sesión para solicitar un sumiso.'); window.location.href = 'index.html'; return; }
-  if (!meIsDomVerified) { alert('Solo las Dominantes verificadas pueden solicitar sumisos.'); return; }
-  const { data, error } = await db.rpc('request_submissive', { p_sub_id: subId });
-  if (error) return alert(error.message);
-  if (!data || !data.ok) return alert((data && data.error) || 'No se pudo enviar la solicitud.');
-  myRelPartners[subId] = 'pending';
-  alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.');
-  render();
-}
-  const { error } = await db.from('relationships').insert({
-    dominant_id: meId, submissive_id: subId, status: 'pending', initiated_by: 'dominant'
-  });
-  if (error) return alert(error.message);
-  await db.from('notifications').insert({
-    user_id: subId, type: 'relationship',
-    title: '♛ Solicitud de Dominante',
-    body: 'Una Dominante ha solicitado tomarte como su sumiso. Revisa tu panel para aceptar o rechazar.',
-    link: 'index.html'
-  });
-  myRelPartners[subId] = 'pending';
-  alert('⛓ Solicitud enviada. El miembro podrá aceptarla o rechazarla desde su panel.');
-  render();
-}
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
