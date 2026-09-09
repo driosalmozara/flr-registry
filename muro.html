@@ -481,5 +481,38 @@ function googleTranslateElementInit() {
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
+  <script>
+(function(){
+  function injectOnce(){
+    if (document.getElementById('insignias-menu-item')) return;
+    var links = Array.from(document.querySelectorAll('a, button'));
+    var anchor = links.find(function(el){ return /colaboraci/i.test(el.textContent || ''); });
+    if (!anchor) return;
+    var a = document.createElement('a');
+    a.id = 'insignias-menu-item';
+    a.href = 'insignias.html';
+    a.textContent = '🏅 Insignias';
+    a.className = anchor.className;
+    a.style.cssText = anchor.style.cssText;
+    anchor.parentNode.insertBefore(a, anchor);
+  }
+  async function gate(){
+    try {
+      var s = await db.auth.getSession();
+      if (!s.data || !s.data.session) return;
+      var uid = s.data.session.user.id;
+      var res = await Promise.all([
+        db.from('app_admins').select('user_id').eq('user_id', uid).maybeSingle(),
+        db.from('app_moderators').select('user_id', uid).maybeSingle()
+      ]);
+      if (!res[0].data && !res[1].data) return;   // no eres Staff: no se inyecta
+      injectOnce();
+      new MutationObserver(injectOnce).observe(document.body, { childList: true, subtree: true });
+    } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', gate);
+  else gate();
+})();
+</script>
 </body>
 </html>
