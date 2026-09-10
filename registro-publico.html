@@ -382,6 +382,7 @@ function render(){
   });
   if (!html) html = '<div class="card"><p class="small">No hay miembros que coincidan con tu búsqueda o que hayan decidido mostrarse.</p></div>';
   document.getElementById('list').innerHTML = html;
+  setTimeout(function(){ if (window.QL_TRAD_SCAN) window.QL_TRAD_SCAN(); }, 300);
 }
 
 init();
