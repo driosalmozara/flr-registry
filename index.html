@@ -1671,7 +1671,7 @@ fetishes, limits, fetishes_details, limits_details,
       if (reqError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(reqError.message)}</div>`; return; }
 
       const { data: submissives, error: subError } = await db.from('relationships')
-        .select('id, submissive_id, confirmed_at, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_physical_public, fetishes, limits, fetishes_details, limits_details, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_body_type, physical_circumcised, physical_castrated, physical_vasectomy)')
+        .select('id, submissive_id, confirmed_at, is_alfa, profiles!relationships_submissive_id_fkey(display_name, avatar_url, country, social_links, social_links_public, auctioned, gender, gender_detail, orientation, orientation_detail, play_role, birth_date, age, autonomy, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, show_physical_public, fetishes, limits, fetishes_details, limits_details, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_body_type, physical_circumcised, physical_castrated, physical_vasectomy)')
         .eq('dominant_id', currentUser.id).eq('status', 'confirmed');
       if (subError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(subError.message)}</div>`; return; }
 
@@ -1780,6 +1780,17 @@ fetishes, limits, fetishes_details, limits_details,
   <input type="checkbox" style="width:auto;margin:0;" ${sub.profiles?.autonomy ? 'checked' : ''} onchange="setAutonomy('${sub.submissive_id}', this.checked)" />
   🕊 Autonomía del sumiso
 </label>`;
+          if (sub.is_alfa) {
+  html += `<div style="margin:8px 0;padding:8px 10px;background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:10px;">
+  <p class="small" style="margin:0 0 6px;color:#d4af37;">🐺 <b>Alfa de tu casa</b></p>
+  <button class="secondary" onclick="setAlfa('${sub.id}', false)">Retirar rango Alfa</button></div>`;
+} else {
+  const alfaExists = submissives.some(s => s.is_alfa);
+  html += `<div style="margin:8px 0;">
+  <button class="secondary" onclick="setAlfa('${sub.id}', true)" ${alfaExists ? 'disabled' : ''}>🐺 Nombrar Alfa</button>` +
+  (alfaExists ? '<p class="small" style="margin:6px 0 0;color:#fbbf24;">Solo puedes tener un Alfa: retírale el rango al actual primero.</p>' : '') +
+  `</div>`;
+}
 
           if (sub.profiles?.auctioned) {
             html += `<p class="small" style="color:#dc2626;">🔨 Subastado — pendiente de cesión</p>`;
@@ -1975,6 +1986,12 @@ async function toggleSubBadgeVisibility(subId, mbId, show){
         ? '🕊 Autonomía concedida. El sumiso recupera la edición de su perfil, avatar y galería personal; sus mensajes privados quedan fuera de tu supervisión. La disciplina, cesiones y comparticiones siguen siendo tuyas.'
         : '⛓ Autonomía revocada. El sumiso vuelve a dependencia completa de su Dueña.');
     }
+    async function setAlfa(relId, on) {
+  const { data } = await db.rpc('set_sub_alfa', { p_rel_id: relId, p_on: on });
+  if (!data || !data.ok) { alert(data?.error || 'Error'); return; }
+  alert(on ? '🐺 Rango Alfa otorgado. Será visible en el Salón, su perfil y su carnet.' : '🐺 Rango Alfa retirado.');
+  window.location.reload();
+}
 
     async function saveSubProfile(submissiveId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
@@ -2101,7 +2118,7 @@ show_physical_public,
         .eq('submissive_id', currentUser.id).eq('status', 'pending').eq('initiated_by', 'dominant');
 
       const { data: rel, error: relError } = await db.from('relationships')
-        .select('id, status, dominant_id, profiles!relationships_dominant_id_fkey(display_name)')
+        .select('id, status, dominant_id, is_alfa, profiles!relationships_dominant_id_fkey(display_name)')
         .eq('submissive_id', currentUser.id).in('status', ['pending', 'confirmed'])
         .order('requested_at', { ascending: false }).limit(1).maybeSingle();
       if (relError) { dashboard.innerHTML = `<div class="card">Error: ${escapeHtml(relError.message)}</div>`; return; }
@@ -2159,6 +2176,7 @@ show_physical_public,
         html += `<div class="card">
           <h2>Estado confirmado</h2>
           <p>Perteneces a <b>♛ ${escapeHtml(rel.profiles?.display_name || 'Dominante')}</b>.</p>
+          ${rel.is_alfa ? '<p class="small" style="color:#d4af37;">🐺 Eres el <b>Alfa</b> de esta casa mientras tu Dueña lo determine.</p>' : ''}
           ${currentProfile.autonomy ? '<p class="small" style="color:#4ade80;">🕊 Tu Dueña te mantiene con autonomía en este momento, tienes cierto grado de autogestión.</p>' : ''}
           ${record ? `
             <p>Nº registro: <b>${escapeHtml(record.registration_number)}</b></p>
