@@ -63,6 +63,36 @@ th{color:var(--gold)}
     <div class="card"><h3 style="margin-top:0;">🏆 Mayor participación en el rango</h3><div id="top"></div></div>
     <div class="card"><h3 style="margin-top:0;">🕒 Miembros: alta y último ingreso</h3>
       <p class="small" style="margin:0 0 8px;">🟢 nuevo (≤7 días) · 🔴 dormido (&gt;14 días sin ingresar) · ♛ Dominante · ⛓ sumiso · ✓ verificada · ⏳ pendiente de aprobación</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;">
+        <input id="ft-name" placeholder="🔍 Buscar nombre…" oninput="applyTableFilters()"
+          style="flex:1;min-width:140px;margin:0;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px;"/>
+        <select id="ft-role" onchange="applyTableFilters()" style="margin:0;">
+          <option value="">Rol: todos</option>
+          <option value="dominant">♛ Dominantes</option>
+          <option value="submissive">⛓ Sumisos</option>
+        </select>
+        <select id="ft-country" onchange="applyTableFilters()" style="margin:0;">
+          <option value="">País: todos</option>
+        </select>
+        <select id="ft-status" onchange="applyTableFilters()" style="margin:0;">
+          <option value="">Estado: todos</option>
+          <option value="new">🟢 Nuevos (≤7 días)</option>
+          <option value="sleep">🔴 Dormidos (&gt;14 días)</option>
+          <option value="active">⚡ Ingresaron hoy</option>
+          <option value="verified">✓ Dominantes verificadas</option>
+          <option value="pending">⏳ Pendientes de aprobación</option>
+        </select>
+        <select id="ft-sort" onchange="applyTableFilters()" style="margin:0;">
+          <option value="created_desc">Orden: alta reciente</option>
+          <option value="created_asc">Orden: alta antigua</option>
+          <option value="login_desc">Orden: último ingreso</option>
+          <option value="posts_desc">Orden: más posteos</option>
+          <option value="comments_desc">Orden: más comentarios</option>
+          <option value="pms_desc">Orden: más privados</option>
+          <option value="name_asc">Orden: nombre A-Z</option>
+        </select>
+      </div>
+      <p class="small" id="tbl-count" style="margin:0 0 6px;"></p>
       <div style="overflow-x:auto;"><table id="tbl"></table></div>
     </div>
   </div>
@@ -149,15 +179,64 @@ function renderSeries(days){
   chart('chartChat', days, 'chat', 'blue');
 }
 
-function renderTable(list){
-  const rows = list.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+let allMembers = [];
+
+function memberFlags(r){
+  const ageDays = (Date.now() - new Date(r.created_at)) / 86400000;
+  const loginDays = r.last_sign_in_at ? (Date.now() - new Date(r.last_sign_in_at)) / 86400000 : 9999;
+  return { ageDays: ageDays, loginDays: loginDays };
+}
+
+function buildCountryFilter(){
+  const sel = document.getElementById('ft-country');
+  if (!sel) return;
+  const cur = sel.value;
+  const countries = [];
+  allMembers.forEach(function(m){ if (m.country && countries.indexOf(m.country) === -1) countries.push(m.country); });
+  countries.sort(function(a,b){ return a.localeCompare(b,'es'); });
+  sel.innerHTML = '<option value="">País: todos</option>' + countries.map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+  sel.value = cur;
+}
+
+function applyTableFilters(){
+  const q = (document.getElementById('ft-name').value || '').trim().toLowerCase();
+  const role = document.getElementById('ft-role').value;
+  const country = document.getElementById('ft-country').value;
+  const status = document.getElementById('ft-status').value;
+  const sort = document.getElementById('ft-sort').value;
+  let rows = allMembers.filter(function(r){
+    if (q && (r.display_name || '').toLowerCase().indexOf(q) === -1) return false;
+    if (role && r.role !== role) return false;
+    if (country && r.country !== country) return false;
+    if (status) {
+      const f = memberFlags(r);
+      if (status === 'new' && f.ageDays > 7) return false;
+      if (status === 'sleep' && f.loginDays <= 14) return false;
+      if (status === 'active' && f.loginDays > 1) return false;
+      if (status === 'verified' && !(r.role === 'dominant' && r.dom_verified)) return false;
+      if (status === 'pending' && r.approved) return false;
+    }
+    return true;
+  });
+  const by = {
+    created_desc: function(a,b){ return new Date(b.created_at) - new Date(a.created_at); },
+    created_asc: function(a,b){ return new Date(a.created_at) - new Date(b.created_at); },
+    login_desc: function(a,b){ return new Date(b.last_sign_in_at || 0) - new Date(a.last_sign_in_at || 0); },
+    posts_desc: function(a,b){ return (b.posts_n||0) - (a.posts_n||0); },
+    comments_desc: function(a,b){ return (b.comments_n||0) - (a.comments_n||0); },
+    pms_desc: function(a,b){ return (b.pms_n||0) - (a.pms_n||0); },
+    name_asc: function(a,b){ return (a.display_name||'').localeCompare(b.display_name||'', 'es', {sensitivity:'base'}); }  };
+  rows.sort(by[sort] || by.created_desc);
+  renderRows(rows);
+}
+
+function renderRows(rows){
   let html = '<tr><th>Miembro</th><th>Rol</th><th>País</th><th>Alta</th><th>Último ingreso</th><th>🧱 Posteos</th><th>💬 Comentarios</th><th>✉ Privados</th></tr>';
-  rows.forEach(r => {
-    const ageDays = (Date.now() - new Date(r.created_at)) / 86400000;
-    const loginDays = r.last_sign_in_at ? (Date.now() - new Date(r.last_sign_in_at)) / 86400000 : 9999;
+  rows.forEach(function(r){
+    const f = memberFlags(r);
     let flag = '';
-    if (ageDays <= 7) flag = '🟢';
-    else if (loginDays > 14) flag = '🔴';
+    if (f.ageDays <= 7) flag = '🟢';
+    else if (f.loginDays > 14) flag = '🔴';
     html += '<tr>' +
       '<td>' + flag + ' ' + esc(r.display_name || '?') + '</td>' +
       '<td>' + (r.role === 'dominant' ? '♛' : '⛓') + (r.dom_verified ? ' ✓' : '') + (r.approved ? '' : ' ⏳') + '</td>' +
@@ -168,6 +247,14 @@ function renderTable(list){
       '</tr>';
   });
   document.getElementById('tbl').innerHTML = html;
+  const c = document.getElementById('tbl-count');
+  if (c) c.textContent = 'Mostrando ' + rows.length + ' de ' + allMembers.length + ' miembros.';
+}
+
+function renderTable(list){
+  allMembers = list || [];
+  buildCountryFilter();
+  applyTableFilters();
 }
 
 function renderTop(list, chatTop){
