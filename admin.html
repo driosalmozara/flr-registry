@@ -584,5 +584,47 @@ function googleTranslateElementInit() {
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
+  <script>
+(function(){
+  function injectCard(){
+    if (document.getElementById('metrics-card')) return;
+    var main = document.querySelector('main');
+    if (!main) return;
+    var card = document.createElement('div');
+    card.id = 'metrics-card';
+    card.className = 'card';
+    card.innerHTML =
+      '<div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h3 style="margin:0 0 4px;">📊 Métricas de la casa</h3>' +
+          '<p class="small" style="margin:0;">Altas por hora, día y semana · último ingreso de cada miembro · participación en muro, chat y privados.</p>' +
+        '</div>' +
+        '<a href="metricas.html" style="background:var(--gold);color:#000;font-weight:700;border-radius:10px;padding:10px 14px;text-decoration:none;display:inline-block;">📊 Abrir Métricas</a>' +
+      '</div>';
+    main.insertBefore(card, main.firstChild);
+  }
+  function injectMenu(){
+    if (document.getElementById('metrics-menu-link')) return;
+    var items = Array.from(document.querySelectorAll('a, button'));
+    var adminItem = items.find(function(el){
+      var t = (el.textContent || '').trim();
+      return /admin/i.test(t) && t.length <= 12;
+    });
+    if (!adminItem || !adminItem.parentNode) return;
+    var a = document.createElement('a');
+    a.id = 'metrics-menu-link';
+    a.href = 'metricas.html';
+    a.textContent = '📊 Métricas';
+    a.className = adminItem.className;
+    a.style.cssText = adminItem.style.cssText;
+    adminItem.parentNode.insertBefore(a, adminItem.nextSibling);
+  }
+  function run(){ injectCard(); injectMenu(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+  var n = 0;
+  var t = setInterval(function(){ run(); if (++n > 30) clearInterval(t); }, 500);
+})();
+</script>
 </body>
 </html>
