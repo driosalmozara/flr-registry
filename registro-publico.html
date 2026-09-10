@@ -147,8 +147,12 @@ function physicalHTML(p){
   if (p.physical_alcohol) parts.push('🍷 Alcohol: ' + p.physical_alcohol);
   if (p.physical_tobacco || p.physical_tobacco === 0) parts.push('🚬 ' + p.physical_tobacco + '/día');
   if (p.physical_other) parts.push('📝 ' + esc(p.physical_other));
+  if (p.physical_body_type) {
+    const bodyLabels = { corpulento: 'Corpulento/Robusto', normal: 'Normal/Promedio', delgado: 'Delgado/Esbelto', atletico: 'Atlético', musculoso: 'Musculoso' };
+    parts.push('🧍 Cuerpo: ' + esc(bodyLabels[p.physical_body_type] || p.physical_body_type));
+  }
   if (p.physical_hair && typeof p.physical_hair === 'object') {
-    const hairLabels = { natural: 'Natural', afeitado: 'Afeitado o recortado', depilado: 'Depilado', no_tengo: 'No tiene vello' };
+    const hairLabels = { abundante: 'Abundante vello', natural: 'Natural', afeitado: 'Afeitado o recortado', depilado: 'Depilado', escaso: 'Escaso vello', no_tengo: 'No tiene vello' };
     const hairText = Object.entries(p.physical_hair).map(function(e){
       return e[0].charAt(0).toUpperCase() + e[0].slice(1) + ': ' + (hairLabels[e[1]] || e[1]);
     }).join(', ');
