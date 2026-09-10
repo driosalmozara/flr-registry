@@ -343,8 +343,9 @@ function cardHTML(p, info){
       '<p class="small" style="text-align:center;margin:12px 0 4px;font-style:italic;color:#a1a1aa;">' + esc(msg) + '</p>' +
       '</div>';
   }
-  const showAva = p.show_avatar_public && (info.group !== 'owned' || info.rec.show_avatar !== false);
-  const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
+  const ownerHides = (info.group === 'owned' && info.rec.show_avatar === false);
+  const hasPhoto = !!p.avatar_url;
+  const showAva = ownerHides ? false : (hasPhoto ? !!p.show_avatar_public : true);  const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
     : '<span class="badge green">⛓ En propiedad</span>';
