@@ -626,5 +626,64 @@ body{top:0!important}
   var t = setInterval(function(){ run(); if (++n > 30) clearInterval(t); }, 500);
 })();
 </script>
+  <script>
+(function(){
+  function getClient(){
+    try { if (typeof db !== 'undefined' && db) return db; } catch(e){}
+    try { if (typeof supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined') return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){}
+    return null;
+  }
+  async function init(){
+    var client = getClient();
+    if (!client) return;
+    try {
+      var s = await client.auth.getSession();
+      if (!s.data || !s.data.session) return;
+      var adm = await client.from('app_admins').select('user_id').eq('user_id', s.data.session.user.id).maybeSingle();
+      if (!adm.data) return;
+      var rows = await client.from('app_settings').select('key, value').in('key', ['colab_enabled','colab_url']);
+      var enabled = true, url = '';
+      (rows.data || []).forEach(function(r){
+        if (r.key === 'colab_enabled') enabled = (r.value === '1');
+        if (r.key === 'colab_url') url = r.value || '';
+      });
+      var main = document.querySelector('main');
+      if (!main) return;
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        '<h2 style="margin-top:0;">💛 Colaboración voluntaria</h2>' +
+        '<p class="small">Activa o desactiva la sección en toda la casa y fija el enlace del medio de pago (Throne, PayPal, Ko-fi…). Al desactivarla, el botón desaparece de los menús y la página queda inhabilitada.</p>' +
+        '<label style="display:flex;gap:10px;align-items:center;margin:12px 0;">' +
+          '<input type="checkbox" id="colab-on" style="width:22px;height:22px;accent-color:#d4af37;" ' + (enabled ? 'checked' : '') + '/> ' +
+          '<b>Sección visible y activa</b>' +
+        '</label>' +
+        '<label class="small">Enlace de colaboración (URL completa)</label>' +
+        '<input id="colab-url" placeholder="https://throne.xyz/tu-enlace · https://paypal.me/… · https://ko-fi.com/…" value="' + url.replace(/"/g,'&quot;') + '"/>' +
+        '<button onclick="saveColab()">💾 Guardar cambios</button>' +
+        '<p class="small" id="colab-msg" style="margin-top:8px;"></p>';
+      main.insertBefore(card, main.firstChild);
+      window.saveColab = async function(){
+        var on = document.getElementById('colab-on').checked ? '1' : '0';
+        var u = document.getElementById('colab-url').value.trim();
+        var r1 = await client.from('app_settings').upsert({ key: 'colab_enabled', value: on }, { onConflict: 'key' });
+        var r2 = await client.from('app_settings').upsert({ key: 'colab_url', value: u }, { onConflict: 'key' });
+        var msg = document.getElementById('colab-msg');
+        if (r1.error || r2.error) {
+          msg.textContent = '⚠ ' + ((r1.error && r1.error.message) || (r2.error && r2.error.message));
+          msg.style.color = '#dc2626';
+          return;
+        }
+        msg.textContent = (on === '1')
+          ? '✅ Sección activada y visible en toda la casa.'
+          : '🚫 Sección desactivada: el botón desapareció de los menús y la página queda inhabilitada.';
+        msg.style.color = '#4ade80';
+      };
+    } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
 </body>
 </html>
