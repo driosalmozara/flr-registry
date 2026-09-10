@@ -112,6 +112,7 @@
       <a style="color:#d4af37;text-decoration:none;" href="cesiones.html">Cesiones</a>
       <a style="color:#d4af37;text-decoration:none;" href="subastas.html">Subastas</a>
       <a id="badges-link" style="color:#d4af37;text-decoration:none;display:none;" href="insignias.html">🏅 Insignias</a>
+      <a id="metrics-link" style="color:#d4af37;text-decoration:none;display:none;" href="metricas.html">📊 Métricas</a>
       <a id="admin-link" style="color:#d4af37;text-decoration:none;display:none;" href="admin.html">Admin</a>
       <a style="color:#d4af37;text-decoration:none;" href="terminos.html">Términos</a>
     </nav>
@@ -1053,8 +1054,10 @@ function getFetishDetails(containerId) {
 const { data: isAdminData } = await db.from('app_admins').select('user_id').eq('user_id', currentUser.id).maybeSingle();
 const { data: isModData } = await db.from('app_moderators').select('user_id').eq('user_id', currentUser.id).maybeSingle();
 if (isAdminData) {
-  const adminLink = document.getElementById('admin-link');
-  if (adminLink) adminLink.style.display = 'inline';
+const adminLink = document.getElementById('admin-link');
+if (adminLink) adminLink.style.display = 'inline';
+const metricsLink = document.getElementById('metrics-link');
+if (metricsLink) metricsLink.style.display = 'inline';
 }
 if (isAdminData || isModData) {
   const badgesLink = document.getElementById('badges-link');
