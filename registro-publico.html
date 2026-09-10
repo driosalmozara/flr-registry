@@ -60,6 +60,7 @@ details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px
       <button class="tab" data-g="dom" onclick="setTab('dom',this)">♛ Dominantes</button>
       <button class="tab" data-g="free" onclick="setTab('free',this)">⛓ Sin Dueña</button>
       <button class="tab" data-g="owned" onclick="setTab('owned',this)">⛓ En propiedad</button>
+      <button class="tab" data-g="private" onclick="setTab('private',this)">🔒 Privados</button>
     </div>
   </div>
   <div id="list"><div class="card">Cargando...</div></div>
@@ -76,6 +77,7 @@ let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
+function formatDate(ts){ if (!ts) return '—'; return new Date(ts).toLocaleDateString('es', {year:'numeric', month:'long', day:'numeric'}); }
 function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
 function dayMonth(iso){ const p=(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : ''; }
 function getSocialIcon(pl){ const i={facebook:'📘',instagram:'📷',x:'🐦',threads:'🧵',tiktok:'🎵',snapchat:'👻',linkedin:'💼',custom:'🌐'}; return i[pl]||'🌐'; }
@@ -181,8 +183,8 @@ async function init(){
   }
   
   const { data: prof } = await db.from('profiles').select(
-    'id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public, show_physical_public, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy, physical_body_type, lang'
-  ).order('display_name').limit(500);
+    'id, role, display_name, avatar_url, country, bio, bio_extended, age, birth_date, gender, gender_detail, orientation, orientation_detail, play_role, available_public, show_avatar_public, show_social_public, show_contact_public, show_about_public, show_age_public, show_birthday_public, show_gender_public, show_orientation_public, show_playrole_public, social_links_public, dom_verified, fetishes, limits, fetishes_details, limits_details, show_fetishes_public, show_limits_public, show_physical_public, physical_weight, physical_height, physical_religion, physical_tattoos, physical_tattoos_detail, physical_piercings, physical_piercings_detail, physical_alcohol, physical_tobacco, physical_drugs, physical_treatments, physical_stds, physical_stds_other, physical_other, physical_hair, physical_circumcised, physical_castrated, physical_vasectomy, physical_body_type, lang, created_at, autonomy'
+  ).order('display_name').limit(1500);
   allProfiles = prof || [];
 
   const { data: owned, error: ownedErr } = await db.rpc('salon_owned_subs');
@@ -233,11 +235,21 @@ async function init(){
 }
 
 function classify(p){
-  if (p.role === 'dominant') return (p.dom_verified && p.available_public) ? { group:'dom' } : null;
+  if (p.role === 'dominant') {
+    if (p.dom_verified && p.available_public) return { group:'dom' };
+    return { group:'private', reason:'self' };
+  }
   const ownerId = relBySub[p.id];
-  if (!ownerId) return p.available_public ? { group:'free' } : null;
+  if (!ownerId) {
+    // Sumiso libre
+    if (p.available_public) return { group:'free' };
+    return { group:'private', reason:'self' };
+  }
   const rec = recordsBySub[p.id];
-  return (rec && rec.is_public) ? { group:'owned', ownerId: ownerId, rec: rec } : null;
+  if (rec && rec.is_public) return { group:'owned', ownerId: ownerId, rec: rec };
+  // Sumiso en propiedad no visible
+  if (!p.autonomy) return { group:'private', reason:'owner' };
+  return { group:'private', reason:'self' };
 }
 
   async function requestSub(subId){
@@ -314,6 +326,17 @@ function contactsHTML(p){
 }
 
 function cardHTML(p, info){
+  if (info.group === 'private') {
+    const msg = info.reason === 'owner'
+      ? 'La propietaria de este usuario ha decidido mantener su perfil en privado.'
+      : 'Este usuario decidió mantener su perfil en privado.';
+    return '<div class="member" style="opacity:.85;">' +
+      '<div class="ava empty">🔒</div>' +
+      '<div style="text-align:center;"><b style="color:#a1a1aa;">' + esc(p.display_name) + '</b></div>' +
+      '<div style="text-align:center;" class="small">Registrado: ' + esc(formatDate(p.created_at)) + '</div>' +
+      '<p class="small" style="text-align:center;margin:12px 0 4px;font-style:italic;color:#a1a1aa;">' + esc(msg) + '</p>' +
+      '</div>';
+  }
   const showAva = p.show_avatar_public && (info.group !== 'owned' || info.rec.show_avatar !== false);
   const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
@@ -338,7 +361,8 @@ function cardHTML(p, info){
         ? '<img class="ava" src="' + esc(p.avatar_url||'') + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>♛</div>\'"/>'
         : '<div class="ava empty">👤</div>') +
       '<div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">' + (info.group==='dom'?'♛ ':'⛓ ') + esc(p.display_name) + '</b>' + staffIcons(p.id) + '</div>' +
-      (info.group==='owned' && info.rec && info.rec.slave_name ? '<div style="text-align:center;" class="small">como <b>' + esc(info.rec.slave_name) + '</b></div>' : '') +
+      '<div style="text-align:center;" class="small">En la casa desde ' + esc(formatDate(p.created_at)) + '</div>' +
+    (info.group==='owned' && info.rec && info.rec.slave_name ? '<div style="text-align:center;" class="small">como <b>' + esc(info.rec.slave_name) + '</b></div>' : '') +
       (info.group==='owned' && ownerName ? '<div style="text-align:center;" class="small">♛ de <b>' + esc(ownerName) + '</b></div>' : '') +
       '<div style="text-align:center;">' + roleBadge + '</div>' +
       badgesHTML(window.badgesByUser[p.id] || []) +
@@ -358,7 +382,7 @@ function cardHTML(p, info){
 function render(){
   const q = (document.getElementById('q').value || '').trim().toLowerCase();
   const fc = document.getElementById('fcountry').value;
-  const groups = { dom: [], free: [], owned: [] };
+  const groups = { dom: [], free: [], owned: [], private: [] };
   allProfiles.forEach(function(p){
     const info = classify(p);
     if (!info) return;
@@ -371,7 +395,8 @@ function render(){
   const sections = [
     ['dom', '♛ Dominantes verificadas'],
     ['free', '⛓ Sumisos y sumisas sin Dueña'],
-    ['owned', '⛓ Sumisos y sumisas en propiedad']
+    ['owned', '⛓ Sumisos y sumisas en propiedad'],
+    ['private', '🔒 Perfiles privados']
   ];
   sections.forEach(function(sec){
     if (currentTab !== 'all' && currentTab !== sec[0]) return;
