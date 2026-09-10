@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Métricas — Queendomland</title>
+<style>
+:root{--gold:#d4af37;--dark:#0f0f1a;--panel:#161625;--line:#2a2a3d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--dark);color:#fff}
+header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+h1,h2,h3,h4{color:var(--gold)}
+main{max-width:1000px;margin:0 auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.small{color:#a1a1aa;font-size:13px}
+.navlink{color:var(--gold);text-decoration:none;margin-left:14px}
+.hidden{display:none}
+button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}
+select{background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px 10px}
+.item{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0;background:#0b0b12}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.kpi{background:#0b0b12;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.kpi b{display:block;font-size:22px;color:var(--gold)}
+.kpi span{font-size:11px;color:#a1a1aa}
+.chart{display:flex;gap:4px;align-items:flex-end;height:150px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+.col span{font-size:9px;color:#71717a}
+.bar{width:100%;background:linear-gradient(180deg,var(--gold),rgba(212,175,55,.25));border-radius:3px 3px 0 0;min-height:2px}
+.bar.blue{background:linear-gradient(180deg,#8ab4f8,rgba(138,180,248,.25))}
+.bar.green{background:linear-gradient(180deg,#4ade80,rgba(74,222,128,.25))}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--gold)}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">📊 Métricas de la casa</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
+</header>
+<main>
+  <div id="gate" class="card">Comprobando acceso…</div>
+  <div id="wrap" class="hidden">
+    <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label class="small">Rango de actividad:
+        <select id="range">
+          <option value="7">7 días</option>
+          <option value="14" selected>14 días</option>
+          <option value="30">30 días</option>
+          <option value="90">90 días</option>
+        </select>
+      </label>
+      <button onclick="loadAll()">🔄 Actualizar</button>
+      <span id="stamp" class="small"></span>
+    </div>
+    <div class="card"><h3 style="margin-top:0;">👥 Miembros</h3><div id="kpiMembers" class="kpis"></div></div>
+    <div class="card"><h3 style="margin-top:0;">🔥 Actividad últimos 7 días</h3><div id="kpiActivity" class="kpis"></div></div>
+    <div class="card"><h3 style="margin-top:0;">📈 Altas por día</h3><div id="chartRegs" class="chart"></div></div>
+    <div class="card"><h3 style="margin-top:0;">🧱 Muro por día (posteos + comentarios)</h3><div id="chartMuro" class="chart"></div></div>
+    <div class="card"><h3 style="margin-top:0;">💬 Chat por día</h3><div id="chartChat" class="chart"></div></div>
+    <div class="card"><h3 style="margin-top:0;">🏆 Mayor participación en el rango</h3><div id="top"></div></div>
+    <div class="card"><h3 style="margin-top:0;">🕒 Miembros: alta y último ingreso</h3>
+      <p class="small" style="margin:0 0 8px;">🟢 nuevo (≤7 días) · 🔴 dormido (&gt;14 días sin ingresar) · ♛ Dominante · ⛓ sumiso · ✓ verificada · ⏳ pendiente de aprobación</p>
+      <div style="overflow-x:auto;"><table id="tbl"></table></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function rel(ts){
+  if (!ts) return 'nunca';
+  const ms = Date.now() - new Date(ts).getTime();
+  const min = Math.floor(ms/60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return 'hace ' + min + ' min';
+  const h = Math.floor(min/60);
+  if (h < 24) return 'hace ' + h + ' h';
+  const d = Math.floor(h/24);
+  if (d < 30) return 'hace ' + d + ' d';
+  const mo = Math.floor(d/30);
+  return 'hace ' + mo + ' mes' + (mo > 1 ? 'es' : '');
+}
+function fmt(ts){
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function deny(msg){
+  document.getElementById('gate').innerHTML = '<h2>🔒 Métricas</h2><p class="small">' + esc(msg) + '</p><a class="navlink" href="index.html">Ir al inicio</a>';
+}
+
+async function init(){
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { deny('Inicia sesión para continuar.'); return; }
+  const { data: adm } = await db.from('app_admins').select('user_id').eq('user_id', session.user.id).maybeSingle();
+  let isSup = false;
+  try { const r = await db.rpc('is_superadmin'); isSup = !!r.data; } catch(e){}
+  if (!adm && !isSup) { deny('Acceso restringido a la Administración de la casa.'); return; }
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('wrap').classList.remove('hidden');
+  document.getElementById('range').onchange = loadAll;
+  await loadAll();
+}
+
+function kpiCard(v, l){ return '<div class="kpi"><b>' + v + '</b><span>' + esc(l) + '</span></div>'; }
+
+function renderKpis(o){
+  document.getElementById('kpiMembers').innerHTML =
+    kpiCard(o.members_total, 'Miembros totales') +
+    kpiCard(o.members_dom + ' / ' + o.members_sub, 'Dominantes / Sumisos') +
+    kpiCard(o.doms_verified, 'Diosas verificadas') +
+    kpiCard(o.members_approved, 'Aprobados') +
+    kpiCard(o.members_pending, 'Pendientes de aprobación') +
+    kpiCard(o.new_24h, 'Altas últimas 24 h') +
+    kpiCard(o.new_7d, 'Altas últimos 7 días') +
+    kpiCard(o.new_30d, 'Altas últimos 30 días') +
+    kpiCard(o.rels_confirmed, 'Relaciones confirmadas') +
+    kpiCard(o.logins_24h + ' / ' + o.logins_7d, 'Ingresos 24 h / 7 días');
+  document.getElementById('kpiActivity').innerHTML =
+    kpiCard(o.posts_7d, 'Posteos en el muro') +
+    kpiCard(o.comments_7d, 'Comentarios') +
+    kpiCard(o.reactions_total, 'Reacciones (total)') +
+    kpiCard(o.chat_7d, 'Mensajes de chat') +
+    kpiCard(o.pm_7d, 'Mensajes privados') +
+    kpiCard(o.posts_pending, 'Esperando aprobación');
+}
+
+function chart(elId, rows, key, extraClass){
+  const el = document.getElementById(elId);
+  const max = Math.max(1, ...rows.map(r => r[key] || 0));
+  el.innerHTML = rows.map(r => {
+    const v = r[key] || 0;
+    const h = Math.max(2, Math.round((v / max) * 100));
+    const lbl = String(r.day).slice(8,10) + '/' + String(r.day).slice(5,7);
+    return '<div class="col" title="' + r.day + ': ' + v + '"><div class="bar ' + (extraClass||'') + '" style="height:' + h + '%"></div><span>' + lbl + '</span></div>';
+  }).join('');
+}
+function renderSeries(days){
+  chart('chartRegs', days, 'regs', 'green');
+  chart('chartMuro', days, 'muro', '');
+  chart('chartChat', days, 'chat', 'blue');
+}
+
+function renderTable(list){
+  const rows = list.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  let html = '<tr><th>Miembro</th><th>Rol</th><th>País</th><th>Alta</th><th>Último ingreso</th><th>🧱 Posteos</th><th>💬 Comentarios</th><th>✉ Privados</th></tr>';
+  rows.forEach(r => {
+    const ageDays = (Date.now() - new Date(r.created_at)) / 86400000;
+    const loginDays = r.last_sign_in_at ? (Date.now() - new Date(r.last_sign_in_at)) / 86400000 : 9999;
+    let flag = '';
+    if (ageDays <= 7) flag = '🟢';
+    else if (loginDays > 14) flag = '🔴';
+    html += '<tr>' +
+      '<td>' + flag + ' ' + esc(r.display_name || '?') + '</td>' +
+      '<td>' + (r.role === 'dominant' ? '♛' : '⛓') + (r.dom_verified ? ' ✓' : '') + (r.approved ? '' : ' ⏳') + '</td>' +
+      '<td>' + esc(r.country || '—') + '</td>' +
+      '<td title="' + fmt(r.created_at) + '">' + rel(r.created_at) + '</td>' +
+      '<td title="' + fmt(r.last_sign_in_at) + '">' + rel(r.last_sign_in_at) + '</td>' +
+      '<td>' + (r.posts_n || 0) + '</td><td>' + (r.comments_n || 0) + '</td><td>' + (r.pms_n || 0) + '</td>' +
+      '</tr>';
+  });
+  document.getElementById('tbl').innerHTML = html;
+}
+
+function renderTop(list, chatTop){
+  const scored = list
+    .map(r => ({ name: r.display_name, role: r.role, p: r.posts_n||0, c: r.comments_n||0, m: r.pms_n||0 }))
+    .map(s => Object.assign(s, { score: s.p + s.c + s.m }))
+    .filter(s => s.score > 0)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 10);
+  let html = scored.length
+    ? scored.map((s,i) => '<div class="item small">' + (i+1) + '. <b>' + esc(s.name) + '</b> (' + (s.role==='dominant'?'♛':'⛓') + ') — ' + s.score + ' acciones: ' + s.p + ' posteos · ' + s.c + ' comentarios · ' + s.m + ' privados</div>').join('')
+    : '<p class="small">Sin participación en el rango elegido.</p>';
+  if (chatTop && chatTop.length && chatTop[0].uid) {
+    html += '<h4 style="margin:14px 0 6px;">💬 Top chat del rango</h4>' +
+      chatTop.map((c,i) => '<div class="item small">' + (i+1) + '. <b>' + esc(c.name || '—') + '</b> — ' + c.n + ' mensajes</div>').join('');
+  } else if (chatTop && chatTop.length) {
+    html += '<p class="small">' + esc(chatTop[0].name || '') + '</p>';
+  }
+  document.getElementById('top').innerHTML = html;
+}
+
+async function loadAll(){
+  const days = +document.getElementById('range').value;
+  document.getElementById('stamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
+  const [ov, se, ma, ct] = await Promise.all([
+    db.rpc('admin_metrics_overview'),
+    db.rpc('admin_metrics_series', { p_days: days }),
+    db.rpc('admin_members_activity', { p_days: days }),
+    db.rpc('admin_chat_top', { p_days: days }).catch(() => ({ data: null }))
+  ]);
+  if (ov.error) return alert(ov.error.message);
+  const o = ov.data || {};
+  if (!o.ok) return alert(o.error || 'Sin datos.');
+  renderKpis(o);
+  renderSeries((se.data && se.data.days) || []);
+  renderTable(ma.data || []);
+  renderTop(ma.data || [], ct.data || null);
+}
+
+init();
+</script>
+</body>
+</html>
