@@ -211,7 +211,7 @@ async function loadAll(){
     db.rpc('admin_metrics_overview'),
     db.rpc('admin_metrics_series', { p_days: days }),
     db.rpc('admin_members_activity', { p_days: days }),
-    db.rpc('admin_chat_top', { p_days: days }).catch(() => ({ data: null }))
+    Promise.resolve(db.rpc('admin_chat_top', { p_days: days })).catch(function(){ return { data: null }; })
   ]);
   var err = '';
   if (ov.error) err += 'overview: ' + ov.error.message + ' · ';
