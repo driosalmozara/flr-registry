@@ -25,6 +25,8 @@ button.mini:hover{color:#dc2626 !important}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:11px}
 .badge.wait{border-color:#f59e0b;color:#f59e0b}
 .badge.no{border-color:#dc2626;color:#dc2626}
+.badge.poll{border-color:var(--gold);color:var(--gold);background:rgba(212,175,55,.08)}
+.badge.closed{border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.08)}
 .media img{max-width:100%;border-radius:10px;margin:6px 0}
 .media video{max-width:100%;border-radius:10px;margin:6px 0}
 .acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
@@ -47,15 +49,32 @@ button.mini:hover{color:#dc2626 !important}
 #emojipop span{cursor:pointer;font-size:19px;text-align:center;border-radius:8px}
 #emojipop span:hover{background:rgba(212,175,55,.15)}
 .hidden{display:none}
-  .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
+.staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
 .staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
+
+/* Encuestas */
+.poll-box{border:1px solid var(--gold);border-radius:12px;padding:14px;margin:10px 0;background:rgba(212,175,55,.05)}
+.poll-q{font-size:15px;font-weight:600;margin:0 0 12px;color:#fff}
+.poll-opt-btn{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 14px;background:#0b0b12;border:1px solid var(--line);border-radius:8px;color:var(--gold);cursor:pointer;font-size:14px;font-weight:600;transition:.15s}
+.poll-opt-btn:hover:not(:disabled){border-color:var(--gold);background:rgba(212,175,55,.08)}
+.poll-opt-btn:disabled{opacity:.6;cursor:not-allowed}
+.poll-bar{margin:6px 0;padding:10px 12px;background:#161625;border:1px solid var(--line);border-radius:8px;position:relative;overflow:hidden}
+.poll-bar .fill{position:absolute;inset:0;background:rgba(212,175,55,.2)}
+.poll-bar .txt{position:relative;display:flex;justify-content:space-between;gap:8px;font-size:13px;z-index:1}
+.poll-bar .txt .mine-mark{color:var(--gold);font-weight:700}
+.poll-foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#a1a1aa}
+.poll-form-opts{margin:8px 0}
+.poll-form-opts .row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.poll-form-opts .row input{flex:1;margin:0}
+.poll-form-opts .row button{padding:4px 10px;font-size:12px}
 </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="traductor-muro.js" defer></script><script src="colab-switch.js" defer></script>
 </head>
 <body>
 <header>
   <h1 style="margin:0;">🧱 Muro</h1>
+  <div><a class="navlink" href="index.html">Inicio</a></div>
 </header>
 <main><div id="content" class="card">Cargando...</div></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -69,10 +88,10 @@ const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😢','😭','😡
 
 let me = null, isSuper = false, isMod = false, isChatMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
 let reactions = [];
-let adminIds = new Set(), modIds = new Set();
+let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-let chatModIds = new Set();
+
 function staffIcons(userId){
   let s = '';
   if (adminIds.has(userId)) s += '<span class="staff-ico" title="Administradora">👑</span>';
@@ -81,7 +100,7 @@ function staffIcons(userId){
   return s;
 }
 function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
-  function mediaHTML(p){
+function mediaHTML(p){
   if (!p.media_url) return '';
   if (p.media_type === 'image') return `<div class="media"><img src="${esc(p.media_url)}"/></div>`;
   if (p.media_type === 'video') return `<div class="media"><video src="${esc(p.media_url)}" controls style="max-width:100%;border-radius:10px;margin:6px 0;"></video></div>`;
@@ -134,6 +153,120 @@ function insEmoji(e){
   if (input) { input.value += e; input.focus(); }
 }
 
+/* === ENCUESTAS: formulario === */
+let pollOptCount = 0;
+function addPollOption(value = '') {
+  pollOptCount++;
+  const list = document.getElementById('poll-options-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `
+    <input type="text" class="poll-opt" placeholder="Opción ${pollOptCount}" value="${esc(value)}"/>
+    <button type="button" class="ghost" onclick="this.parentNode.remove()">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+async function createPoll() {
+  const question = document.getElementById('poll-question').value.trim();
+  if (!question) return alert('Escribe la pregunta de la encuesta.');
+  const opts = Array.from(document.querySelectorAll('.poll-opt')).map(i => i.value.trim()).filter(Boolean);
+  if (opts.length < 2) return alert('Añade al menos 2 opciones.');
+  if (opts.length > 10) return alert('Máximo 10 opciones.');
+  const allowComments = document.getElementById('poll-allow-comments').checked;
+  const as = document.getElementById('was')?.value || 'user';
+
+  // Estado inicial: sumiso con Dueña → owner_pending; resto → pending
+  const { data: relOwn } = await db.from('relationships')
+    .select('id').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
+  const initialStatus = (isSuper || isMod) ? 'approved' : (relOwn ? 'owner_pending' : 'pending');
+
+  const { error } = await db.from('muro_posts').insert({
+    author_id: me,
+    post_type: 'poll',
+    poll_question: question,
+    poll_options: opts,
+    poll_allow_comments: allowComments,
+    body: '[Encuesta] ' + question,
+    allow_comments: allowComments,
+    status: initialStatus,
+    post_as: as
+  });
+  if (error) return alert(error.message);
+  alert(initialStatus === 'approved' ? '📊 Encuesta publicada.' : '📊 Encuesta enviada. Queda pendiente de aprobación.');
+  document.getElementById('poll-question').value = '';
+  document.getElementById('poll-options-list').innerHTML = '';
+  pollOptCount = 0;
+  addPollOption(); addPollOption();
+  await render();
+}
+
+/* === ENCUESTAS: render y voto === */
+async function renderPoll(post, comments) {
+  const options = post.poll_options || [];
+  const { data: results } = await db.rpc('poll_results', { p_post_id: post.id });
+  const { data: myVote } = await db.rpc('my_poll_vote', { p_post_id: post.id });
+  const votesByOption = {};
+  let totalVotes = 0;
+  (results || []).forEach(r => { votesByOption[r.option_index] = Number(r.votes); totalVotes += Number(r.votes); });
+  const closed = post.poll_closed_at && new Date(post.poll_closed_at) < new Date();
+  const hasVoted = myVote !== null && myVote !== undefined;
+
+  let optsHtml = options.map((opt, i) => {
+    const votes = votesByOption[i] || 0;
+    const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+    const isMine = myVote === i;
+    if (hasVoted || closed) {
+      return `<div class="poll-bar">
+        <div class="fill" style="width:${pct}%;"></div>
+        <div class="txt">
+          <span class="${isMine ? 'mine-mark' : ''}">${isMine ? '♛ ' : ''}${esc(opt)}</span>
+          <b>${votes} (${pct}%)</b>
+        </div>
+      </div>`;
+    } else {
+      return `<button class="poll-opt-btn" onclick="votePoll('${post.id}', ${i})">${esc(opt)}</button>`;
+    }
+  }).join('');
+
+  const cmts = comments.filter(c => c.post_id === post.id);
+  return `<div class="poll-box">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+      <span style="font-size:18px;">📊</span>
+      <b style="color:var(--gold);">Encuesta</b>
+      ${closed ? '<span class="badge closed">Cerrada</span>' : ''}
+    </div>
+    <p class="poll-q">${esc(post.poll_question)}</p>
+    ${optsHtml}
+    <div class="poll-foot">
+      <span>${totalVotes} voto${totalVotes === 1 ? '' : 's'}${hasVoted ? ' · Tu voto: ♛' : ' · Aún no has votado'}</span>
+      ${!post.poll_allow_comments ? '<span>💬 Comentarios desactivados</span>' : ''}
+    </div>
+  </div>`;
+}
+
+async function votePoll(postId, optionIndex) {
+  const { data } = await db.rpc('vote_poll', { p_post_id: postId, p_option_index: optionIndex });
+  if (!data || !data.ok) return alert(data?.error || 'No se pudo votar.');
+  await render();
+}
+
+async function closePoll(postId) {
+  if (!confirm('¿Cerrar esta encuesta? Nadie podrá votar más.')) return;
+  const { error } = await db.from('muro_posts').update({ poll_closed_at: new Date().toISOString() }).eq('id', postId);
+  if (error) return alert(error.message);
+  alert('Encuesta cerrada. Los votos quedan fijos.');
+  await render();
+}
+
+async function deletePoll(postId) {
+  if (!confirm('¿Eliminar esta encuesta y todos sus votos?')) return;
+  const { error } = await db.from('muro_posts').delete().eq('id', postId);
+  if (error) return alert(error.message);
+  await render();
+}
+
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
@@ -150,7 +283,8 @@ async function init() {
     db.from('app_moderators').select('user_id')
   ]);
   adminIds = new Set((adm.data||[]).map(x=>x.user_id));
-  modIds = new Set((mod.data||[]).map(x=>x.user_id));  chatModIds = new Set((cm.data||[]).map(x=>x.user_id));
+  modIds = new Set((mod.data||[]).map(x=>x.user_id));
+  chatModIds = new Set((cm.data||[]).map(x=>x.user_id));
   isSuper = !!sf.data; isMod = !!mf.data; isChatMod = !!cm.data;
   myBlock = bl.data;
   myMuzzled = !!(mz.data && mz.data.is_muzzled);
@@ -162,6 +296,7 @@ async function init() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_posts' }, () => render())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_comments' }, () => render())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_reactions' }, () => render())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, () => render())
     .subscribe();
 }
 
@@ -184,10 +319,11 @@ async function render() {
   }
 
   if (myMuzzled) {
-    html += `<div class="card"><p class="small" style="color:#dc2626;">🔇 Estás amordazado: no puedes enviar publicaciones mientras dure la mordaza.</p></div>`;
+    html += `<div class="card"><p class="small" style="color:#dc2626;">🔇 Estás amordazado: no puedes enviar publicaciones ni encuestas mientras dure la mordaza.</p></div>`;
   } else if (myBlock) {
     html += `<div class="card"><p class="small" style="color:#dc2626;">🚫 El Staff te ha bloqueado temporalmente para publicar.${myBlock.reason ? ' Motivo: ' + esc(myBlock.reason) : ''}</p></div>`;
   } else {
+    // === Formulario POST normal ===
     html += `
       <div class="card">
         <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
@@ -215,6 +351,39 @@ async function render() {
         <p style="margin:10px 0 0;"><button onclick="submitPost()">${(isSuper || isMod) ? 'Publicar ahora' : 'Enviar a aprobación'}</button></p>
         <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
       </div>`;
+
+    // === Formulario ENCUESTA ===
+    html += `
+      <div class="card" style="border-color:rgba(212,175,55,.3);">
+        <h3 style="margin-top:0;">📊 Crear encuesta</h3>
+        <label class="small">Pregunta</label>
+        <input id="poll-question" placeholder="Ej: ¿Qué dinámicas te gustan más?"/>
+        <label class="small" style="margin-top:8px;display:block;">Opciones (añade y quita)</label>
+        <div id="poll-options-list" class="poll-form-opts"></div>
+        <button type="button" class="ghost" onclick="addPollOption()" style="margin-top:4px;">+ Añadir opción</button>
+        <label class="small" style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+          <input type="checkbox" id="poll-allow-comments" style="width:auto;margin:0;" checked/>
+          Permitir comentarios en esta encuesta
+        </label>
+        ${(isSuper || isMod) ? `
+        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+          Identidad:
+          <select id="was" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
+            <option value="user">Mi nombre</option>
+            <option value="staff">🛡 Staff Queendomland</option>
+            ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
+          </select>
+        </label>` : ''}
+        <p style="margin:10px 0 0;"><button onclick="createPoll()">📊 Publicar encuesta</button></p>
+        <p class="small" style="margin:6px 0 0;">Las encuestas quedan sujetas a aprobación del Staff (y de tu Dueña, si la tienes).</p>
+      </div>`;
+
+    // Inicializar dos opciones vacías
+    setTimeout(() => {
+      if (document.getElementById('poll-options-list') && pollOptCount === 0) {
+        addPollOption(); addPollOption();
+      }
+    }, 50);
   }
 
   const { data: posts } = await db.from('muro_posts')
@@ -231,7 +400,7 @@ async function render() {
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
-    window.__posts = list;
+  window.__posts = list;
   const ids = list.map(p => p.id);
   let comments = [];
   if (ids.length) {
@@ -245,7 +414,7 @@ async function render() {
     reactions = rk.data || [];
   }
 
-  // Cargar set de sumisos con Dueña confirmada (para restringir a Perros Guardianes)
+  // Sumisos con Dueña confirmada (para restringir a Perros Guardianes)
   const ownedSubs = new Set();
   if (isChatMod && !(isSuper || isMod)) {
     const pendingAuthorIds = list.filter(p => p.status === 'pending' && p.author?.role === 'submissive').map(p => p.author_id);
@@ -265,10 +434,15 @@ async function render() {
   if (queue.length) {
     html += `<div class="card"><h3 style="margin-top:0;">📥 Aprobaciones pendientes (${queue.length})</h3>`;
     queue.forEach(p => {
+      const isPoll = p.post_type === 'poll';
       html += `
         <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#0b0b12;">
-          <p class="small" style="margin:0 0 6px;"><b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b> · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}</p>
-          <p style="margin:0 0 6px;white-space:pre-wrap;">${esc(p.body || '')}</p>
+          <p class="small" style="margin:0 0 6px;">
+            <b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b>
+            ${isPoll ? ' <span class="badge poll">📊 encuesta</span>' : ''}
+            · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}
+          </p>
+          ${isPoll ? `<p style="margin:0 0 6px;"><b>📊 ${esc(p.poll_question || '')}</b><br><span class="small">${(p.poll_options || []).map(o => '· ' + esc(o)).join('<br>')}</span></p>` : `<p style="margin:0 0 6px;white-space:pre-wrap;">${esc(p.body || '')}</p>`}
           ${mediaHTML(p)}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
@@ -282,9 +456,9 @@ async function render() {
   html += '<h3>🏛 Muro de la casa</h3>';
   if (!list.length) html += '<p class="small">Aún no hay publicaciones. Sé la primera voz del muro.</p>';
 
-  list.forEach(p => {
+  for (const p of list) {
     const cmts = comments.filter(c => c.post_id === p.id);
-    const tops = cmts.filter(c => !c.parent_id);
+    const isPoll = p.post_type === 'poll';
     const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.author?.role === 'submissive');
     const canStaffAct = ((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending';
     const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
@@ -294,8 +468,10 @@ async function render() {
     if (p.status === 'pending') badge = '<span class="badge wait">⏳ espera Staff</span>';
     if (p.status === 'owner_pending') badge = '<span class="badge wait">⏳ espera a su Dueña</span>';
     if (p.status === 'rejected') badge = '<span class="badge no">❌ rechazada</span>';
+    if (isPoll) badge = '<span class="badge poll">📊 encuesta</span> ' + badge;
 
     const media = mediaHTML(p);
+    const pollHTML = isPoll ? await renderPoll(p, comments) : '';
 
     html += `
       <div class="post">
@@ -310,28 +486,36 @@ async function render() {
             <div class="small">${hh(p.created_at)} ${badge}${p.pinned_by ? ' · 📌 fijada' : ''}</div>
           </div>
         </div>
-        <div class="post-body" style="white-space:pre-wrap;">${esc(p.body || '')}</div>
-        ${media}
-        ${rbar('post', p.id, false)}
+        ${isPoll ? pollHTML : `<div class="post-body" style="white-space:pre-wrap;">${esc(p.body || '')}</div>${media}${rbar('post', p.id, false)}`}
         <div class="acts">
-          <button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmts.length || ''} Comentarios</button>
+          ${!isPoll ? `<button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmts.length || ''} Comentarios</button>` : ''}
           ${canStaffAct ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${canOwnerAct ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
-          ${canDelete ? `<button onclick="delPost('${p.id}')">🗑 Eliminar</button>` : ''}
+          ${isPoll && (canDelete || canStaffAct || canOwnerAct) && p.status === 'approved' && !p.poll_closed_at ? `<button onclick="closePoll('${p.id}')">🔒 Cerrar</button>` : ''}
+          ${canDelete ? `<button onclick="${isPoll ? `deletePoll('${p.id}')` : `delPost('${p.id}')`}">🗑 Eliminar</button>` : ''}
           ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
           ${(isSuper || isMod) ? (p.pinned_by ? `<button onclick="unpinPost('${p.id}')">📌 Desfijar</button>` : `<button onclick="pinPost('${p.id}')">📌 Fijar</button>`) : ''}
         </div>
+        ${!isPoll ? `
         <div class="cmt">
-          ${tops.map(c => commentHTML(c, cmts)).join('')}
+          ${cmts.filter(c => !c.parent_id).map(c => commentHTML(c, cmts)).join('')}
           ${p.allow_comments && p.status === 'approved' ? `
             <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
               <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
               <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
               <button onclick="addComment('${p.id}')">Enviar</button>
             </div>` : (p.status === 'approved' ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
-        </div>
+        </div>` : (p.allow_comments && p.status === 'approved' ? `
+        <div class="cmt">
+          ${cmts.filter(c => !c.parent_id).map(c => commentHTML(c, cmts)).join('')}
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
+            <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
+            <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
+            <button onclick="addComment('${p.id}')">Enviar</button>
+          </div>
+        </div>` : '')}
       </div>`;
-  });
+  }
 
   content.innerHTML = html;
 }
@@ -390,6 +574,8 @@ async function submitPost() {
   if (!data || !data.ok) return alert(data?.error || 'No se pudo enviar.');
   alert(data.status === 'approved' ? '🧱 Publicado en el muro.' : '🧱 Enviada. Será visible cuando el Staff la apruebe.');
   pendingFile = null;
+  document.getElementById('wbody').value = '';
+  document.getElementById('wfilechip').textContent = '';
   await render();
 }
 
@@ -427,15 +613,13 @@ async function delPost(id) {
 
 async function staffApprove(id) {
   const p = (window.__posts || []).find(x => x.id === id);
-  // Si el autor tiene Dueña y quien aprueba NO es Admin, rechaza: solo Admin puede saltarse a la Dueña
   if (p && p.author?.role === 'submissive' && !isSuper) {
     const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
     if (rel) {
       if (isChatMod && !isMod) {
-        alert('⚠ No puedes aprobar esta publicación: el sumiso tiene Dueña. Solo el Staff superior (Moderadoras y Administradoras) puede saltarse la aprobación de la Dueña.');
+        alert('⚠ No puedes aprobar esta publicación: el sumiso tiene Dueña. Solo el Staff superior puede saltarse la aprobación de la Dueña.');
         return;
       }
-      // Para Moderadoras: mismo respeto
       if (isMod && !isSuper) {
         alert('⚠ No puedes aprobar esta publicación: el sumiso tiene Dueña. Solo las Administradoras pueden saltarse la aprobación de la Dueña.');
         return;
@@ -446,7 +630,7 @@ async function staffApprove(id) {
   if (p && p.author?.role === 'submissive' && isSuper) {
     const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
     if (rel) {
-      bypass = confirm('⚠ Este sumiso tiene Dueña.\n\nSi apruebas como Administración, la publicación entrará directa al muro y su Dueña NO podrá confirmarla (aunque sí conservará el poder de eliminarla).\n\n¿Confirmas la aprobación administrativa?');
+      bypass = confirm('⚠ Este sumiso tiene Dueña.\n\nSi apruebas como Administración, la publicación entrará directa al muro y su Dueña NO podrá confirmarla.\n\n¿Confirmas la aprobación administrativa?');
     }
   }
   const { data } = await db.rpc('muro_staff_approve', { post_id: id, bypass_owner: bypass });
@@ -469,7 +653,7 @@ async function unblock(uid) { const { data } = await db.rpc('muro_unblock', { ta
 
 init();
 </script>
-  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
   new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
@@ -481,7 +665,7 @@ function googleTranslateElementInit() {
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
-  <script>
+<script>
 (function(){
   function injectOnce(){
     if (document.getElementById('insignias-menu-item')) return;
@@ -503,9 +687,9 @@ body{top:0!important}
       var uid = s.data.session.user.id;
       var res = await Promise.all([
         db.from('app_admins').select('user_id').eq('user_id', uid).maybeSingle(),
-        db.from('app_moderators').select('user_id', uid).maybeSingle()
+        db.from('app_moderators').select('user_id').eq('user_id', uid).maybeSingle()
       ]);
-      if (!res[0].data && !res[1].data) return;   // no eres Staff: no se inyecta
+      if (!res[0].data && !res[1].data) return;
       injectOnce();
       new MutationObserver(injectOnce).observe(document.body, { childList: true, subtree: true });
     } catch(e){}
