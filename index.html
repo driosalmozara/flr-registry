@@ -71,13 +71,27 @@
     .ios-steps li{margin-bottom:8px}
     .ios-steps b{color:var(--gold)}
     @media (max-width:500px){.inst-options{grid-template-columns:1fr}}
-        .fetish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
-    .fetish-item{margin:0;padding:6px 10px;background:#0b0b12;border:1px solid var(--line);border-radius:8px;}
-    .fetish-item label{display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;}
-    .fetish-item input[type="checkbox"]{width:auto !important;margin:0 !important;padding:0 !important;flex:none;}
-    .fetish-item strong{font-size:13px;font-weight:600;}
-    .fetish-info{margin-top:6px;padding:6px 8px;background:#1a1a2e;border-radius:6px;font-size:12px;color:#d4d4d8;line-height:1.4;}
-    .fetish-detail{margin:6px 0 0 !important;padding:6px 10px !important;font-size:13px;}
+.fetish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+.fetish-item{margin:0;padding:8px 12px;background:#0b0b12;border:1.5px solid var(--line);border-radius:10px;transition:all .2s ease;}
+.fetish-item.checked{background:rgba(212,175,55,.08);border-color:var(--gold);box-shadow:0 0 12px rgba(212,175,55,.15);}
+.fetish-item label{display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;position:relative;}
+.fetish-item input[type="checkbox"]{
+  position:absolute;opacity:0;width:0;height:0;pointer-events:none;
+}
+.fetish-item label::before{
+  content:'';flex:none;width:22px;height:22px;border-radius:50%;
+  border:2px solid #52525b;background:transparent;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .2s ease;
+}
+.fetish-item.checked label::before{
+  content:'♛';font-size:14px;line-height:1;
+  background:var(--gold);border-color:var(--gold);color:#000;
+  font-weight:700;box-shadow:0 0 8px rgba(212,175,55,.6);
+}
+.fetish-item strong{font-size:13px;font-weight:600;flex:1;}
+.fetish-info{margin-top:8px;padding:8px 10px;background:#1a1a2e;border-radius:6px;font-size:12px;color:#d4d4d8;line-height:1.5;border-left:3px solid var(--gold);}
+.fetish-detail{margin:6px 0 0 !important;padding:6px 10px !important;font-size:13px;}
         .physical-section{margin:14px 0;padding:16px;background:#0f0f1a;border:1px solid var(--line);border-radius:12px;}
     .physical-section h3{margin:0 0 12px;color:var(--gold);}
     .physical-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0;}
@@ -940,32 +954,34 @@ const { error } = await db.from('profiles')
 function renderFetishOptions(containerId, currentSelection = [], currentDetails = {}, locked = profileLocked) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = '<div class="fetish-grid">' + FETISH_LIST.map(f => `
-    <div class="fetish-item">
+  container.innerHTML = '<div class="fetish-grid">' + FETISH_LIST.map(f => {
+    const isChecked = currentSelection.includes(f.id);
+    return `
+    <div class="fetish-item ${isChecked ? 'checked' : ''}" data-fetish-id="${f.id}">
       <label>
-        <input type="checkbox" 
-               class="fetish-check" 
-               data-id="${f.id}" 
-               ${currentSelection.includes(f.id) ? 'checked' : ''}
-               onchange="handleFetishToggle('${containerId}', '${f.id}', this.checked)"
-               ${locked ? 'disabled' : ''} />
+        <input type="checkbox"
+          class="fetish-check"
+          data-id="${f.id}"
+          ${isChecked ? 'checked' : ''}
+          onchange="handleFetishToggle('${containerId}', '${f.id}', this.checked)"
+          ${locked ? 'disabled' : ''} />
         <strong>${f.name}</strong>
-        <span onclick="toggleFetishInfo('${containerId}','${f.id}')" 
-              style="cursor:pointer;color:var(--gold);font-size:13px;margin-left:auto;">ⓘ</span>
+        <span onclick="toggleFetishInfo('${containerId}','${f.id}')"
+          style="cursor:pointer;color:var(--gold);font-size:13px;margin-left:auto;">ⓘ</span>
       </label>
       <div id="info-${containerId}-${f.id}" class="fetish-info" style="display:none;">${f.desc}</div>
       ${f.hasDetail ? `
-        <input type="text" 
-               id="detail-${containerId}-${f.id}" 
-               class="fetish-detail" 
-               data-id="${f.id}"
-               placeholder="Especifica..." 
-               value="${escapeHtml(currentDetails[f.id] || '')}"
-               style="${currentSelection.includes(f.id) ? '' : 'display:none;'}"
-               ${locked ? 'disabled' : ''} />
+        <input type="text"
+          id="detail-${containerId}-${f.id}"
+          class="fetish-detail"
+          data-id="${f.id}"
+          placeholder="Especifica..."
+          value="${escapeHtml(currentDetails[f.id] || '')}"
+          style="${isChecked ? '' : 'display:none;'}"
+          ${locked ? 'disabled' : ''} />
       ` : ''}
-    </div>
-  `).join('') + '</div>';
+    </div>`;
+  }).join('') + '</div>';
 }
 
 function toggleFetishInfo(containerId, id) {
@@ -974,6 +990,8 @@ function toggleFetishInfo(containerId, id) {
 }
 
 function handleFetishToggle(containerId, fetishId, isChecked) {
+  const item = document.querySelector(`#${containerId} .fetish-item[data-fetish-id="${fetishId}"]`);
+if (item) item.classList.toggle('checked', isChecked);
   let otherContainerId;
   if (containerId === 'fetishes-container') otherContainerId = 'limits-container';
   else if (containerId === 'limits-container') otherContainerId = 'fetishes-container';
@@ -982,12 +1000,15 @@ function handleFetishToggle(containerId, fetishId, isChecked) {
   else return;
   const otherCheck = document.querySelector(`#${otherContainerId} .fetish-check[data-id="${fetishId}"]`);
   
-  if (isChecked && otherCheck && otherCheck.checked) {
-    alert('⚠️ Este fetiche ya está seleccionado en la otra sección. Desmárcalo primero.');
-    const thisCheck = document.querySelector(`#${containerId} .fetish-check[data-id="${fetishId}"]`);
-    thisCheck.checked = false;
-    return;
-  }
+if (isChecked && otherCheck && otherCheck.checked) {
+alert('⚠️ Este fetiche ya está seleccionado en la otra sección. Desmárcalo primero.');
+const thisCheck = document.querySelector(`#${containerId} .fetish-check[data-id="${fetishId}"]`);
+thisCheck.checked = false;
+if (item) item.classList.remove('checked');
+const detailBox = document.getElementById(`detail-${containerId}-${fetishId}`);
+if (detailBox) detailBox.style.display = 'none';
+return;
+}
   
   const fetish = FETISH_LIST.find(f => f.id === fetishId);
   const detailInput = document.getElementById(`detail-${containerId}-${fetishId}`);
