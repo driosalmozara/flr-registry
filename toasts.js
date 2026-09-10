@@ -772,3 +772,49 @@ function getClient(){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+/* ── Auto-marcar notificaciones leídas al visitar su destino ── */
+(function(){
+  function norm(u){
+    try {
+      const url = new URL(u, window.location.origin);
+      return url.pathname + url.search;
+    } catch(e){ return u || ''; }
+  }
+  async function autoMark(){
+    if (!window.supabase) return;
+    try {
+      const client = (typeof getClient === 'function') ? getClient() : null;
+      if (!client) return;
+      const s = await client.auth.getSession();
+      if (!s.data.session) return;
+      const me = s.data.session.user.id;
+      const here = window.location.pathname + window.location.search;
+      const herePath = window.location.pathname;
+      const { data } = await client.from('notifications')
+        .select('id, link')
+        .eq('user_id', me)
+        .eq('read', false)
+        .limit(200);
+      if (!data || !data.length) return;
+      const toMark = data.filter(function(n){
+        if (!n.link) return false;
+        const t = norm(n.link);
+        if (t === here || t === herePath) return true;
+        if (herePath.endsWith('/' + n.link) || herePath === '/' + n.link) return true;
+        return false;
+      });
+      if (!toMark.length) return;
+      const ids = toMark.map(function(n){ return n.id; });
+      await client.from('notifications').update({ read: true }).in('id', ids);
+      var bell = document.getElementById('qbell');
+      if (bell) {
+        var r = await client.from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', me).eq('read', false);
+        if ((r.count || 0) === 0) bell.classList.remove('qbell-glow');
+      }
+    } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoMark);
+  else autoMark();
+})();
