@@ -189,6 +189,21 @@ function renderTop(list, chatTop){
   document.getElementById('top').innerHTML = html;
 }
 
+  function showErr(msg){
+  var d = document.getElementById('errbox');
+  if (!d) {
+    d = document.createElement('div');
+    d.id = 'errbox';
+    d.className = 'card';
+    d.style.borderColor = '#dc2626';
+    document.getElementById('wrap').prepend(d);
+  }
+  d.innerHTML = '<h3 style="margin:0 0 6px;color:#dc2626;">⚠ Error cargando métricas</h3><p class="small" style="margin:0;word-break:break-word;">' + esc(msg) + '</p>';
+}
+function hideErr(){
+  var d = document.getElementById('errbox');
+  if (d) d.remove();
+}
 async function loadAll(){
   const days = +document.getElementById('range').value;
   document.getElementById('stamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
@@ -198,9 +213,14 @@ async function loadAll(){
     db.rpc('admin_members_activity', { p_days: days }),
     db.rpc('admin_chat_top', { p_days: days }).catch(() => ({ data: null }))
   ]);
-  if (ov.error) return alert(ov.error.message);
+  var err = '';
+  if (ov.error) err += 'overview: ' + ov.error.message + ' · ';
+  if (se.error) err += 'series: ' + se.error.message + ' · ';
+  if (ma.error) err += 'miembros: ' + ma.error.message + ' · ';
+  if (err) { showErr(err); return; }
   const o = ov.data || {};
-  if (!o.ok) return alert(o.error || 'Sin datos.');
+  if (!o.ok) { showErr(o.error || 'Sin datos.'); return; }
+  hideErr();
   renderKpis(o);
   renderSeries((se.data && se.data.days) || []);
   renderTable(ma.data || []);
