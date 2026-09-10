@@ -1066,6 +1066,10 @@ if (isAdminData) {
   }
 }
 
+      if (isAdminData || isModData) {
+  const badgesLink = document.getElementById('badges-link');
+  if (badgesLink) badgesLink.style.display = 'inline';
+}
       show('app');
 
 await fetchBadgesCatalog();
