@@ -730,3 +730,45 @@ function getClient(){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+/* ══ COLAB SWITCH v2 — oculta Colaboración Voluntaria si la Admin la apagó ══ */
+(function(){
+  function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function getClient(){
+    try { if (typeof db !== 'undefined' && db) return db; } catch(e){}
+    try { if (typeof supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){}
+    return null;
+  }
+  function hideLinks(){
+    if (window.COLAB_ENABLED !== false) return;
+    document.querySelectorAll('a, button').forEach(function(el){
+      var href = norm(el.getAttribute('href') || '');
+      var txt = norm(el.textContent || '');
+      if (href.indexOf('colaboracion') !== -1 || href.indexOf('colab.html') !== -1 ||
+          href.indexOf('throne.') !== -1 || txt.indexOf('colaboracion voluntaria') !== -1) {
+        el.style.display = 'none';
+      }
+    });
+  }
+  async function init(){
+    var client = getClient();
+    if (!client) return;
+    try {
+      var res = await client.from('app_settings').select('key, value').in('key', ['colab_enabled','colab_url']);
+      var enabled = true, url = '';
+      (res.data || []).forEach(function(r){
+        if (r.key === 'colab_enabled') enabled = (r.value === '1');
+        if (r.key === 'colab_url') url = r.value || '';
+      });
+      window.COLAB_ENABLED = enabled;
+      window.COLAB_URL = url;
+      if (!enabled) {
+        hideLinks();
+        var n = 0;
+        var t = setInterval(function(){ hideLinks(); if (++n > 10) clearInterval(t); }, 1200);
+        try { new MutationObserver(hideLinks).observe(document.body, { childList: true, subtree: true }); } catch(e){}
+      }
+    } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
