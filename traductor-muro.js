@@ -158,7 +158,8 @@ function scan(root){
     base.querySelectorAll(sel).forEach(function(el){ processEl(el, 'auto'); });
   });
 }
-
+window.QL_TRAD_SCAN = function(){ try { scan(document); } catch(e){} };
+  
 function start(){
   initLang().then(()=>{
     scan(document);
