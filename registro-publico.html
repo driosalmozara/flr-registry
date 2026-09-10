@@ -73,7 +73,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
-  let meId = null, meIsDomVerified = false, myRelPartners = {};
+  let meId = null, meIsDomVerified = false, myRelPartners = {}, alfaBySub = {};
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
@@ -216,6 +216,11 @@ async function init(){
     const { data: recs } = await db.from('submissive_records').select('slave_name, is_public, show_avatar, relationship:relationships(submissive_id, dominant_id)');
     (recs||[]).forEach(function(r){ if (r.relationship) recordsBySub[r.relationship.submissive_id] = r; });
   }
+
+  // Mapa de Alfas (siempre, independiente del RPC salon_owned_subs)
+  const { data: alfaRows } = await db.rpc('alfa_map');
+  alfaBySub = {};
+  (alfaRows || []).forEach(function(r){ alfaBySub[r.submissive_id] = true; });
 
   const staff = await Promise.all([
     db.from('app_admins').select('user_id'),
@@ -386,7 +391,7 @@ function cardHTML(p, info){
     (info.group==='owned' && info.rec && info.rec.slave_name ? '<div style="text-align:center;" class="small">como <b>' + esc(info.rec.slave_name) + '</b></div>' : '') +
       (info.group==='owned' && ownerName ? '<div style="text-align:center;" class="small">♛ de <b>' + esc(ownerName) + '</b></div>' : '') +
       '<div style="text-align:center;">' + roleBadge + '</div>' +
-      badgesHTML(window.badgesByUser[p.id] || []) +
+      (alfaBySub[p.id] ? '<div style="text-align:center;"><span class="badge gold" style="font-size:12px;">🐺 Alfa de la casa</span></div>' : '') +      badgesHTML(window.badgesByUser[p.id] || []) +
       birthdayBanner(p) +
       '<div style="text-align:center;">' + extrasHTML(p) + '</div>' +
       fetishesHTML(p) +
