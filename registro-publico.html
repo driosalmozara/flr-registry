@@ -78,10 +78,20 @@ let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
 function formatDate(ts){ if (!ts) return '—'; return new Date(ts).toLocaleDateString('es', {year:'numeric', month:'long', day:'numeric'}); }
-  function isMaleGender(g){ return ['Hombre','Hombre Travesti','Hombre Transexual','Hombre Transgénero'].includes(g); }
+function isMaleGender(g){ return ['Hombre','Hombre Travesti','Hombre Transexual','Hombre Transgénero'].includes(g); }
+function sinAcentos(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function defaultAvatarFor(p){
   if (p.role === 'dominant') return 'avatar-dominante.png';
-  return isMaleGender(p.gender) ? 'avatar-sumiso.png' : 'avatar-sumisa.png';
+  const g = sinAcentos(String(p.gender || '').trim());
+  if (g.indexOf('hombre') === 0) return 'avatar-sumiso.png';   // Hombre, Hombre Travesti, Hombre Transexual, Hombre Transgénero
+  if (g.indexOf('mujer') === 0) return 'avatar-sumisa.png';    // Mujer, Mujer Transexual, Mujer Transgénero
+  // Género "Otro"/No Binario/Intersexual/vacío: mirar el detalle escrito
+  const gd = sinAcentos(String(p.gender_detail || '').trim());
+  if (gd.indexOf('hombre') !== -1 || gd.indexOf('varon') !== -1 || gd.indexOf('masculino') !== -1) return 'avatar-sumiso.png';
+  if (gd.indexOf('mujer') !== -1 || gd.indexOf('femenino') !== -1) return 'avatar-sumisa.png';
+  // Sin texto: marcadores físicos masculinos (campos que solo existen en hombres)
+  if (p.physical_circumcised || p.physical_vasectomy || (p.physical_castrated && p.physical_castrated !== 'no')) return 'avatar-sumiso.png';
+  return null; // sin dato suficiente: silueta neutra, jamás un género equivocado
 }
 function defaultAvaEmoji(group){ return group === 'dom' ? '♛' : '⛓'; }
 function isBirthdayToday(iso){ if(!iso) return false; const p=iso.split('-'); if(p.length!==3) return false; const n=new Date(); return n.getDate()===+p[2] && (n.getMonth()+1)===+p[1]; }
@@ -346,6 +356,11 @@ function cardHTML(p, info){
   const ownerHides = (info.group === 'owned' && info.rec.show_avatar === false);
   const showAva = !ownerHides;
   const avaSrc = (p.show_avatar_public && p.avatar_url) ? p.avatar_url : defaultAvatarFor(p);
+    const avaHtml = !showAva
+    ? '<div class="ava empty">👤</div>'
+    : (avaSrc
+        ? '<img class="ava" src="' + esc(avaSrc) + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'"/>'
+        : '<div class="ava empty">👤</div>');
   const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
@@ -365,9 +380,7 @@ function cardHTML(p, info){
   }
   
   return '<div class="member">' +
-      (showAva
-        ? '<img class="ava" src="' + esc(avaSrc) + '" onerror="this.onerror=function(){this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'};this.src=\'' + defaultAvatarFor(p) + '\';" />'
-        : '<div class="ava empty">👤</div>') +
+      avaHtml +
       '<div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">' + (info.group==='dom'?'♛ ':'⛓ ') + esc(p.display_name) + '</b>' + staffIcons(p.id) + '</div>' +
       '<div style="text-align:center;" class="small">En la casa desde ' + esc(formatDate(p.created_at)) + '</div>' +
     (info.group==='owned' && info.rec && info.rec.slave_name ? '<div style="text-align:center;" class="small">como <b>' + esc(info.rec.slave_name) + '</b></div>' : '') +
