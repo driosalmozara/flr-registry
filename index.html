@@ -442,10 +442,19 @@ ${['vih','sifilis','gonorrea','otra'].map(std => `
         <script>document.querySelectorAll('.${prefix}_std').forEach(c => c.addEventListener('change', function(){ document.getElementById('${prefix}_stds_other_box').classList.toggle('active', document.querySelector('.${prefix}_std[value="otra"]').checked); }));<\/script>
         <label class="small" style="margin-top:10px;">Otra información</label>
         <textarea id="${prefix}_other_info" rows="2" placeholder="Cualquier otro detalle físico o de hábitos que desees compartir..." ${dis}>${escapeHtml(v('physical_other'))}</textarea>`;
-      if (showMale) {
-        const zones = ['axilas','pecho','abdomen','brazos','piernas','espalda','trasero','pubis','genitales'];
-        const hair = data.physical_hair || {};
-        html += `<h4 style="color:var(--gold);margin:16px 0 8px;">🧔 Vello corporal</h4>
+if (showMale) {
+const zones = ['axilas','pecho','abdomen','brazos','piernas','espalda','trasero','pubis','genitales'];
+const hair = data.physical_hair || {};
+html += `<h4 style="color:var(--gold);margin:16px 0 8px;">🧍 Tipo de cuerpo</h4>
+<select id="${prefix}_body_type" ${dis}>
+<option value="">— Sin especificar —</option>
+<option value="corpulento" ${sel('physical_body_type','corpulento')}>Corpulento/Robusto</option>
+<option value="normal" ${sel('physical_body_type','normal')}>Normal/Promedio</option>
+<option value="delgado" ${sel('physical_body_type','delgado')}>Delgado/Esbelto</option>
+<option value="atletico" ${sel('physical_body_type','atletico')}>Atlético</option>
+<option value="musculoso" ${sel('physical_body_type','musculoso')}>Musculoso</option>
+</select>`;
+html += `<h4 style="color:var(--gold);margin:16px 0 8px;">🧔 Vello corporal</h4>
           <p class="small" style="margin:0 0 8px;">Selecciona el estado de cada zona (solo las que quieras indicar).</p>
           <div class="physical-row">` +
           zones.map(z => `
@@ -453,9 +462,11 @@ ${['vih','sifilis','gonorrea','otra'].map(std => `
               <label>${z.charAt(0).toUpperCase() + z.slice(1)}</label>
 <select id="${prefix}_hair_${z}" ${dis}>
 <option value="">— Sin especificar —</option>
+<option value="abundante" ${hair[z]==='abundante'?'selected':''}>Abundante vello</option>
 <option value="natural" ${hair[z]==='natural'?'selected':''}>Natural</option>
 <option value="afeitado" ${hair[z]==='afeitado'?'selected':''}>Afeitado o recortado</option>
 <option value="depilado" ${hair[z]==='depilado'?'selected':''}>Depilado</option>
+<option value="escaso" ${hair[z]==='escaso'?'selected':''}>Escaso vello</option>
 <option value="no_tengo" ${hair[z]==='no_tengo'?'selected':''}>No tengo vello en esta zona</option>
 </select>
             </div>`).join('') + `</div>`;
@@ -507,7 +518,8 @@ ${['vih','sifilis','gonorrea','otra'].map(std => `
         physical_stds: stds.length ? stds : null,
         physical_stds_other: stds.includes('otra') ? (val(prefix + '_stds_other') || null) : null,
         physical_other: val(prefix + '_other_info') || null,
-        physical_hair: Object.keys(hair).length ? hair : null,
+physical_hair: Object.keys(hair).length ? hair : null,
+physical_body_type: val(prefix + '_body_type') || null,
         physical_circumcised: chk(prefix + '_circumcised'),
         physical_castrated: val(prefix + '_castrated') || 'no',
         physical_vasectomy: chk(prefix + '_vasectomy')
