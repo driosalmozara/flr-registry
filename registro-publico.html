@@ -344,8 +344,9 @@ function cardHTML(p, info){
       '</div>';
   }
   const ownerHides = (info.group === 'owned' && info.rec.show_avatar === false);
-  const hasPhoto = !!p.avatar_url;
-  const showAva = ownerHides ? false : (hasPhoto ? !!p.show_avatar_public : true);  const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
+  const showAva = !ownerHides;
+  const avaSrc = (p.show_avatar_public && p.avatar_url) ? p.avatar_url : defaultAvatarFor(p);
+  const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
     : '<span class="badge green">⛓ En propiedad</span>';
@@ -365,7 +366,7 @@ function cardHTML(p, info){
   
   return '<div class="member">' +
       (showAva
-        ? '<img class="ava" src="' + esc(p.avatar_url || defaultAvatarFor(p)) + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'"/>'
+        ? '<img class="ava" src="' + esc(avaSrc) + '" onerror="this.onerror=function(){this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'};this.src=\'' + defaultAvatarFor(p) + '\';" />'
         : '<div class="ava empty">👤</div>') +
       '<div style="text-align:center;"><b style="color:var(--gold);font-size:16px;">' + (info.group==='dom'?'♛ ':'⛓ ') + esc(p.display_name) + '</b>' + staffIcons(p.id) + '</div>' +
       '<div style="text-align:center;" class="small">En la casa desde ' + esc(formatDate(p.created_at)) + '</div>' +
