@@ -218,3 +218,43 @@ div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input
   button{padding:7px 10px !important;font-size:12px !important}
   input,select,textarea{font-size:13px !important}
 }
+/* ====== MENCIONES ====== */
+.mention-popup{
+  position:absolute;bottom:100%;left:0;margin-bottom:4px;
+  background:#0b0b12;border:1px solid var(--gold);border-radius:10px;
+  box-shadow:0 -4px 20px rgba(0,0,0,.5);z-index:60;
+  max-width:260px;width:90vw;max-height:220px;overflow-y:auto;display:none;
+}
+.mention-popup.open{display:block}
+.mention-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line);font-size:13px}
+.mention-item:hover{background:rgba(212,175,55,.1)}
+.mention-item:last-child{border-bottom:none}
+.mention-item .role{color:var(--gold);margin-right:4px}
+.mention-highlight{color:var(--gold);font-weight:700;background:rgba(212,175,55,.12);padding:0 3px;border-radius:4px}
+.mention-highlight.me{background:rgba(212,175,55,.28);box-shadow:0 0 8px rgba(212,175,55,.4)}
+
+/* ====== BOTÓN @ ====== */
+#mention-btn{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:8px 11px;cursor:pointer;font-weight:700;font-size:15px;line-height:1}
+
+/* ====== RETROILUMINACIÓN DEL MENÚ ====== */
+.nav-glow{position:relative;animation:navPulse 2s ease-in-out infinite}
+.nav-glow::after{
+  content:'';position:absolute;inset:-4px;border-radius:8px;
+  background:radial-gradient(circle,rgba(212,175,55,.3),transparent);
+  pointer-events:none;animation:navGlow 2s ease-in-out infinite;z-index:-1;
+}
+@keyframes navPulse{
+  0%,100%{box-shadow:0 0 8px rgba(212,175,55,.4)}
+  50%{box-shadow:0 0 20px rgba(212,175,55,.8)}
+}
+@keyframes navGlow{0%,100%{opacity:.4}50%{opacity:.85}}
+.nav-badge{
+  position:absolute;top:-6px;right:-8px;background:#dc2626;color:#fff;
+  font-size:10px;font-weight:700;padding:2px 5px;border-radius:999px;
+  min-width:16px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.4);
+  line-height:1.2;
+}
+
+/* ====== MODAL DE SOLICITUD ====== */
+.request-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99992;display:flex;align-items:center;justify-content:center;padding:20px}
+.request-modal .box{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:24px;max-width:500px;width:100%}
