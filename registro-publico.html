@@ -358,14 +358,25 @@ function cardHTML(p, info){
       '<p class="small" style="text-align:center;margin:12px 0 4px;font-style:italic;color:#a1a1aa;">' + esc(msg) + '</p>' +
       '</div>';
   }
-  const ownerHides = (info.group === 'owned' && info.rec.show_avatar === false);
-  const showAva = !ownerHides;
-  const avaSrc = (p.show_avatar_public && p.avatar_url) ? p.avatar_url : defaultAvatarFor(p);
-    const avaHtml = !showAva
-    ? '<div class="ava empty">👤</div>'
-    : (avaSrc
-        ? '<img class="ava" src="' + esc(avaSrc) + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'"/>'
-        : '<div class="ava empty">👤</div>');
+  const ownerHides = (info.group === 'owned' && info.rec && info.rec.show_avatar === false);
+  const recShow = !ownerHides;
+  const selfShow = !!p.show_avatar_public;
+  // ¿Quién manda sobre el avatar? Sin autonomía manda la Dueña;
+  // con autonomía deciden ambos; libres y Dominantes deciden solos.
+  const photoAllowed = (info.group === 'owned')
+    ? (p.autonomy ? (selfShow && recShow) : recShow)
+    : selfShow;
+  const hasPhoto = !!p.avatar_url;
+  const imgTag = function(src){
+    return '<img class="ava" src="' + esc(src) + '" onerror="this.outerHTML=\'<div class=&quot;ava empty&quot;>' + defaultAvaEmoji(info.group) + '</div>\'"/>';
+  };
+  let avaHtml;
+  if (hasPhoto) {
+    avaHtml = photoAllowed ? imgTag(p.avatar_url) : '<div class="ava empty">👤</div>';
+  } else {
+    const def = defaultAvatarFor(p);
+    avaHtml = ownerHides ? '<div class="ava empty">👤</div>' : (def ? imgTag(def) : '<div class="ava empty">👤</div>');
+  }
   const ownerName = info.ownerId ? ((allProfiles.find(function(x){ return x.id === info.ownerId; }) || {}).display_name || '') : '';
   const roleBadge = info.group === 'dom' ? '<span class="badge gold">♛ Dominante</span>'
     : info.group === 'free' ? '<span class="badge blue">⛓ Sin Dueña</span>'
