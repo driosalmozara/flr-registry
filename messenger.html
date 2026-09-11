@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Messenger Queendomland</title>
+<link rel="manifest" href="manifest-messenger.json"/>
+<meta name="theme-color" content="#0d0c0a"/>
+<link rel="apple-touch-icon" href="corona.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trono-de-oro.css">
+<script src="toasts.js" defer></script>
+<style>
+html,body{height:100%}
+body{overflow:hidden}
+#topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:rgba(13,12,10,.97)!important;
+  border-bottom:1px solid rgba(201,162,75,.25)!important}
+#topbar h1{font-size:18px;margin:0;flex:1}
+#topbar .tbtn{background:transparent!important;border:1px solid rgba(201,162,75,.4)!important;
+  color:var(--gold-light)!important;border-radius:999px;padding:6px 10px!important;font-size:14px;min-height:0}
+#mirror-dot{width:9px;height:9px;border-radius:50%;background:#7c3aed;box-shadow:0 0 8px #7c3aed;display:none}
+#tabbar{position:fixed;bottom:0;left:0;right:0;z-index:60;display:flex;
+  padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(13,12,10,.97)!important;
+  border-top:1px solid rgba(201,162,75,.25)!important;gap:6px}
+#tabbar button{flex:1;background:transparent!important;border:1px solid transparent!important;
+  color:#a1a1aa!important;border-radius:12px!important;padding:8px 4px!important;font-size:11px!important;
+  display:flex;flex-direction:column;align-items:center;gap:2px;min-height:0}
+#tabbar button .ico{font-size:19px}
+#tabbar button.on{color:var(--gold-light)!important;border-color:rgba(201,162,75,.4)!important;background:rgba(201,162,75,.08)!important}
+#tabbar .bdg{position:relative;top:-2px;right:-6px;background:#6e1f2a;color:#fff;border-radius:999px;
+  font-size:9px;padding:1px 5px;display:none}
+main{position:fixed;top:calc(52px + env(safe-area-inset-top));bottom:calc(56px + env(safe-area-inset-bottom));
+  left:0;right:0;overflow-y:auto;padding:12px;max-width:760px;margin:0 auto}
+main.full{top:calc(52px + env(safe-area-inset-top))}
+.rowitem{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid rgba(201,162,75,.18);
+  border-radius:12px;margin:8px 0;background:rgba(255,255,255,.02);cursor:pointer}
+.rowitem .ava{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);
+  background:#161625;flex:none;display:flex;align-items:center;justify-content:center;color:var(--gold)}
+.rowitem .meta{flex:1;min-width:0}
+.rowitem .meta b{display:block;color:var(--ivory);font-size:14px}
+.rowitem .meta span{display:block;color:#a1a1aa;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowitem .dotnew{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(201,162,75,.8);flex:none}
+#conv{display:flex;flex-direction:column;height:100%}
+#conv-head{display:flex;gap:8px;align-items:center;padding:6px 4px 10px;border-bottom:1px solid rgba(201,162,75,.2)}
+#conv-head b{flex:1;color:var(--gold-light);font-size:15px}
+#conv-msgs{flex:1;overflow-y:auto;padding:10px 2px;display:flex;flex-direction:column;gap:8px}
+.bub{max-width:82%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.bub.mine{align-self:flex-end;background:rgba(201,162,75,.16);border:1px solid rgba(201,162,75,.4);color:var(--ivory)}
+.bub.theirs{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(201,162,75,.15);color:var(--ivory-soft)}
+.bub .who{display:block;font-size:11px;color:var(--gold);margin-bottom:2px}
+.bub .tm{display:block;font-size:10px;color:#71717a;margin-top:4px;text-align:right}
+.bub img,.bub video{max-width:100%;border-radius:10px;margin-top:4px;display:block}
+#conv-input{display:flex;gap:6px;padding:10px 2px 4px;border-top:1px solid rgba(201,162,75,.2)}
+#conv-input input{flex:1;margin:0!important}
+#conv-input button{min-height:0;padding:10px 14px!important}
+.sup-banner{background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.5);color:#c4b5fd;
+  border-radius:10px;padding:8px 12px;font-size:12px;margin:0 0 8px}
+#gate{position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,5,9,.96);padding:20px}
+#gate .gcard{max-width:420px;width:100%;background:rgba(13,10,14,.97);border:1px solid rgba(201,162,75,.5);
+  border-radius:18px;padding:26px 22px;text-align:center}
+.hidden{display:none!important}
+.empty{color:#a1a1aa;text-align:center;padding:30px 10px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <button class="tbtn hidden" id="back-btn" onclick="closeConv()">←</button>
+  <h1>💬 Messenger <span style="color:var(--gold)">Queendomland</span></h1>
+  <span id="mirror-dot" title=""></span>
+  <button class="tbtn" id="bell-btn" onclick="askNotif()">🔕</button>
+</div>
+<main id="screen"></main>
+<nav id="tabbar">
+  <button id="tab-rooms" class="on" onclick="goView('rooms')"><span class="ico">#</span>Chats<span class="bdg" id="bdg-rooms"></span></button>
+  <button id="tab-dms" onclick="goView('dms')"><span class="ico">💬</span>Mensajes<span class="bdg" id="bdg-dms"></span></button>
+  <button id="tab-set" onclick="goView('set')"><span class="ico">️</span>Ajustes</button>
+</nav>
+<div id="gate" class="hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const BIO_CRED_KEY = 'flr_bio_cred';
+
+let me = null, profile = null;
+let view = 'rooms', rooms = [], roomById = {};
+let convMode = null;            // {type:'room', id} | {type:'dm', uid} | {type:'sup', uid}
+let liveChannel = null;
+
+function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function hh(t){ const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function b64ToBuf(b64){ const s=atob(b64.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i); return u.buffer; }
+function challenge(){ const a=new Uint8Array(32); crypto.getRandomValues(a); return a.buffer; }
+
+/* ─────────── ARRANQUE Y PUERTA DE ENTRADA ─────────── */
+async function init(){
+  const { data:{ session } } = await db.auth.getSession();
+  if (session) return start(session.user);
+  // ¿Biometría registrada? Ofrecer desbloqueo con huella/rostro
+  if (localStorage.getItem(BIO_CRED_KEY)) { showBioGate(); return; }
+  showLoginGate();
+}
+async function verifyBiometric(){
+  const idB64 = localStorage.getItem(BIO_CRED_KEY); if(!idB64) return false;
+  const cred = await navigator.credentials.get({ publicKey:{
+    challenge: challenge(),
+    allowCredentials:[{ id: b64ToBuf(idB64), type:'public-key', transports:['internal'] }],
+    userVerification:'required', timeout:60000 }});
+  return !!cred;
+}
+function showBioGate(){
+  let saved=null; try{ saved=JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred')||'')))); }catch(e){}
+  const g=document.getElementById('gate'); g.classList.remove('hidden');
+  g.innerHTML = `<div class="gcard"><div style="font-size:44px">🔐</div>
+    <h2 style="margin:8px 0 4px">Messenger Queendomland</h2>
+    <p class="small" style="color:#a1a1aa">Desbloquea con tu huella o rostro.</p>
+    <button onclick="bioUnlock()">🔓 Desbloquear</button>
+    <button class="secondary" onclick="showLoginGate()">Usar contraseña</button></div>`;
+}
+async function bioUnlock(){
+  try{
+    if(!(await verifyBiometric())) return;
+    const saved=JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred')||''))));
+    const { error } = await db.auth.signInWithPassword({ email:saved.email, password:saved.password });
+    if(error){ alert('Sesión no disponible: '+error.message); showLoginGate(); return; }
+    const { data:{ session } } = await db.auth.getSession();
+    document.getElementById('gate').classList.add('hidden');
+    start(session.user);
+  }catch(e){ showLoginGate(); }
+}
+function showLoginGate(){
+  const g=document.getElementById('gate'); g.classList.remove('hidden');
+  g.innerHTML = `<div class="gcard"><div style="font-size:44px">💬</div>
+    <h2 style="margin:8px 0 4px">Messenger Queendomland</h2>
+    <p class="small" style="color:#a1a1aa">Entra con tu cuenta de la casa.</p>
+    <input id="g-email" type="email" placeholder="Correo" style="text-align:center"/>
+    <input id="g-pass" type="password" placeholder="Contraseña" style="text-align:center"/>
+    <button onclick="gateLogin()">Entrar</button>
+    <p class="small" style="margin-top:10px"><a href="index.html" style="color:var(--gold-light)">← Volver a la casa</a></p></div>`;
+}
+async function gateLogin(){
+  const email=document.getElementById('g-email').value.trim();
+  const pass=document.getElementById('g-pass').value;
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  if(error) return alert(error.message);
+  localStorage.setItem('flr_cred', btoa(unescape(encodeURIComponent(JSON.stringify({ email, password: pass })))));
+  document.getElementById('gate').classList.add('hidden');
+  start(data.user);
+}
+
+/* ─────────── SESIÓN Y VISTAS ─────────── */
+async function start(user){
+  me = user;
+  const { data: p } = await db.from('profiles').select('*').eq('id', me.id).maybeSingle();
+  profile = p;
+  if(!profile){ alert('Completa tu perfil en la casa primero.'); location.href='index.html'; return; }
+  // Modo espejo secreto del super-admin
+  if (localStorage.getItem('flr_impersonating')==='1'){
+    const d=document.getElementById('mirror-dot'); d.style.display='inline-block';
+    d.title='Modo espejo activo';
+  }
+  await loadRooms();
+  goView('rooms');
+  subscribeLive();
+  updateBadges();
+  setInterval(updateBadges, 30000);
+  // Permiso de notificaciones al primer toque
+  document.addEventListener('click', function once(){ askNotif(true); document.removeEventListener('click', once); });
+}
+function goView(v){
+  view=v; convMode=null;
+  document.getElementById('back-btn').classList.add('hidden');
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+(v==='set'?'set':v==='dms'?'dms':'rooms')).classList.add('on');
+  if(v==='rooms') renderRooms();
+  if(v==='dms') renderDMs();
+  if(v==='set') renderSettings();
+}
+function askNotif(silent){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted'){ setBell(); return; }
+  if(Notification.permission==='denied'){ setBell(); return; }
+  Notification.requestPermission().then(setBell);
+}
+function setBell(){
+  const b=document.getElementById('bell-btn');
+  b.textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔' : '🔕';
+}
+
+/* ─────────── CHAT: SALAS ─────────── */
+async function loadRooms(){
+  const { data } = await db.from('chat_rooms').select('*').order('is_default',{ascending:false}).order('created_at');
+  rooms = data || []; roomById={};
+  rooms.forEach(r=>roomById[r.id]=r);
+  // Filtrar privadas: solo miembros o super-admin
+  if(!await isSuper()){
+    const priv = rooms.filter(r=>r.is_private);
+    if(priv.length){
+      const ids = priv.map(r=>r.id);
+      const { data: mem } = await db.from('chat_room_members').select('room_id').eq('user_id', me.id).in('room_id', ids);
+      const ok = new Set((mem||[]).map(m=>m.room_id));
+      rooms = rooms.filter(r=>!r.is_private || ok.has(r.id));
+    }
+  }
+}
+async function isSuper(){ const { data } = await db.rpc('is_superadmin'); return !!data; }
+function renderRooms(){
+  const s=document.getElementById('screen');
+  s.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <b style="color:var(--gold-light);font-size:16px"># Salas de la casa</b>
+      <span class="small" style="color:#a1a1aa;margin-left:auto">${rooms.length}</span></div>` +
+    (rooms.map(r=>{
+      const last = localStorage.getItem('msgr_room_'+r.id)||'0';
+      const newMark = (Number(sessionStorage.getItem('msgr_new_'+r.id)||0) > 0);
+      return `<div class="rowitem" onclick="openRoom('${r.id}')">
+        <div class="ava">${r.is_private?'🔒':'#'}</div>
+        <div class="meta"><b>${esc(r.name)}</b><span>${esc(r.description||'Sala de la casa')}</span></div>
+        ${newMark?'<span class="dotnew"></span>':''}</div>`;
+    }).join('') || '<p class="empty">No hay salas disponibles para ti.</p>');
+}
+async function openRoom(id){
+  const room = roomById[id]; if(!room) return;
+  // Bans y mordazas de sala
+  const { data: ban } = await db.from('chat_room_bans').select('*').eq('room_id',id).eq('user_id',me.id).maybeSingle();
+  const { data: mute } = await db.from('chat_room_mutes').select('*').eq('room_id',id).eq('user_id',me.id).maybeSingle();
+  convMode={type:'room', id, ban:!!ban, mute:!!mute};
+  sessionStorage.removeItem('msgr_new_'+id);
+  localStorage.setItem('msgr_room_'+id, String(Date.now()));
+  document.getElementById('back-btn').classList.remove('hidden');
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.remove('on'));
+  const s=document.getElementById('screen');
+  s.innerHTML = `<div id="conv">
+    <div id="conv-head"><b>${room.is_private?'🔒':'#'} ${esc(room.name)}</b></div>
+    <div id="conv-msgs"><p class="empty">Cargando…</p></div>
+    <div id="conv-input">
+      <input id="msg-in" placeholder="${ban?'🚫 Expulsado de esta sala':mute?'🔇 Silenciado en esta sala':'Escribe y pulsa Enviar…'}" ${(ban||mute)?'disabled':''}/>
+      <button onclick="sendRoomMsg()" ${(ban||mute)?'disabled':''}>➤</button>
+    </div></div>`;
+  const inp=document.getElementById('msg-in');
+  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') sendRoomMsg(); });
+  loadRoomMsgs(id);
+}
+async function loadRoomMsgs(id){
+  const { data } = await db.from('chat_messages_public').select('*').eq('room_id',id)
+    .order('created_at',{ascending:false}).limit(120);
+  const list=(data||[]).reverse();
+  const box=document.getElementById('conv-msgs'); if(!box) return;
+  box.innerHTML = list.map(m=>bubble(m, m.user_id===me.id, m.display_name)).join('') || '<p class="empty">Sé la primera voz de esta sala.</p>';
+  box.scrollTop=box.scrollHeight;
+}
+async function sendRoomMsg(){
+  const inp=document.getElementById('msg-in'); const body=inp.value.trim();
+  if(!body || !convMode || convMode.type!=='room') return;
+  if(convMode.ban) return alert('🚫 Tu acceso a esta sala está prohibido.');
+  if(convMode.mute) return alert('🔇 Estás silenciado en esta sala.');
+  const { data: pm } = await db.from('profiles').select('chat_muted').eq('id',me.id).maybeSingle();
+  if(pm && pm.chat_muted) return alert('🔇 El Staff te ha silenciado.');
+  const { data: rel } = await db.from('relationships').select('is_muzzled').eq('submissive_id',me.id).eq('status','confirmed').maybeSingle();
+  if(rel && rel.is_muzzled) return alert('🔇 Estás amordazado por tu Dominante.');
+  const { error } = await db.from('chat_messages').insert({ user_id: me.id, body, room_id: convMode.id });
+  if(error) return alert(error.message);
+  inp.value='';
+}
+
+/* ─────────── MENSAJES PRIVADOS ─────────── */
+async function renderDMs(){
+  const s=document.getElementById('screen');
+  s.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <b style="color:var(--gold-light);font-size:16px">💬 Mensajes privados</b>
+      <button class="tbtn" style="margin-left:auto;background:transparent!important;border:1px solid rgba(201,162,75,.4)!important;color:var(--gold-light)!important;border-radius:999px;padding:5px 10px!important;font-size:12px" onclick="newDM()">＋ Nuevo</button></div>
+    <div id="dm-list"><p class="empty">Cargando…</p></div>`;
+  const { data } = await db.from('direct_messages')
+    .select('id, sender_id, recipient_id, body, created_at, read')
+    .or(`sender_id.eq.${me.id},recipient_id.eq.${me.id}`)
+    .order('created_at',{ascending:false}).limit(400);
+  const threads={};
+  (data||[]).forEach(m=>{
+    const other = m.sender_id===me.id ? m.recipient_id : m.sender_id;
+    if(!threads[other]) threads[other]={ uid:other, last:m, unread:0 };
+    if(m.recipient_id===me.id && !m.read) threads[other].unread++;
+  });
+  const list=Object.values(threads).sort((a,b)=> new Date(b.last.created_at)-new Date(a.last.created_at));
+  if(!list.length){ document.getElementById('dm-list').innerHTML='<p class="empty">Aún no tienes conversaciones.</p>'; return; }
+  const ids=list.map(t=>t.uid);
+  const { data: profs } = await db.from('profiles').select('id, display_name, role, avatar_url').in('id', ids);
+  const pm={}; (profs||[]).forEach(p=>pm[p.id]=p);
+  document.getElementById('dm-list').innerHTML = list.map(t=>{
+    const p=pm[t.uid]||{};
+    return `<div class="rowitem" onclick="openThread('${t.uid}')">
+      ${p.avatar_url?`<img class="ava" src="${esc(p.avatar_url)}"/>`:`<div class="ava">${p.role==='dominant'?'♛':'⛓'}</div>`}
+      <div class="meta"><b>${esc(p.display_name||'Miembro')}</b><span>${esc((t.last.body||'').slice(0,60))}</span></div>
+      ${t.unread?`<span class="dotnew"></span>`:''}</div>`;
+  }).join('');
+}
+async function newDM(){
+  const { data } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(300);
+  const s=document.getElementById('screen');
+  s.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <button class="tbtn" onclick="goView('dms')">←</button><b style="color:var(--gold-light)">＋ Nueva conversación</b></div>
+    <input id="dm-q" placeholder="Buscar miembro…" oninput="filterNewDM()"/>
+    <div id="dm-pick"></div>`;
+  window.__pickList = data||[];
+  filterNewDM();
+}
+function filterNewDM(){
+  const q=(document.getElementById('dm-q').value||'').toLowerCase();
+  const list=(window.__pickList||[]).filter(p=>p.id!==me.id && (p.display_name||'').toLowerCase().includes(q)).slice(0,40);
+  document.getElementById('dm-pick').innerHTML = list.map(p=>
+    `<div class="rowitem" onclick="openThread('${p.id}')"><div class="ava">${p.role==='dominant'?'♛':'⛓'}</div>
+     <div class="meta"><b>${esc(p.display_name)}</b></div></div>`).join('') || '<p class="empty">Sin coincidencias.</p>';
+}
+async function openThread(uid, supMode){
+  convMode = supMode ? {type:'sup', uid} : {type:'dm', uid};
+  document.getElementById('back-btn').classList.remove('hidden');
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.remove('on'));
+  const s=document.getElementById('screen');
+  let head='', banner='';
+  if(supMode){
+    const { data: p } = await db.from('profiles').select('display_name').eq('id',uid).maybeSingle();
+    head = `👁 ${esc(p?.display_name||'')} <span class="small">(supervisión)</span>`;
+    banner = `<div class="sup-banner">👁 Supervisión de Dueña: solo lectura. Los mensajes privados de un sumiso con autonomía quedan fuera de tu vista.</div>`;
+  } else {
+    const { data: p } = await db.from('profiles').select('display_name, avatar_url').eq('id',uid).maybeSingle();
+    head = esc(p?.display_name||'Miembro');
+  }
+  s.innerHTML = `<div id="conv">
+    <div id="conv-head"><b>${head}</b></div>
+    ${banner}
+    <div id="conv-msgs"><p class="empty">Cargando…</p></div>
+    ${supMode?'':`<div id="conv-input">
+      <input id="msg-in" placeholder="Mensaje privado…"/>
+      <button onclick="sendDM()">➤</button></div>`}
+  </div>`;
+  const inp=document.getElementById('msg-in');
+  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') sendDM(); });
+  if(supMode) loadSupMsgs(uid); else loadThreadMsgs(uid);
+}
+async function loadThreadMsgs(uid){
+  const { data } = await db.from('direct_messages')
+    .select('*').or(`and(sender_id.eq.${me.id},recipient_id.eq.${uid}),and(sender_id.eq.${uid},recipient_id.eq.${me.id})`)
+    .order('created_at',{ascending:true}).limit(300);
+  const box=document.getElementById('conv-msgs'); if(!box) return;
+  box.innerHTML=(data||[]).map(m=>bubble(m, m.sender_id===me.id)).join('') || '<p class="empty">Escribe el primer mensaje.</p>';
+  box.scrollTop=box.scrollHeight;
+  // Marcar como leídos
+  await db.from('direct_messages').update({ read:true })
+    .eq('recipient_id', me.id).eq('sender_id', uid).eq('read', false);
+  updateBadges();
+}
+async function sendDM(){
+  const inp=document.getElementById('msg-in'); const body=inp.value.trim();
+  if(!body || !convMode || convMode.type!=='dm') return;
+  const { error } = await db.from('direct_messages').insert({ sender_id: me.id, recipient_id: convMode.uid, body, read:false });
+  if(error) return alert(error.message);
+  inp.value=''; loadThreadMsgs(convMode.uid);
+}
+async function loadSupMsgs(uid){
+  const { data, error } = await db.rpc('dom_view_sub_messages', { p_sub_id: uid });
+  const box=document.getElementById('conv-msgs'); if(!box) return;
+  if(error){ box.innerHTML='<p class="empty">No autorizado: '+esc(error.message)+'</p>'; return; }
+  if(!data || !data.length){ box.innerHTML='<p class="empty">Sin mensajes privados que supervisar.</p>'; return; }
+  box.innerHTML = data.slice().reverse().map(m=>bubble(m, m.sender_id===uid, m.sender_id===uid?'⛓ envía':'⛓ recibe')).join('');
+  box.scrollTop=box.scrollHeight;
+}
+function bubble(m, mine, whoLabel){
+  let att='';
+  if(m.attachment_url){
+    att = (m.attachment_type==='video')
+      ? `<video src="${esc(m.attachment_url)}" controls></video>`
+      : `<img src="${esc(m.attachment_url)}"/>`;
+  }
+  return `<div class="bub ${mine?'mine':'theirs'}">
+    ${whoLabel?`<span class="who">${esc(whoLabel)}</span>`:''}
+    ${esc(m.body||'')}${att}
+    <span class="tm">${hh(m.created_at)}</span></div>`;
+}
+function closeConv(){
+  if(view==='rooms') renderRooms(); else if(view==='dms') renderDMs(); else renderSettings();
+  document.getElementById('back-btn').classList.add('hidden');
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+(view==='set'?'set':view)).classList.add('on');
+  convMode=null;
+}
+
+/* ─────────── AJUSTES, SUPERVISIÓN Y MODO ESPEJO ─────────── */
+async function renderSettings(){
+  const s=document.getElementById('screen');
+  const superAd = await isSuper();
+  const domVer = profile.role==='dominant' && profile.dom_verified;
+  let html = `<b style="color:var(--gold-light);font-size:16px">⚙️ Ajustes</b>
+  <div class="rowitem" onclick="askNotif()"><div class="ava">🔔</div><div class="meta"><b>Notificaciones</b><span>${('Notification' in window && Notification.permission==='granted')?'Activadas':'Toca para activar'}</span></div></div>
+  <div class="rowitem" onclick="enrollBio()"><div class="ava">🔐</div><div class="meta"><b>Huella / rostro</b><span>${localStorage.getItem(BIO_CRED_KEY)?'Activado — desbloquea sin contraseña':'Activar desbloqueo biométrico'}</span></div></div>`;
+  if(domVer){
+    html += `<div class="rowitem" onclick="openSupervision()"><div class="ava">👁</div><div class="meta"><b>Supervisión de sumisos</b><span>Mensajes privados de sumisos sin autonomía (solo lectura)</span></div></div>`;
+  }
+  if(superAd){
+    html += `<div class="rowitem" onclick="openMirror()"><div class="ava" style="border-color:#7c3aed;color:#c4b5fd">👁</div><div class="meta"><b style="color:#c4b5fd">Llaves del reino</b><span>Modo espejo secreto (super-admin)</span></div></div>`;
+  }
+  if(localStorage.getItem('flr_impersonating')==='1'){
+    html += `<div class="rowitem" onclick="exitMirror()"><div class="ava" style="border-color:#7c3aed;color:#c4b5fd">↩</div><div class="meta"><b style="color:#c4b5fd">Volver a mi cuenta</b><span>Salir del modo espejo</span></div></div>`;
+  }
+  html += `<div class="rowitem" onclick="location.href='index.html'"><div class="ava">🏛</div><div class="meta"><b>Ir a la casa</b><span>Queendomland completa</span></div></div>
+  <div class="rowitem" onclick="logout()"><div class="ava">🚪</div><div class="meta"><b>Cerrar sesión</b><span>Sal de Messenger</span></div></div>
+  <p class="empty">Messenger Queendomland · v1 · Contenido simbólico y consensuado entre adultos.</p>`;
+  s.innerHTML = html;
+}
+async function enrollBio(){
+  if(localStorage.getItem(BIO_CRED_KEY)) { localStorage.removeItem(BIO_CRED_KEY); renderSettings(); return; }
+  let saved=null; try{ saved=JSON.parse(decodeURIComponent(escape(atob(localStorage.getItem('flr_cred')||'')))); }catch(e){}
+  if(!saved){ alert('Inicia sesión con contraseña primero para guardar tus credenciales.'); return; }
+  try{
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: challenge(),
+      rp:{ name:'Queendomland Messenger', id: location.hostname },
+      user:{ id:new TextEncoder().encode(me.id), name: me.email, displayName: profile.display_name||me.email },
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+      timeout:60000 }});
+    localStorage.setItem(BIO_CRED_KEY, bufToB64(cred.rawId));
+    alert('✅ Biometría activada en Messenger.');
+  }catch(e){ alert('No se pudo activar: '+(e.message||e)); }
+  renderSettings();
+}
+async function openSupervision(){
+  const { data: subs } = await db.from('relationships')
+    .select('submissive_id, profiles!relationships_submissive_id_fkey(id, display_name, avatar_url, autonomy)')
+    .eq('dominant_id', me.id).eq('status','confirmed');
+  const s=document.getElementById('screen');
+  const list=(subs||[]).filter(x=>x.profiles && !x.profiles.autonomy);
+  s.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <button class="tbtn" onclick="renderSettings()">←</button><b style="color:var(--gold-light)">👁 Supervisión</b></div>
+    <div class="sup-banner">Solo sumisos <b>sin autonomía</b>. Con autonomía, sus privados son suyos.</div>` +
+    (list.map(x=>`<div class="rowitem" onclick="openThread('${x.profiles.id}', true)">
+      ${x.profiles.avatar_url?`<img class="ava" src="${esc(x.profiles.avatar_url)}"/>`:`<div class="ava">⛓</div>`}
+      <div class="meta"><b>${esc(x.profiles.display_name)}</b><span>Ver mensajes privados (solo lectura)</span></div></div>`).join('')
+     || '<p class="empty">No tienes sumisos sin autonomía.</p>');
+}
+async function openMirror(){
+  const { data } = await db.rpc('superadmin_all_emails');
+  const s=document.getElementById('screen');
+  const list=(data||[]).sort((a,b)=> (a.display_name||'').localeCompare(b.display_name||'','es',{sensitivity:'base'}));
+  s.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <button class="tbtn" onclick="renderSettings()">←</button><b style="color:#c4b5fd">👁 Llaves del reino</b></div>
+    <div class="sup-banner" style="background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.5)">Secreto: el miembro nunca lo nota. Queda registro en tu auditoría privada.</div>
+    <input id="mir-q" placeholder="Buscar miembro…" oninput="filterMirror()"/>
+    <div id="mir-list"></div>`;
+  window.__mirList=list; filterMirror();
+}
+function filterMirror(){
+  const q=(document.getElementById('mir-q').value||'').toLowerCase();
+  const list=(window.__mirList||[]).filter(u=>(u.display_name||'').toLowerCase().includes(q)).slice(0,40);
+  document.getElementById('mir-list').innerHTML = list.map(u=>
+    `<div class="rowitem" onclick="mirrorEnter('${u.user_id}','${esc(u.email)}')">
+      <div class="ava" style="border-color:#7c3aed;color:#c4b5fd">${u.role==='dominant'?'♛':''}</div>
+      <div class="meta"><b>${esc(u.display_name)}</b><span>${esc(u.email)}</span></div>
+      <span class="small" style="color:#c4b5fd">Entrar →</span></div>`).join('') || '<p class="empty">Sin coincidencias.</p>';
+}
+async function mirrorEnter(userId, email){
+  if(!confirm('Entrar como '+email+' en modo espejo secreto.\nEl miembro no lo notará. ¿Continuar?')) return;
+  const ref = SUPABASE_URL.replace('https://','').replace('.supabase.co','');
+  const authKey = 'sb-' + ref + '-auth-token';
+  const current = localStorage.getItem(authKey);
+  localStorage.setItem('flr_admin_backup', encodeURIComponent(current||''));
+  const tmp = 'Ql' + Math.random().toString(36).slice(2,10) + 'X9';
+  const { data } = await db.rpc('superadmin_set_password', { target: userId, new_password: tmp });
+  if(!data || !data.ok) return alert(data?.error || 'Error al preparar el acceso.');
+  const { error } = await db.auth.signInWithPassword({ email, password: tmp });
+  if(error) return alert(error.message);
+  localStorage.setItem('flr_impersonating','1');
+  try{ await db.from('admin_impersonations').insert({ admin_id: me.id, target_id: userId, reason:'mirror-messenger' }); }catch(e){}
+  location.reload();
+}
+async function exitMirror(){
+  const ref = SUPABASE_URL.replace('https://','').replace('.supabase.co','');
+  const authKey = 'sb-' + ref + '-auth-token';
+  const backup = localStorage.getItem('flr_admin_backup');
+  localStorage.removeItem('flr_impersonating');
+  localStorage.removeItem('flr_admin_backup');
+  if(backup) localStorage.setItem(authKey, decodeURIComponent(backup));
+  else localStorage.removeItem(authKey);
+  location.reload();
+}
+async function logout(){
+  localStorage.removeItem('flr_impersonating');
+  localStorage.removeItem('flr_admin_backup');
+  await db.auth.signOut();
+  location.reload();
+}
+
+/* ─────────── TIEMPO REAL Y NOTIFICACIONES ─────────── */
+function subscribeLive(){
+  if(liveChannel) db.removeChannel(liveChannel);
+  liveChannel = db.channel('msgr-live')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages' }, p => {
+      const m=p.new;
+      if(m.user_id===me.id) return;
+      const open = convMode && convMode.type==='room' && convMode.id===m.room_id;
+      if(open && !document.hidden){ loadRoomMsgs(m.room_id); return; }
+      sessionStorage.setItem('msgr_new_'+m.room_id, '1');
+      notify('💬 '+(roomById[m.room_id]?.name||'Chat'), m.body||'');
+      if(view==='rooms') renderRooms();
+    })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, p => {
+      const m=p.new;
+      if(m.recipient_id!==me.id) return;
+      const open = convMode && convMode.type==='dm' && convMode.uid===m.sender_id && !document.hidden;
+      if(open){ loadThreadMsgs(m.sender_id); return; }
+      notify('💬 Mensaje privado', m.body||'');
+      updateBadges();
+      if(view==='dms') renderDMs();
+    })
+    .subscribe();
+}
+function notify(title, body){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  try{ new Notification(title, { body: (body||'').slice(0,120), icon:'corona.png' }); }catch(e){}
+  if(window.showToast) window.showToast({ title, body });
+}
+async function updateBadges(){
+  if(!me) return;
+  const { count } = await db.from('direct_messages')
+    .select('*', { count:'exact', head:true }).eq('recipient_id', me.id).eq('read', false);
+  const b=document.getElementById('bdg-dms');
+  if(count>0){ b.style.display='inline'; b.textContent=count>99?'99+':count; } else b.style.display='none';
+}
+init();
+</script>
+</body>
+</html>
