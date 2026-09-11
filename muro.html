@@ -67,6 +67,48 @@ button.mini:hover{color:#dc2626 !important}
 .poll-form-opts .row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
 .poll-form-opts .row input{flex:1;margin:0}
 .poll-form-opts .row button{padding:4px 10px;font-size:12px}
+
+/* ====== COMENTARIOS COLAPSABLES ====== */
+.comment-thread{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.comment-thread:first-child{border-top:none;padding-top:0}
+.comment-container,.reply-container{
+  transition:max-height .35s ease, opacity .25s ease, margin .25s ease;
+  overflow:hidden;
+}
+.comment-container.collapsed,.reply-container.collapsed{
+  max-height:0 !important;
+  opacity:0;
+  margin-top:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+}
+.collapse-btn{
+  background:transparent !important;
+  border:1px solid var(--line) !important;
+  color:#a1a1aa !important;
+  padding:4px 10px !important;
+  font-size:12px !important;
+  font-weight:500 !important;
+  border-radius:999px !important;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  transition:all .2s;
+}
+.collapse-btn:hover{
+  color:var(--gold) !important;
+  border-color:var(--gold) !important;
+  background:rgba(212,175,55,.05) !important;
+}
+.collapse-btn .arrow{
+  display:inline-block;
+  font-size:10px;
+  transition:transform .25s ease;
+}
+.collapse-btn.collapsed .arrow{
+  transform:rotate(-90deg);
+}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="traductor-muro.js" defer></script><script src="colab-switch.js" defer></script>
@@ -153,7 +195,7 @@ function insEmoji(e){
   if (input) { input.value += e; input.focus(); }
 }
 
-/* === ENCUESTAS: formulario === */
+/* === ENCUESTAS === */
 let pollOptCount = 0;
 function addPollOption(value = '') {
   pollOptCount++;
@@ -177,7 +219,6 @@ async function createPoll() {
   const allowComments = document.getElementById('poll-allow-comments').checked;
   const as = document.getElementById('was')?.value || 'user';
 
-  // Estado inicial: sumiso con Dueña → owner_pending; resto → pending
   const { data: relOwn } = await db.from('relationships')
     .select('id').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
   const initialStatus = (isSuper || isMod) ? 'approved' : (relOwn ? 'owner_pending' : 'pending');
@@ -202,7 +243,6 @@ async function createPoll() {
   await render();
 }
 
-/* === ENCUESTAS: render y voto === */
 async function renderPoll(post, comments) {
   const options = post.poll_options || [];
   const { data: results } = await db.rpc('poll_results', { p_post_id: post.id });
@@ -230,7 +270,6 @@ async function renderPoll(post, comments) {
     }
   }).join('');
 
-  const cmts = comments.filter(c => c.post_id === post.id);
   return `<div class="poll-box">
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
       <span style="font-size:18px;">📊</span>
@@ -323,7 +362,6 @@ async function render() {
   } else if (myBlock) {
     html += `<div class="card"><p class="small" style="color:#dc2626;">🚫 El Staff te ha bloqueado temporalmente para publicar.${myBlock.reason ? ' Motivo: ' + esc(myBlock.reason) : ''}</p></div>`;
   } else {
-    // === Formulario POST normal ===
     html += `
       <div class="card">
         <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
@@ -352,7 +390,6 @@ async function render() {
         <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
       </div>`;
 
-    // === Formulario ENCUESTA ===
     html += `
       <div class="card" style="border-color:rgba(212,175,55,.3);">
         <h3 style="margin-top:0;">📊 Crear encuesta</h3>
@@ -368,7 +405,7 @@ async function render() {
         ${(isSuper || isMod) ? `
         <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px;">
           Identidad:
-          <select id="was" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
+          <select id="was2" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
             <option value="user">Mi nombre</option>
             <option value="staff">🛡 Staff Queendomland</option>
             ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
@@ -378,7 +415,6 @@ async function render() {
         <p class="small" style="margin:6px 0 0;">Las encuestas quedan sujetas a aprobación del Staff (y de tu Dueña, si la tienes).</p>
       </div>`;
 
-    // Inicializar dos opciones vacías
     setTimeout(() => {
       if (document.getElementById('poll-options-list') && pollOptCount === 0) {
         addPollOption(); addPollOption();
@@ -414,7 +450,6 @@ async function render() {
     reactions = rk.data || [];
   }
 
-  // Sumisos con Dueña confirmada (para restringir a Perros Guardianes)
   const ownedSubs = new Set();
   if (isChatMod && !(isSuper || isMod)) {
     const pendingAuthorIds = list.filter(p => p.status === 'pending' && p.author?.role === 'submissive').map(p => p.author_id);
@@ -472,6 +507,8 @@ async function render() {
 
     const media = mediaHTML(p);
     const pollHTML = isPoll ? await renderPoll(p, comments) : '';
+    const topLevelCmts = cmts.filter(c => !c.parent_id);
+    const cmtCount = topLevelCmts.length;
 
     html += `
       <div class="post">
@@ -488,7 +525,7 @@ async function render() {
         </div>
         ${isPoll ? pollHTML : `<div class="post-body" style="white-space:pre-wrap;">${esc(p.body || '')}</div>${media}${rbar('post', p.id, false)}`}
         <div class="acts">
-          ${!isPoll ? `<button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmts.length || ''} Comentarios</button>` : ''}
+          ${!isPoll ? `<button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmtCount || ''} Comentarios</button>` : ''}
           ${canStaffAct ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${canOwnerAct ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
           ${isPoll && (canDelete || canStaffAct || canOwnerAct) && p.status === 'approved' && !p.poll_closed_at ? `<button onclick="closePoll('${p.id}')">🔒 Cerrar</button>` : ''}
@@ -496,24 +533,23 @@ async function render() {
           ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
           ${(isSuper || isMod) ? (p.pinned_by ? `<button onclick="unpinPost('${p.id}')">📌 Desfijar</button>` : `<button onclick="pinPost('${p.id}')">📌 Fijar</button>`) : ''}
         </div>
-        ${!isPoll ? `
+        ${p.allow_comments && p.status === 'approved' ? `
         <div class="cmt">
-          ${cmts.filter(c => !c.parent_id).map(c => commentHTML(c, cmts)).join('')}
-          ${p.allow_comments && p.status === 'approved' ? `
-            <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
-              <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
-              <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
-              <button onclick="addComment('${p.id}')">Enviar</button>
-            </div>` : (p.status === 'approved' ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
-        </div>` : (p.allow_comments && p.status === 'approved' ? `
-        <div class="cmt">
-          ${cmts.filter(c => !c.parent_id).map(c => commentHTML(c, cmts)).join('')}
+          ${cmtCount > 0 ? `
+            <button class="collapse-btn" onclick="toggleAllComments('${p.id}', this)" style="margin-bottom:8px;">
+              <span class="arrow">▼</span>
+              <span class="count">${cmtCount} comentario${cmtCount === 1 ? '' : 's'}</span>
+            </button>
+            <div id="comments_${p.id}" class="comment-container">
+              ${topLevelCmts.map(c => commentHTML(c, cmts)).join('')}
+            </div>
+          ` : ''}
           <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
             <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
             <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
             <button onclick="addComment('${p.id}')">Enviar</button>
           </div>
-        </div>` : '')}
+        </div>` : (p.status === 'approved' && !p.allow_comments ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
       </div>`;
   }
 
@@ -523,32 +559,80 @@ async function render() {
 function commentHTML(c, all) {
   const replies = all.filter(x => x.parent_id === c.id);
   const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id);
+  const hasReplies = replies.length > 0;
+  
   return `
-    <div style="margin:8px 0;">
-      <p class="small" style="margin:4px 0;"><b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}</b>${c.comment_as === 'user' ? staffIcons(c.author_id) : ''} <span class="comment-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
-      <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
-      ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}</p>
+    <div style="margin:8px 0;" class="comment-thread">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <p class="small" style="margin:4px 0;flex:1;min-width:200px;">
+          <b style="color:${c.comment_as === 'staff' ? '#f59e0b' : (c.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">
+            ${c.comment_as === 'staff' ? '🛡 Staff Queendomland' : (c.comment_as === 'anon' ? '&nbsp;' : (c.author_id === me ? 'Tú' : (c.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(c.author?.display_name || 'Miembro')))}
+          </b>
+          ${c.comment_as === 'user' ? staffIcons(c.author_id) : ''}
+          <span class="comment-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(c.body)}</span>
+          <span class="small" style="opacity:.7;">· ${hh(c.created_at)}</span>
+          ${canDel ? `<button class="mini" onclick="delComment('${c.id}')">✕</button>` : ''}
+        </p>
+      </div>
       ${rbar('comment', c.id, true)}
-      <button class="linkbtn" onclick="toggleReply('${c.id}')">↩ Responder</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0;">
+        <button class="linkbtn" onclick="toggleReply('${c.id}')">↩ Responder</button>
+        ${hasReplies ? `<button class="collapse-btn" onclick="toggleReplies('${c.id}', this)">
+          <span class="arrow">▼</span>
+          <span class="count">${replies.length} respuesta${replies.length === 1 ? '' : 's'}</span>
+        </button>` : ''}
+      </div>
       <div id="rb_${c.id}" class="hidden" style="display:flex;gap:6px;margin:6px 0 6px 26px;align-items:center;">
         <input id="ri_${c.id}" placeholder="Responder..." style="margin:0;"/>
         <button class="emojibtn" onclick="openEmoji(this,'ri_${c.id}')">😊</button>
         <button onclick="addReply('${c.id}','${c.post_id}')">Enviar</button>
         <button class="linkbtn" onclick="toggleReply('${c.id}')">Cancelar</button>
       </div>
-      ${replies.map(r => `
-        <div class="reply">
-          <p class="small" style="margin:4px 0;"><b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}</b>${r.comment_as === 'user' ? staffIcons(r.author_id) : ''} <span class="reply-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
-          <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
-          ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}</p>
-          ${rbar('comment', r.id, true)}
-        </div>`).join('')}
+      <div id="replies_${c.id}" class="reply-container">
+        ${replies.map(r => `
+          <div class="reply">
+            <p class="small" style="margin:4px 0;">
+              <b style="color:${r.comment_as === 'staff' ? '#f59e0b' : (r.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">
+                ${r.comment_as === 'staff' ? '🛡 Staff Queendomland' : (r.comment_as === 'anon' ? '&nbsp;' : (r.author_id === me ? 'Tú' : (r.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(r.author?.display_name || 'Miembro')))}
+              </b>
+              ${r.comment_as === 'user' ? staffIcons(r.author_id) : ''}
+              <span class="reply-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
+              <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
+              ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}
+            </p>
+            ${rbar('comment', r.id, true)}
+          </div>
+        `).join('')}
+      </div>
     </div>`;
 }
 
 function toggleReply(id){
   const box = document.getElementById('rb_' + id);
   if (box) box.classList.toggle('hidden');
+}
+
+/* ============ COMENTARIOS COLAPSABLES ============ */
+function toggleReplies(commentId, btn) {
+  const container = document.getElementById('replies_' + commentId);
+  if (!container) return;
+  const isCollapsed = container.classList.contains('collapsed');
+  container.classList.toggle('collapsed');
+  btn.classList.toggle('collapsed');
+  const replyCount = container.querySelectorAll('.reply').length;
+  const countEl = btn.querySelector('.count');
+  if (countEl) countEl.textContent = `${replyCount} respuesta${replyCount === 1 ? '' : 's'}`;
+}
+
+function toggleAllComments(postId, btn) {
+  const container = document.getElementById('comments_' + postId);
+  if (!container) return;
+  const isCollapsed = container.classList.contains('collapsed');
+  container.classList.toggle('collapsed');
+  btn.classList.toggle('collapsed');
+  const commentCount = container.querySelectorAll('.comment-thread').length;
+  const countEl = btn.querySelector('.count');
+  if (countEl) countEl.textContent = `${commentCount} comentario${commentCount === 1 ? '' : 's'}`;
 }
 
 function pickFile(input){
@@ -698,7 +782,7 @@ body{top:0!important}
   else gate();
 })();
 </script>
-  <script>
+<script>
 (function(){
   let glowInterval = null;
   async function updateMenuGlow(){
