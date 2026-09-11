@@ -213,14 +213,16 @@ async function loadRoomBans() {
 function renderRoomsBar() {
   const bar = document.getElementById('rooms-bar');
   if (!bar) return;
-  const canManage = isSuper || isMod;
+  const canCreate = isSuper || isMod;
   bar.innerHTML = rooms.map(r => `
     <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
       ${r.is_private ? '🔒' : '#'}${r.name === DEFAULT_ROOM_NAME ? DEFAULT_ROOM_LABEL : esc(r.name)}
       ${r.is_private && isSuper ? `<span class="room-del" style="color:#4ade80;" onclick="event.stopPropagation();manageRoomMembers('${r.id}','${esc(r.name)}')" title="Gestionar miembros">👥</span>` : ''}
       ${(isSuper && !r.is_default) ? `<span class="room-del" onclick="event.stopPropagation();deleteRoom('${r.id}','${esc(r.name)}')" title="Eliminar sala">✕</span>` : ''}
     </button>
-  `).join('') + (canManage ? `<button class="room-tab new-tab" onclick="createRoom()">＋ Nueva sala</button>` : '');
+  `).join('') + (canCreate
+    ? `<button class="room-tab new-tab" onclick="createRoom()">＋ Nueva sala</button>`
+    : `<button class="room-tab new-tab" onclick="openRoomRequestModal()">📩 Solicitar sala</button>`);
 }
 
 async function switchRoom(id) {
@@ -471,14 +473,17 @@ async function renderInputRow() {
       <div class="emo-cat">Objetos</div>
       <div class="emo-grid">${['🌹','🍷','','🎂','','🎉','','🎵','','📷','','📱','💻','⚡','','🍫'].map(e => `<button class="emo-item" onclick="insertEmoji('${e}')">${e}</button>`).join('')}</div>
     </div>
+    <div id="mention-popup" class="mention-popup"></div>
     <input type="file" id="chatfile" accept="image/*,video/*" style="display:none" onchange="attachChat(this)"/>
     <button class="clip" title="Enviar foto o video (requiere aprobación del Staff)" onclick="document.getElementById('chatfile').click()">📎</button>
+    <button id="mention-btn" type="button" title="Mencionar miembro" onclick="toggleMentionPopup()">@</button>
     <button id="emoji-btn" type="button" title="Emojis" onclick="toggleEmoji(event)">😀</button>
     <button id="gif-btn" type="button" title="GIF" onclick="openGifPicker()">GIF</button>
-    <input id="msg" placeholder="Escribe y pulsa Enter..." onkeydown="if(event.key==='Enter') sendMsg()" />
+    <input id="msg" placeholder="Escribe y pulsa Enter... Usa @ para mencionar" onkeydown="handleMsgKey(event)" oninput="handleMentionTyping()" />
     <button id="sendbtn" onclick="sendMsg()">Enviar</button>
   `;
   document.addEventListener('click', closeEmojiOutside, true);
+  document.addEventListener('click', closeMentionOutside, true);
 }
 
 async function attachChat(input){
@@ -534,7 +539,7 @@ async function loadMessages() {
       <div class="line">
         <span class="time">[${hh}]</span>
         <span style="color:${colorFor(m.display_name)};font-weight:700;">&lt;${esc(m.display_name)}&gt;</span>${staffIcons(m.user_id)}
-        ${esc(bodyText)}
+        ${highlightMentions(bodyText)}
         ${att}
         ${canDel ? `<button class="msg-del" title="Eliminar mensaje" onclick="deleteMsg('${m.id}')">✕</button>` : ''}
       </div>`;
@@ -707,6 +712,164 @@ function pickGif(url) {
   closeModal();
 }
 
+  /* ============ MENCIONES ============ */
+window.__pendingMentions = [];
+
+function toggleMentionPopup() {
+  const pop = document.getElementById('mention-popup');
+  if (!pop) return;
+  if (pop.classList.contains('open')) { pop.classList.remove('open'); return; }
+  renderMentionList('');
+  pop.classList.add('open');
+}
+
+function closeMentionOutside(ev) {
+  const pop = document.getElementById('mention-popup');
+  const btn = document.getElementById('mention-btn');
+  const input = document.getElementById('msg');
+  if (!pop || !btn) return;
+  if (!pop.contains(ev.target) && ev.target !== btn && ev.target !== input) {
+    pop.classList.remove('open');
+  }
+}
+
+function renderMentionList(filter) {
+  const pop = document.getElementById('mention-popup');
+  if (!pop) return;
+  const filtered = people
+    .filter(p => p.id !== me && (!filter || nameFor(p.id).toLowerCase().includes(filter.toLowerCase())))
+    .slice(0, 8);
+  if (!filtered.length) {
+    pop.innerHTML = '<div style="padding:12px;color:#a1a1aa;text-align:center;font-size:12px;">Sin coincidencias</div>';
+    return;
+  }
+  pop.innerHTML = filtered.map(p => `
+    <div class="mention-item" onclick="pickMention('${p.id}','${esc(nameFor(p.id))}')">
+      <span class="role">${p.role === 'dominant' ? '♛' : '⛓'}</span>
+      <b>${esc(nameFor(p.id))}</b>
+    </div>
+  `).join('');
+}
+
+function pickMention(userId, userName) {
+  const input = document.getElementById('msg');
+  if (!input) return;
+  const val = input.value;
+  const lastAt = val.lastIndexOf('@');
+  const before = lastAt >= 0 ? val.slice(0, lastAt) : val + ' ';
+  input.value = before + '@' + userName + ' ';
+  input.focus();
+  window.__pendingMentions.push(userId);
+  const pop = document.getElementById('mention-popup');
+  if (pop) pop.classList.remove('open');
+}
+
+function handleMentionTyping() {
+  const input = document.getElementById('msg');
+  if (!input) return;
+  const val = input.value;
+  const lastAt = val.lastIndexOf('@');
+  if (lastAt === -1) {
+    const pop = document.getElementById('mention-popup');
+    if (pop) pop.classList.remove('open');
+    return;
+  }
+  const afterAt = val.slice(lastAt + 1);
+  if (afterAt.includes(' ') || afterAt.includes('\n') || afterAt.length > 30) {
+    const pop = document.getElementById('mention-popup');
+    if (pop) pop.classList.remove('open');
+    return;
+  }
+  renderMentionList(afterAt);
+  const pop = document.getElementById('mention-popup');
+  if (pop) pop.classList.add('open');
+}
+
+function handleMsgKey(ev) {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    sendMsg();
+  } else if (ev.key === 'Escape') {
+    const pop = document.getElementById('mention-popup');
+    if (pop) pop.classList.remove('open');
+  }
+}
+
+/* ============ SOLICITUD DE SALA ============ */
+function openRoomRequestModal() {
+  const modal = document.createElement('div');
+  modal.id = 'room-request-modal';
+  modal.className = 'request-modal';
+  modal.innerHTML = `
+    <div class="box">
+      <h3 style="margin-top:0;">🏛️ Solicitar nueva sala</h3>
+      <p class="small">Tu solicitud será revisada por una Administradora, Moderadora o Perro Guardián antes de crearse.</p>
+      <label class="small">Nombre de la sala (sin espacios)</label>
+      <input id="new-room-name" placeholder="ej: musica-clasica" maxlength="30"/>
+      <label class="small">Descripción (opcional)</label>
+      <textarea id="new-room-desc" rows="3" placeholder="¿De qué tratará esta sala?" style="width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-family:inherit;"></textarea>
+      <label class="small">Tipo de sala</label>
+      <select id="new-room-type" style="width:100%;background:#0b0b12;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;margin:6px 0 10px;">
+        <option value="public">Pública (todos pueden entrar)</option>
+        <option value="private">Privada (solo por invitación del Staff)</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+        <button onclick="submitRoomRequest()">📤 Enviar solicitud</button>
+        <button class="secondary" onclick="this.closest('.request-modal').remove()">Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function submitRoomRequest() {
+  const name = document.getElementById('new-room-name').value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 30);
+  const desc = document.getElementById('new-room-desc').value.trim();
+  const type = document.getElementById('new-room-type').value;
+  if (!name) return alert('El nombre es obligatorio (solo letras, números, guion o guion bajo).');
+  if (rooms.find(r => r.name === name)) return alert('Ya existe una sala con ese nombre.');
+  const { data, error } = await db.rpc('request_room', { p_name: name, p_description: desc, p_type: type });
+  if (error || !data?.ok) return alert(data?.error || error.message);
+  alert('📤 Solicitud enviada. El Staff la revisará y recibirás una notificación.');
+  document.getElementById('room-request-modal').remove();
+}
+
+/* ============ MENSAJES CON MENCIONES ============ */
+async function sendMsg() {
+  const input = document.getElementById('msg');
+  const body = input.value.trim();
+  if (!body || !currentRoomId) return;
+  if ((window._roomMutes || new Set()).has(me)) return alert('🔇 Estás silenciado en esta sala.');
+  const { data: msg, error } = await db.from('chat_messages').insert({ user_id: me, body, room_id: currentRoomId }).select().single();
+  if (error) return alert(error.message);
+  
+  // Procesar menciones registradas
+  const mentions = [...new Set(window.__pendingMentions || [])];
+  // Además, detectar menciones por texto "@nombre"
+  const atMatches = body.match(/@([^\s@]+)/g) || [];
+  for (const m of atMatches) {
+    const nm = m.slice(1).toLowerCase();
+    const found = people.find(p => nameFor(p.id).toLowerCase() === nm);
+    if (found && !mentions.includes(found.id)) mentions.push(found.id);
+  }
+  for (const uid of mentions) {
+    await db.rpc('mention_user', { p_message_id: msg.id, p_mentioned_id: uid, p_room_id: currentRoomId });
+  }
+  window.__pendingMentions = [];
+  input.value = '';
+  await loadMessages();
+}
+
+/* ============ RESALTADO DE MENCIONES AL RENDERIZAR ============ */
+function highlightMentions(text) {
+  if (!text) return '';
+  return text.replace(/@([^\s@]+)/g, (match, name) => {
+    const found = people.find(p => nameFor(p.id).toLowerCase() === name.toLowerCase());
+    if (!found) return esc(match);
+    const isMe = found.id === me;
+    return `<span class="mention-highlight ${isMe ? 'me' : ''}">${esc(match)}</span>`;
+  });
+}
 init();
 </script>
   <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
@@ -721,5 +884,46 @@ function googleTranslateElementInit() {
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
+  <script>
+(function(){
+  let glowInterval = null;
+  async function updateMenuGlow(){
+    try {
+      if (typeof db === 'undefined' || !db) return;
+      const { data: s } = await db.auth.getSession();
+      if (!s || !s.session) return;
+      const { data } = await db.rpc('unread_activity_counts');
+      if (!data) return;
+      const chatLink = document.querySelector('a[href="chat.html"]');
+      const msgsLink = document.querySelector('a[href="mensajes.html"]');
+      function apply(link, count){
+        if (!link) return;
+        link.style.position = 'relative';
+        link.classList.toggle('nav-glow', count > 0);
+        let badge = link.querySelector('.nav-badge');
+        if (count > 0) {
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'nav-badge';
+            link.appendChild(badge);
+          }
+          badge.textContent = count > 99 ? '99+' : count;
+        } else if (badge) {
+          badge.remove();
+        }
+      }
+      apply(chatLink, (data.chat || 0) + (data.mentions || 0));
+      apply(msgsLink, data.messages || 0);
+    } catch(e){ console.warn('Menu glow error:', e); }
+  }
+  function start(){
+    updateMenuGlow();
+    if (glowInterval) clearInterval(glowInterval);
+    glowInterval = setInterval(updateMenuGlow, 30000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
 </body>
 </html>
