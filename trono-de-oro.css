@@ -258,3 +258,14 @@ div:has(> div > input[placeholder="Nuevo apodo"]):not(:has(div:has(> div > input
 /* ====== MODAL DE SOLICITUD ====== */
 .request-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99992;display:flex;align-items:center;justify-content:center;padding:20px}
 .request-modal .box{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:24px;max-width:500px;width:100%}
+/* ====== COMENTARIOS COLAPSABLES ====== */
+.comment-thread{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.collapse-btn{background:transparent !important;border:none !important;color:#a1a1aa !important;padding:4px 8px !important;font-size:12px !important;cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:4px 0;font-weight:600;transition:color .2s}
+.collapse-btn:hover{color:var(--gold) !important}
+.collapse-btn::before{content:'▼';font-size:10px;transition:transform .2s}
+.collapse-btn.collapsed::before{transform:rotate(-90deg)}
+.comment-body,.reply-body{transition:max-height .3s ease,opacity .2s ease;overflow:hidden}
+.comment-body.collapsed,.reply-body.collapsed{max-height:0 !important;opacity:0;padding:0 !important;margin:0 !important}
+.reply-container{margin-left:26px;border-left:2px solid var(--line);padding-left:10px;margin-top:6px;transition:max-height .3s ease,opacity .2s ease;overflow:hidden}
+.reply-container.collapsed{max-height:0 !important;opacity:0;padding:0 !important;margin:0 !important}
+.comment-count{color:#71717a;font-size:11px;margin-left:6px}
