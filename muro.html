@@ -554,6 +554,9 @@ async function render() {
   }
 
   content.innerHTML = html;
+  // Comentarios y respuestas replegados por defecto
+  document.querySelectorAll('.comment-container, .reply-container').forEach(function(el){ el.classList.add('collapsed'); });
+  document.querySelectorAll('.collapse-btn').forEach(function(b){ b.classList.add('collapsed'); });
 }
 
 function commentHTML(c, all) {
