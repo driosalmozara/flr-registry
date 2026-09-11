@@ -603,5 +603,46 @@ function googleTranslateElementInit() {
 body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
+  <script>
+(function(){
+  let glowInterval = null;
+  async function updateMenuGlow(){
+    try {
+      if (typeof db === 'undefined' || !db) return;
+      const { data: s } = await db.auth.getSession();
+      if (!s || !s.session) return;
+      const { data } = await db.rpc('unread_activity_counts');
+      if (!data) return;
+      const chatLink = document.querySelector('a[href="chat.html"]');
+      const msgsLink = document.querySelector('a[href="mensajes.html"]');
+      function apply(link, count){
+        if (!link) return;
+        link.style.position = 'relative';
+        link.classList.toggle('nav-glow', count > 0);
+        let badge = link.querySelector('.nav-badge');
+        if (count > 0) {
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'nav-badge';
+            link.appendChild(badge);
+          }
+          badge.textContent = count > 99 ? '99+' : count;
+        } else if (badge) {
+          badge.remove();
+        }
+      }
+      apply(chatLink, (data.chat || 0) + (data.mentions || 0));
+      apply(msgsLink, data.messages || 0);
+    } catch(e){ console.warn('Menu glow error:', e); }
+  }
+  function start(){
+    updateMenuGlow();
+    if (glowInterval) clearInterval(glowInterval);
+    glowInterval = setInterval(updateMenuGlow, 30000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
 </body>
 </html>
