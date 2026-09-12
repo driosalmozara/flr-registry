@@ -1,4 +1,4 @@
-const VERSION = 'qdl-2026-09-04';
+const VERSION = 'qdl-2026-09-12';
 const CACHE = 'qdl-' + VERSION;
 
 self.addEventListener('install', function(e){ self.skipWaiting(); });
@@ -38,7 +38,7 @@ self.addEventListener('push', function(e){
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: '♛ Queendomland', body: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.registration.showNotification(data.title || '♛ Queendomland', {
-    body: data.body || '', icon: 'corona.png', badge: 'corona.png'
+    body: data.body || '', icon: 'icono-q.png', badge: 'icono-q.png'
   }));
 });
 
