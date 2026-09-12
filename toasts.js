@@ -95,7 +95,7 @@
 (function(){
   if (document.querySelector('link[rel="icon"]')) return;
   var link = document.createElement('link');
-  link.rel = 'icon'; link.type = 'image/png'; link.href = 'corona.png';
+  link.rel = 'icon'; link.type = 'image/png'; link.href = 'icono-q.png?v=20260912';
   document.head.appendChild(link);
 })();
 
@@ -106,12 +106,16 @@
     l.rel = 'manifest'; l.href = 'manifest.json';
     document.head.appendChild(l);
   }
-  var a = document.createElement('link');
-  a.rel = 'apple-touch-icon'; a.href = 'corona.png';
-  document.head.appendChild(a);
-  var m = document.createElement('meta');
-  m.name = 'theme-color'; m.content = '#0f0f1a';
-  document.head.appendChild(m);
+  if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+    var a = document.createElement('link');
+    a.rel = 'apple-touch-icon'; a.href = 'icono-q.png?v=20260912';
+    document.head.appendChild(a);
+  }
+  if (!document.querySelector('meta[name="theme-color"]')) {
+    var m = document.createElement('meta');
+    m.name = 'theme-color'; m.content = '#0d0c0a';
+    document.head.appendChild(m);
+  }
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('sw.js').catch(function(){});
@@ -165,7 +169,7 @@ function notificacionSistema(title, body){
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function(reg){
-      reg.showNotification(title || '♛ Queendomland', { body: body || '', icon: 'corona.png', badge: 'corona.png' });
+      reg.showNotification(title || '♛ Queendomland', { body: body || '', icon: 'icono-q.png', badge: 'icono-q.png' });
     }).catch(function(){});
   }
 }
