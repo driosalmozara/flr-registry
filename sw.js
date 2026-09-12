@@ -5,9 +5,18 @@ self.addEventListener('install', function(e){ self.skipWaiting(); });
 
 self.addEventListener('activate', function(e){
   e.waitUntil((async function(){
+    // 1) Limpiar cachés antiguas (crítico para el rebrand)
     const keys = await caches.keys();
     await Promise.all(keys.filter(function(k){ return k !== CACHE; }).map(function(k){ return caches.delete(k); }));
+    
+    // 2) Tomar el control de todas las pestañas abiertas
     await self.clients.claim();
+    
+    // 3) Avisar a cada pestaña que hay nueva versión
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(function(client){
+      client.postMessage({ type: 'NEW_VERSION_AVAILABLE', version: VERSION });
+    });
   })());
 });
 
@@ -48,4 +57,10 @@ self.addEventListener('notificationclick', function(e){
     for (let i = 0; i < cs.length; i++) { if ('focus' in cs[i]) return cs[i].focus(); }
     return self.clients.openWindow('/');
   }));
+});
+
+self.addEventListener('message', function(e){
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
