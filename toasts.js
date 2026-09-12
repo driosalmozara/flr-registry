@@ -822,3 +822,119 @@ function getClient(){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoMark);
   else autoMark();
 })();
+/* ── 16) Banner de actualización de PWA ── */
+(function(){
+  const OLD_ICON_KEY = 'qdl_old_icon_warned';
+  const STYLE_ID = 'qdl-update-style';
+  const hadController = ('serviceWorker' in navigator) ? !!navigator.serviceWorker.controller : false;
+
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: minimal-ui)').matches ||
+           window.navigator.standalone === true;
+  }
+  function markWarned(){
+    try { localStorage.setItem(OLD_ICON_KEY, Date.now().toString()); } catch(e){}
+  }
+
+  function showUpdateBanner(msg, actionText, actionFn){
+    if (document.getElementById('qdl-update-banner')) return;
+    if (!document.getElementById(STYLE_ID)) {
+      const st = document.createElement('style');
+      st.id = STYLE_ID;
+      st.textContent = `
+        #qdl-update-banner{position:fixed;top:0;left:0;right:0;z-index:999998;
+          background:linear-gradient(135deg,#1a140a,#0d0c0a);
+          border-bottom:2px solid #d4af37;padding:14px 18px;
+          box-shadow:0 8px 30px rgba(0,0,0,.7);
+          display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+          font-family:Jost,'Segoe UI',sans-serif;animation:qdlSlideDown .4s ease}
+        @keyframes qdlSlideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+        #qdl-update-banner .qdl-icon{font-size:28px;color:#d4af37;flex:none}
+        #qdl-update-banner .qdl-text{flex:1;min-width:180px}
+        #qdl-update-banner .qdl-title{color:#d4af37;font-weight:700;font-size:14px;margin:0 0 2px}
+        #qdl-update-banner .qdl-sub{color:#cfc6bb;font-size:12px;margin:0;line-height:1.5}
+        #qdl-update-banner button{background:linear-gradient(180deg,#e6c664,#b48a2a);
+          color:#0d0c0a;border:none;border-radius:10px;padding:8px 16px;
+          font-weight:700;cursor:pointer;font-size:13px;flex:none}
+        #qdl-update-banner .qdl-close{background:transparent;color:#a1a1aa;
+          border:1px solid #3a3a4a;padding:6px 10px;font-size:12px}
+      `;
+      document.head.appendChild(st);
+    }
+    const b = document.createElement('div');
+    b.id = 'qdl-update-banner';
+    b.innerHTML = `
+      <div class="qdl-icon">♛</div>
+      <div class="qdl-text">
+        <p class="qdl-title">Nueva versión de Queendomland</p>
+        <p class="qdl-sub">${msg}</p>
+      </div>
+      <button id="qdl-update-action">${actionText}</button>
+      <button class="qdl-close" id="qdl-update-close">Ahora no</button>
+    `;
+    document.body.appendChild(b);
+    document.getElementById('qdl-update-action').onclick = function(){
+      b.remove();
+      markWarned();
+      actionFn();
+    };
+    document.getElementById('qdl-update-close').onclick = function(){
+      b.remove();
+      markWarned();
+    };
+  }
+
+  function checkOldInstall(){
+    if (!isStandalone()) return;
+    if (document.getElementById('adult-gate') || document.getElementById('maint-gate')) return;
+    const lastWarn = parseInt(localStorage.getItem(OLD_ICON_KEY) || '0', 10);
+    const daysSinceWarn = (Date.now() - lastWarn) / (1000 * 60 * 60 * 24);
+    if (daysSinceWarn < 30) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      showUpdateBanner(
+        'La casa estrena su emblema heráldico (la Q coronada). Para verlo en tu pantalla de inicio, borra el ícono viejo y vuelve a añadirla desde Safari.',
+        'Ver instrucciones',
+        function(){
+          alert('📱 En tu iPhone/iPad:\n\n1. Mantén pulsado el ícono viejo de Queendomland en tu pantalla de inicio.\n2. Elige «Eliminar marcador».\n3. Abre Safari → queendomland.com.\n4. Toca el botón Compartir ⬆ y elige «Añadir a pantalla de inicio».\n\nVerás la nueva Q coronada sobre raso negro.');
+        }
+      );
+    } else {
+      showUpdateBanner(
+        'Hay una nueva versión con el emblema heráldico (Q coronada). Para asegurarte de verlo, reinstala la app.',
+        'Reinstalar ahora',
+        function(){
+          if (window.__deferredInstall) {
+            window.__deferredInstall.prompt();
+            window.__deferredInstall.userChoice.then(function(choice){
+              if (choice.outcome === 'accepted') markWarned();
+            });
+          } else {
+            alert('📱 Para reinstalar:\n\n1. Mantén pulsado el ícono de Queendomland en tu pantalla de inicio.\n2. Elige «Desinstalar» o «Eliminar».\n3. Abre Chrome → queendomland.com.\n4. Toca ⋮ → «Instalar aplicación».\n\nVerás la nueva Q coronada sobre raso negro.');
+          }
+        }
+      );
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if (e.data && e.data.type === 'NEW_VERSION_AVAILABLE') {
+        // Solo recarga si YA había un SW viejo controlando la página al abrir
+        if (!isStandalone() && hadController) {
+          const k = 'qdl_reloaded_' + e.data.version;
+          if (!sessionStorage.getItem(k)) {
+            sessionStorage.setItem(k, '1');
+            setTimeout(function(){ location.reload(); }, 1500);
+          }
+        }
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', checkOldInstall);
+  else checkOldInstall();
+})();
