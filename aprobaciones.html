@@ -16,11 +16,13 @@ main{max-width:800px;margin:0 auto;padding:20px}
 .small{color:#a1a1aa;font-size:13px}
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:9px 13px;cursor:pointer}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+button:disabled{opacity:.4;cursor:not-allowed}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .lockcard{border:1px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.03))}
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px}
+.badge.pedigree{border-color:#8b5cf6;color:#c4b5fd;background:rgba(139,92,246,.08)}
 </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="colab-switch.js" defer></script>
 </head>
 <body>
@@ -37,7 +39,7 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let me = null, isSuper = false, isMod = false;
+let me = null, isSuper = false, isMod = false, isPedigree = false, isApprover = false;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -47,12 +49,31 @@ async function init() {
   if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
   me = session.user.id;
 
-  const [sf, mf] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
-  isSuper = !!sf; isMod = !!mf;
+  // ✅ NUEVO: validación unificada con am_i_approver (Admin, Mod o Pedigree)
+  const [sf, mf, pf, af] = await Promise.all([
+    db.rpc('am_i_superadmin'),
+    db.rpc('am_i_moderator'),
+    db.rpc('am_i_pedigree'),
+    db.rpc('am_i_approver')
+  ]);
+  isSuper    = !!sf.data;
+  isMod      = !!mf.data;
+  isPedigree = !!pf.data;
+  isApprover = !!af.data;
 
-  if (!isSuper && !isMod) {
-    content.innerHTML = '<h2>🚫 Sin acceso</h2><p class="small">Esta sala es exclusiva del Staff.</p>';
+  if (!isApprover) {
+    content.innerHTML = '<h2>🚫 Sin acceso</h2><p class="small">Esta sala es exclusiva del Staff y de los Perros Guardianes con Pedigree.</p>';
     return;
+  }
+
+  // Banner informativo para Pedigree
+  if (isPedigree && !isSuper && !isMod) {
+    const banner = `
+      <div class="card" style="border-color:#8b5cf6;background:rgba(139,92,246,.06);">
+        <h2 style="margin-top:0;color:#c4b5fd;">🐕‍🦺 Perro Guardián con Pedigree</h2>
+        <p class="small">Tienes facultad para <b>aprobar miembros pendientes</b> en la antecámara. Los cerrojos de la casa y la verificación de Dominantes quedan reservados a la Administración y Moderadoras.</p>
+      </div>`;
+    document.getElementById('content').innerHTML = banner;
   }
 
   await render();
@@ -75,20 +96,21 @@ async function render() {
     .eq('approved', false)
     .order('created_at', { ascending: true });
 
-  let html = '';
+  let html = isPedigree && !isSuper && !isMod ? document.getElementById('content').innerHTML : '';
 
+  // 🔒 Cerrojos: SOLO SuperAdmin
   if (isSuper) {
     html += `
       <div class="card lockcard">
         <h2 style="margin-top:0;">🔒 Cerrojo de registros</h2>
         <p class="small">
           <b>Cerrojo abierto:</b> los sumisos entran al instante; las Dominantes esperan aprobación (como siempre).<br>
-          <b>Cerrojo echado:</b> toda solicitud nueva queda en la antecámara hasta que un Moderador o Administrador la apruebe.
+          <b>Cerrojo echado:</b> toda solicitud nueva queda en la antecámara hasta que un aprobador la revise.
         </p>
         <p>Estado actual: <span class="badge">${locked ? '🔒 CERRADO — aprobaciones requeridas' : '🔓 ABIERTO — registro libre'}</span></p>
         <button onclick="setLock(${!locked})">${locked ? '🔓 Abrir el cerrojo' : '🔒 Echar el cerrojo'}</button>
       </div>`;
-        html += `
+    html += `
       <div class="card lockcard">
         <h2 style="margin-top:0;">👑 Cerrojo de aprobación de Dominantes</h2>
         <p class="small">
@@ -98,29 +120,34 @@ async function render() {
         <p>Estado actual: <span class="badge">${domLocked ? '🔒 APROBACIÓN REQUERIDA' : '🔓 ENTRADA LIBRE DE DIOSAS'}</span></p>
         <button onclick="setDomLock(${!domLocked})">${domLocked ? '🔓 Abrir (activas al instante)' : '🔒 Echar (requerir aprobación)'}</button>
       </div>`;
-  } else {
+  } else if (isApprover) {
     html += `<div class="card lockcard"><p class="small">Estado del cerrojo: <span class="badge">${locked ? '🔒 CERRADO' : '🔓 ABIERTO'}</span> · Solo las Administradoras pueden moverlo.</p></div>`;
   }
 
+  // 👑 Verificación de Dominantes: SOLO SuperAdmin y Moderadoras (no Pedigree)
+  if (isSuper || isMod) {
     const { data: unverified } = await db.from('profiles')
-    .select('id, display_name, created_at')
-    .eq('role', 'dominant').eq('approved', true).eq('dom_verified', false)
-    .order('created_at', { ascending: true });
+      .select('id, display_name, created_at')
+      .eq('role', 'dominant').eq('approved', true).eq('dom_verified', false)
+      .order('created_at', { ascending: true });
 
-  html += `<div class="card"><h2 style="margin-top:0;">👑 Dominantes pendientes de verificación (${(unverified || []).length})</h2>`;
-  if (!unverified || unverified.length === 0) {
-    html += '<p class="small">No hay Dominantes esperando verificación.</p>';
-  } else {
-    unverified.forEach(u => {
-      html += `
-        <div class="item">
-          <h3 style="margin:0 0 6px;">♛ ${esc(u.display_name)}</h3>
-          <p class="small">Entró a la casa: ${new Date(u.created_at).toLocaleString()} · Aprobada como usuaria, pendiente de verificación como Dominante.</p>
-          <button onclick="verifyDom('${u.id}')">👑 Verificar como Dominante</button>
-        </div>`;
-    });
+    html += `<div class="card"><h2 style="margin-top:0;">👑 Dominantes pendientes de verificación (${(unverified || []).length})</h2>`;
+    if (!unverified || unverified.length === 0) {
+      html += '<p class="small">No hay Dominantes esperando verificación.</p>';
+    } else {
+      unverified.forEach(u => {
+        html += `
+          <div class="item">
+            <h3 style="margin:0 0 6px;">♛ ${esc(u.display_name)}</h3>
+            <p class="small">Entró a la casa: ${new Date(u.created_at).toLocaleString()} · Aprobada como usuaria, pendiente de verificación como Dominante.</p>
+            <button onclick="verifyDom('${u.id}')">👑 Verificar como Dominante</button>
+          </div>`;
+      });
+    }
+    html += '</div>';
   }
-  html += '</div>';
+
+  // ⏳ Antecámara: visible para TODOS los approvers (Admin, Mod y Pedigree)
   html += `
     <div class="card">
       <h2 style="margin-top:0;">⏳ Solicitudes en la antecámara (${(pending || []).length})</h2>`;
@@ -144,6 +171,7 @@ async function render() {
 }
 
 async function setLock(on) {
+  if (!isSuper) return alert('Solo las Administradoras pueden mover el cerrojo.');
   const { data } = await db.rpc('set_lock_registration', { on_val: on });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo mover el cerrojo.');
   alert(on ? '🔒 Cerrojo echado: toda solicitud nueva requerirá aprobación del Staff.' : '🔓 Cerrojo abierto: los sumisos vuelven a entrar al instante.');
@@ -151,6 +179,7 @@ async function setLock(on) {
 }
 
 async function approve(id) {
+  // ✅ El RPC approve_member ya valida internamente con am_i_approver()
   const { data } = await db.rpc('approve_member', { target_id: id });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo aprobar.');
   alert('✅ Miembro aprobado. Recibirá la notificación de bienvenida.');
@@ -158,6 +187,7 @@ async function approve(id) {
 }
 
 async function verifyDom(id) {
+  if (!isSuper && !isMod) return alert('Solo Administradoras y Moderadoras pueden verificar Dominantes.');
   if (!confirm('¿Verificar a esta Dominante con plenos privilegios?')) return;
   const { data } = await db.rpc('verify_dominant', { target_id: id });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo verificar.');
@@ -165,7 +195,8 @@ async function verifyDom(id) {
   await render();
 }
 
-  async function setDomLock(on) {
+async function setDomLock(on) {
+  if (!isSuper) return alert('Solo las Administradoras pueden mover este cerrojo.');
   const { data } = await db.rpc('set_lock_dominant_approval', { on_val: on });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo mover el cerrojo.');
   alert(on ? '🔒 Cerrojo echado: las Dominantes nuevas requerirán aprobación del Staff.' : '🔓 Cerrojo abierto: las Dominantes nuevas entran activas al instante.');
@@ -173,7 +204,7 @@ async function verifyDom(id) {
 }
 init();
 </script>
-  <div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
+<div id="google_translate_element" style="position:fixed;bottom:14px;right:14px;z-index:9999;background:#161625;border:1px solid #2a2a3d;border-radius:10px;padding:6px 8px;"></div>
 <script>
 function googleTranslateElementInit() {
   new google.translate.TranslateElement({ pageLanguage: 'es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, autoDisplay: false }, 'google_translate_element');
