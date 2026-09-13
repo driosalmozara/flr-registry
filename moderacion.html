@@ -25,6 +25,7 @@ button.danger{background:#7f1d1d;color:#fff}
 .flag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;margin-right:6px}
 .flag.on{background:rgba(220,38,38,.2);color:#dc2626;border:1px solid #dc2626}
 .flag.off{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid #4ade80}
+.pedigree-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid #8b5cf6;margin-left:6px}
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="colab-switch.js" defer></script>
@@ -43,7 +44,7 @@ const SUPABASE_URL = 'https://ofyedqoipexpsvjsipze.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let me = null, isAdm = false;
+let me = null, isAdm = false, isMod = false;
 let modList = [];
 let modOwned = new Set();
 
@@ -56,8 +57,9 @@ async function init(){
   me = session.user.id;
 
   const [adm, mod] = await Promise.all([db.rpc('am_i_superadmin'), db.rpc('am_i_moderator')]);
-  if (!adm && !mod) { content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no forma parte del Staff.</p>'; return; }
-  isAdm = !!adm;
+  if (!adm.data && !mod.data) { content.innerHTML = '<h2>Acceso denegado</h2><p class="small">Tu cuenta no forma parte del Staff.</p>'; return; }
+  isAdm = !!adm.data;
+  isMod = !!mod.data;
 
   await render();
 }
@@ -68,7 +70,7 @@ async function render(){
     const [p, r, cm, allp] = await Promise.all([
     db.from('profiles').select('id, display_name, avatar_url, pm_banned, chat_muted, created_at').eq('role', 'submissive').order('created_at', { ascending: false }),
     db.from('relationships').select('submissive_id').eq('status', 'confirmed'),
-    db.from('app_chat_mods').select('user_id'),
+    db.from('app_chat_mods').select('user_id, pedigree'),
     db.from('profiles').select('id, display_name, role').order('display_name').limit(500)
   ]);
 
@@ -91,20 +93,40 @@ async function render(){
   `;
 
     // 🎙 Moderadores de chat
-  const chatModIds = (cm.data || []).map(x => x.user_id);
+  const chatMods = cm.data || [];
+  const chatModMap = {};
+  chatMods.forEach(x => { chatModMap[x.user_id] = x.pedigree; });
+  
   const allUsers = allp.data || [];
   html += `
     <div class="card">
       <h2>⛓🐕‍🦺 Perros Guardianes</h2>
       <p class="small">Sumisos con función colaborativa: moderan el chat y el muro sobre sumisos sin Dueña. Llevan las cadenas y el doberman como símbolo. No forman parte de la Administración; Moderadoras y Administradoras tienen autoridad sobre ellos y pueden nombrarlos o destituirlos.</p>
   `;
-  allUsers.filter(x => chatModIds.includes(x.id)).forEach(x => {
+  
+  const activeChatMods = allUsers.filter(x => chatModMap.hasOwnProperty(x.id));
+  const pedigreeCount = activeChatMods.filter(x => chatModMap[x.id]).length;
+  
+  if (activeChatMods.length > 0) {
+    html += `<p class="small" style="margin-top:0;"><b>${activeChatMods.length}</b> Perros Guardianes activos · <b>${pedigreeCount}</b> con Pedigree 🎖</p>`;
+  }
+  
+  activeChatMods.forEach(x => {
+    const hasPedigree = chatModMap[x.id];
     html += `<div class="item"><div class="rowitem">
-      <div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Perro guardián</span></div>
+      <div style="flex:1;min-width:200px;">
+        <b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> 
+        <span class="small">— Perro guardián</span>
+        ${hasPedigree ? '<span class="pedigree-badge">🎖 Pedigree</span>' : ''}
+      </div>
+      <button class="secondary" onclick="togglePedigree('${x.id}', ${!hasPedigree})">${hasPedigree ? '⬇ Degradar' : '⬆ Otorgar pedigree'}</button>
       <button class="danger" onclick="removeChatMod('${x.id}')">Quitar</button>
-    </div></div>`;
+    </div>
+    ${hasPedigree ? '<p class="small" style="margin:6px 0 0;color:#c4b5fd;">🎖 Puede aprobar registros pendientes de la casa.</p>' : ''}
+    </div>`;
   });
-  const cand = allUsers.filter(x => !chatModIds.includes(x.id));
+  
+  const cand = allUsers.filter(x => !chatModMap.hasOwnProperty(x.id));
   if (cand.length) {
     html += `
       <label class="small">Nombrar nuevo Perro guardián</label>
@@ -156,7 +178,7 @@ async function setFlag(id, flag, on){
   renderModCard();
 }
 
-  async function makeChatMod(){
+async function makeChatMod(){
   const id = document.getElementById('newchatmod').value;
   const { error } = await db.from('app_chat_mods').insert({ user_id: id });
   if (error) return alert(error.message);
@@ -168,6 +190,15 @@ async function removeChatMod(id){
   if (!confirm('¿Quitar el privilegio de Perro guardián?')) return;
   const { error } = await db.from('app_chat_mods').delete().eq('user_id', id);
   if (error) return alert(error.message);
+  window.location.reload();
+}
+
+async function togglePedigree(id, on){
+  const { data } = await db.rpc('set_chatmod_pedigree', { p_user_id: id, p_on: on });
+  if (!data || !data.ok) return alert(data?.error || 'Error al cambiar el pedigree.');
+  alert(on 
+    ? '🎖 Perro Guardián con Pedigree: ya puede aprobar registros pendientes.' 
+    : '⬇ Degradado a Perro Guardián: ya no puede aprobar registros.');
   window.location.reload();
 }
 
