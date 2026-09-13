@@ -18,7 +18,7 @@
   async function check(client){
     var s = await client.auth.getSession();
     var isAdmin = false;
-    if (s.data && s.data.session) { var r = await client.rpc('am_i_superadmin'); isAdmin = !!r; }
+    if (s.data && s.data.session) { var r = await client.rpc('am_i_superadmin'); isAdmin = !!r.data; }
     var row = await client.from('app_settings').select('value').eq('key','maintenance').maybeSingle();
     var on = !!(row.data && row.data.value === '1');
     if (on && !isAdmin) { if (!gateEl) buildGate(); } else removeGate();
@@ -487,8 +487,6 @@ function getClient(){
   ];
   var OTHERS = [
     ['muro.html', 'Muro'],
-    // disponible.html eliminado: ahora vive dentro del Salón y de Mi perfil
-    // avatar.html eliminado: la foto vive dentro de Mi perfil (index.html#my-profile-card)
     { title: 'Gestión de sumisos en propiedad', items: [
       ['disciplina.html', '⚖ Disciplina'],
       ['contrato.html', '📜 Contrato'],
@@ -509,8 +507,11 @@ function getClient(){
     ['terminos.html', 'Términos'],
     ['faq.html', '❓ Preguntas frecuentes']
   ];
-  var flags = { staff: false, admin: false };
+  
+  // ✅ ACTUALIZADO: Añadidas flags para mod y ped (pedigree)
+  var flags = { staff: false, admin: false, mod: false, ped: false };
   var bellClient = null, bellUid = null;
+  
   function refreshBell(client, me){
     client.from('notifications').select('*', { count: 'exact', head: true })
       .eq('user_id', me).eq('read', false)
@@ -519,13 +520,15 @@ function getClient(){
         if (!b) return;
         if ((r.count || 0) > 0) b.classList.add('qbell-glow'); else b.classList.remove('qbell-glow');
       });
-  }  var lock = false, scheduled = false;
+  }  
+  var lock = false, scheduled = false;
   var currentWrap = null;
   var st = document.createElement('style');
   st.textContent =
     '.qnav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}' +
     '.qwrap{position:relative;display:inline-block}' +
-    '.qbell-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);animation:glowPulse 2.2s ease-in-out infinite}' +    '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
+    '.qbell-glow{box-shadow:0 0 12px rgba(212,175,55,.85),0 0 30px rgba(212,175,55,.4);animation:glowPulse 2.2s ease-in-out infinite}' +    
+    '.qbtn{background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}' +
     '.qmenu{display:none;position:absolute;right:0;top:115%;background:rgba(13,10,14,.98);border:1px solid rgba(212,175,55,.5);border-radius:12px;padding:8px;min-width:220px;max-height:min(75vh,580px);overflow-y:auto;z-index:99996;flex-direction:column;gap:2px;box-shadow:0 18px 50px rgba(0,0,0,.6)}' +
     '.qmenu.open{display:flex}' +
     '.qmenu a{padding:6px 10px;border-radius:8px;font-size:13px;display:block}' +
@@ -545,7 +548,9 @@ function getClient(){
       '.qmenu a{font-size:14px !important;padding:10px 12px !important}' +
       '.qmenu .qgroup-items a{font-size:13px !important}' +
       '.qmenu .qgroup-title{font-size:10px !important}' +
-    '}';  document.head.appendChild(st);
+    '}';  
+  document.head.appendChild(st);
+  
   function currentFile(){ return (location.pathname.split('/').pop() || 'index.html'); }
   function makeLink(href, label){
     var a = document.createElement('a');
@@ -587,7 +592,7 @@ function getClient(){
     var btn = document.createElement('button'); btn.className = 'qbtn'; btn.innerHTML = '☰ Más';
     var menu = document.createElement('div'); menu.className = 'qmenu';
 
-    // Sección Staff (solo admins y moderadoras, NO perros guardianes)
+    // ✅ ACTUALIZADO: Sección Staff con lógica para Pedigree
     if (flags.staff) {
       var staffSection = document.createElement('div');
       staffSection.className = 'qstaff-section';
@@ -599,9 +604,12 @@ function getClient(){
       staffGroup.appendChild(staffTitle);
       var staffItems = document.createElement('div');
       staffItems.className = 'qgroup-items';
+      
       if (flags.admin) staffItems.appendChild(makeLink('admin.html', '♛ Admin'));
-      staffItems.appendChild(makeLink('moderacion.html', '🛡 Moderación'));
+      if (flags.admin || flags.mod) staffItems.appendChild(makeLink('moderacion.html', '🛡 Moderación'));
+      // Aprobaciones visible para Admin, Mod y Pedigree
       staffItems.appendChild(makeLink('aprobaciones.html', '📥 Aprobaciones'));
+      
       staffGroup.appendChild(staffItems);
       staffSection.appendChild(staffGroup);
       menu.appendChild(staffSection);
@@ -649,8 +657,15 @@ function getClient(){
       var uid = s.data.session.user.id;
       var adm = await client.from('app_admins').select('user_id').eq('user_id', uid).maybeSingle();
       var mod = await client.from('app_moderators').select('user_id').eq('user_id', uid).maybeSingle();
+      
+      // ✅ ACTUALIZADO: Consulta del rango Pedigree
+      var ped = await client.rpc('am_i_pedigree');
+      
       flags.admin = !!adm.data;
-      flags.staff = !!(adm.data || mod.data);
+      flags.mod = !!mod.data;
+      flags.ped = !!ped.data;
+      flags.staff = !!(adm.data || mod.data || flags.ped);
+      
       bellClient = client; bellUid = uid;
       rebuild();
       refreshBell(client, uid);
