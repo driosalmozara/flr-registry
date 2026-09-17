@@ -269,7 +269,7 @@ function getClient(){
     var r = await client.from('chat_messages')
       .select('*', { count: 'exact', head: true })
       .gt('created_at', last)
-      .neq('sender_id', me);
+      .neq('user_id', me);   // ✅ antes decía sender_id
     glowChat((r.count || 0) > 0);
   }
   waitForSupabase(async function(){
