@@ -17,10 +17,13 @@ input,select,textarea{width:100%;background:#0b0b12;border:1px solid var(--line)
 button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:6px}
 button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold)}
 button.danger{background:#7f1d1d;color:#fff}
+button.archive{background:#7c3aed;color:#fff}
+button.restore{background:#059669;color:#fff}
 .navlink{color:var(--gold);text-decoration:none;margin-left:14px}
 .item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0b0b12}
 .item.respondido{border-left:3px solid #4ade80}
 .item.abierto{border-left:3px solid var(--gold)}
+.item.archivado{opacity:.7;border-left:3px solid #7c3aed}
 .tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}
 .tag.denuncia{background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid #dc2626}
 .tag.consulta{background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid #3b82f6}
@@ -28,6 +31,9 @@ button.danger{background:#7f1d1d;color:#fff}
 .tag.sugerencia{background:rgba(124,58,237,.2);color:#c4b5fd;border:1px solid #7c3aed}
 .reply-box{background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3);border-radius:10px;padding:12px;margin-top:10px}
 .reply-box b{color:var(--gold)}
+.archive-toggle{display:flex;gap:12px;align-items:center;margin-bottom:14px;padding:10px;background:#0b0b12;border:1px solid var(--line);border-radius:10px}
+.archive-toggle label{display:flex;gap:8px;align-items:center;cursor:pointer;margin:0}
+.archive-toggle input[type=checkbox]{width:auto;margin:0}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="colab-switch.js" defer></script>
@@ -47,6 +53,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null, isStaffFull = false;
+let showArchived = false;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -85,25 +92,47 @@ async function render(){
   if (isStaffFull) {
     const { data: all } = await db.from('staff_messages')
       .select('*, user:profiles!staff_messages_user_id_fkey(display_name, role), replier:profiles!staff_messages_replied_by_fkey(display_name)')
+      .eq('archived', showArchived)
       .order('created_at', { ascending: false });
     const open = (all || []).filter(m => m.status !== 'cerrado');
-    html += `<div class="card"><h2 style="margin-top:0;">👁 Bandeja del Staff (${open.length} abiertos)</h2>`;
-    if (!open.length) html += '<p class="small">No hay mensajes pendientes.</p>';
-    open.forEach(m => {
-      html += `
-        <div class="item ${m.status}">
-          <span class="tag ${m.category}">${m.category}</span>
-          <b>${esc(m.subject)}</b>
-          <div class="small" style="margin:6px 0;">
-            De ${esc(m.user?.display_name || '?')} (${m.user?.role || '?'}) · ${new Date(m.created_at).toLocaleString()}
-          </div>
-          <div style="white-space:pre-wrap;margin:8px 0;">${esc(m.body)}</div>
-          ${m.reply ? `<div class="reply-box"><b>Respuesta del Staff (${esc(m.replier?.display_name || '?')}):</b><div style="white-space:pre-wrap;margin-top:6px;">${esc(m.reply)}</div></div>` : `
-          <label class="small" style="margin-top:10px;">Responder:</label>
-          <textarea id="reply_${m.id}" rows="3" placeholder="Escribe la respuesta oficial del Staff..."></textarea>
-          <button onclick="replyMsg('${m.id}')">💌 Enviar respuesta</button>`}
-        </div>`;
-    });
+    const repliedCount = open.filter(m => m.reply && !m.archived).length;
+    
+    html += `<div class="card">
+      <h2 style="margin-top:0;">👁 Bandeja del Staff (${open.length} ${showArchived ? 'archivados' : 'abiertos'})</h2>
+      <div class="archive-toggle">
+        <label>
+          <input type="checkbox" ${showArchived ? 'checked' : ''} onchange="toggleArchiveView(this.checked)"/>
+          <b>🗄 Ver archivados</b>
+        </label>
+        ${!showArchived && repliedCount > 0 ? `<button class="archive" onclick="archiveAllReplied()">🗄 Archivar todos los respondidos (${repliedCount})</button>` : ''}
+      </div>`;
+    
+    if (!open.length) {
+      html += `<p class="small">${showArchived ? 'No hay mensajes archivados.' : 'No hay mensajes pendientes.'}</p>`;
+    } else {
+      open.forEach(m => {
+        const canArchive = m.reply && !m.archived;
+        const canRestore = m.archived;
+        html += `
+          <div class="item ${m.status} ${m.archived ? 'archivado' : ''}">
+            <span class="tag ${m.category}">${m.category}</span>
+            <b>${esc(m.subject)}</b>
+            ${m.archived ? '<span class="tag" style="background:#7c3aed;color:#fff;margin-left:8px;">🗄 Archivado</span>' : ''}
+            <div class="small" style="margin:6px 0;">
+              De ${esc(m.user?.display_name || '?')} (${m.user?.role || '?'}) · ${new Date(m.created_at).toLocaleString()}
+            </div>
+            <div style="white-space:pre-wrap;margin:8px 0;">${esc(m.body)}</div>
+            ${m.reply ? `<div class="reply-box"><b>Respuesta del Staff (${esc(m.replier?.display_name || '?')}):</b><div style="white-space:pre-wrap;margin-top:6px;">${esc(m.reply)}</div></div>` : `
+            <label class="small" style="margin-top:10px;">Responder:</label>
+            <textarea id="reply_${m.id}" rows="3" placeholder="Escribe la respuesta oficial del Staff..."></textarea>
+            <button onclick="replyMsg('${m.id}')">💌 Enviar respuesta</button>`}
+            <div style="margin-top:10px;">
+              ${canArchive ? `<button class="archive" onclick="archiveStaffMsg('${m.id}', true)">🗄 Archivar</button>` : ''}
+              ${canRestore ? `<button class="restore" onclick="archiveStaffMsg('${m.id}', false)">↩ Restaurar</button>` : ''}
+            </div>
+          </div>`;
+      });
+    }
     html += '</div>';
   } else {
     const { data: mine } = await db.from('staff_messages')
@@ -174,6 +203,46 @@ async function replyMsg(id){
 
   alert('💌 Respuesta enviada.');
   await render();
+}
+
+async function archiveStaffMsg(id, archived){
+  const { data, error } = await db.rpc('staff_message_archive', {
+    p_id: id, p_archived: archived
+  });
+
+  if (error) {
+    console.error('Error archivar:', error);
+    return alert('⚠ Error: ' + error.message);
+  }
+  if (!data || !data.ok) {
+    console.error('Respuesta no-ok:', data);
+    return alert('⚠ ' + (data?.error || 'error desconocido'));
+  }
+
+  await render();
+}
+
+async function archiveAllReplied(){
+  if (!confirm(`¿Archivar todos los mensajes ya respondidos?\n\nPodrás verlos activando "Ver archivados".`)) return;
+
+  const { data, error } = await db.rpc('staff_archive_all_replied');
+
+  if (error) {
+    console.error('Error archivar todos:', error);
+    return alert('⚠ Error: ' + error.message);
+  }
+  if (!data || !data.ok) {
+    console.error('Respuesta no-ok:', data);
+    return alert('⚠ ' + (data?.error || 'error desconocido'));
+  }
+
+  alert(`✅ ${data.archivados || 0} mensajes archivados.`);
+  await render();
+}
+
+function toggleArchiveView(show){
+  showArchived = show;
+  render();
 }
 
 init();
