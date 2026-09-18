@@ -1906,7 +1906,7 @@ html += renderPhysicalSection('sub_' + sub.submissive_id, sub.profiles || {}, fa
               <h4 style="margin:0 0 6px;">🚫 Límites de tu sumiso</h4>
               <div id="sublim-${sub.submissive_id}"></div>
             </div>`;
-            html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}')">Guardar datos y visibilidad</button>`;
+            html += `<button class="secondary" onclick="saveSubProfile('${sub.submissive_id}', '${record.relationship_id}')">Guardar datos y visibilidad</button>`;
             html += `<div style="margin-top:10px;"><b class="small">📱 Redes y contactos de tu sumiso:</b><div id="subcontacts_${sub.submissive_id}"><p class="small">Pulsa 🔄 para verlos.</p></div>
               <button class="secondary" onclick="loadSubContacts('${sub.submissive_id}')">🔄 Ver</button>
               <button class="secondary" onclick="addSubSocial('${sub.submissive_id}')">+ Red social</button>
@@ -2019,7 +2019,7 @@ async function toggleSubBadgeVisibility(subId, mbId, show){
   window.location.reload();
 }
 
-    async function saveSubProfile(submissiveId) {
+    async function saveSubProfile(submissiveId, relationshipId) {
       const country = document.getElementById('pcountry_' + submissiveId).value;
       const bdt = parseDateDMY(document.getElementById('pbirth_' + submissiveId).value);
       if (!bdt) return alert('Fecha de nacimiento inválida. Usa dd/mm/aaaa.');
@@ -2055,6 +2055,14 @@ show_physical_public,
 ...physicalData
 })
         .eq('id', submissiveId);
+        if (relationshipId) {
+    const is_public = (document.getElementById('public_' + relationshipId) || {}).checked;
+    const show_avatar = (document.getElementById('avatar_' + relationshipId) || {}).checked;
+    const { error: recErr } = await db.from('submissive_records')
+      .update({ is_public, show_avatar })
+      .eq('relationship_id', relationshipId);
+    if (recErr) return alert(recErr.message);
+  }
       if (error) return alert(error.message);
       alert('Datos y visibilidad del sumiso actualizados.');
     }
