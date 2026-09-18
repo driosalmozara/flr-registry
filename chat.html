@@ -24,7 +24,12 @@ button.mini{background:transparent !important;color:#7f1d1d !important;border:1p
 #side{width:230px;flex:none;overflow-y:auto;margin:0}
 #main{flex:1;display:flex;flex-direction:column;min-width:0}
 #msgs{flex:1;overflow-y:auto;background:#0b0b12;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:Consolas,Menlo,monospace;font-size:13px}
-.line{margin:3px 0;word-wrap:break-word}
+.qchat-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(212,175,55,.75) rgba(11,11,18,.65)}
+.qchat-scroll::-webkit-scrollbar{width:10px}
+.qchat-scroll::-webkit-scrollbar-track{background:rgba(11,11,18,.65);border-radius:8px}
+.qchat-scroll::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(212,175,55,.9),rgba(212,175,55,.45));border-radius:8px;border:2px solid rgba(11,11,18,.85)}
+.qchat-scroll::-webkit-scrollbar-thumb:hover{background:rgba(212,175,55,1)}
+  .line{margin:3px 0;word-wrap:break-word}
 .time{color:#71717a}
 #inputrow{display:flex;gap:8px;margin-top:8px;position:relative}
 #msg{flex:1;margin:0}
@@ -564,6 +569,9 @@ async function loadMessages() {
   }).join('') || '<p class="small">Todavía no hay mensajes en esta sala. Sé el primero en hablar.</p>';
 
   box.scrollTop = box.scrollHeight;
+  if (!box.classList.contains('qchat-scroll')) {
+    box.classList.add('qchat-scroll');
+  }
 }
 
 function colorFor(name) {
@@ -893,66 +901,7 @@ body{top:0!important}
 #google_translate_element select{background:#0b0b12;color:#fff;border:1px solid #2a2a3d;border-radius:8px;padding:4px}
 </style>
 
-  <style>
-/* ── Ventana de chat con desplazador vertical interno ── */
-.qchat-scroll{
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;   /* impulso nativo en iOS/Android */
-  overscroll-behavior: contain;        /* el scroll no se fuga a la página */
-  scrollbar-width: thin;               /* Firefox */
-  scrollbar-color: rgba(212,175,55,.75) rgba(11,11,18,.65);
-}
-.qchat-scroll::-webkit-scrollbar{ width: 10px; }
-.qchat-scroll::-webkit-scrollbar-track{
-  background: rgba(11,11,18,.65); border-radius: 8px;
-}
-.qchat-scroll::-webkit-scrollbar-thumb{
-  background: linear-gradient(180deg, rgba(212,175,55,.9), rgba(212,175,55,.45));
-  border-radius: 8px; border: 2px solid rgba(11,11,18,.85);
-}
-.qchat-scroll::-webkit-scrollbar-thumb:hover{ background: rgba(212,175,55,1); }
-</style>
-<script>
-(function(){
-  function findChatBox(){
-    var cand = [], all = document.querySelectorAll('div,li,p');
-    for (var i = 0; i < all.length; i++){
-      var t = (all[i].textContent || '').trim();
-      if (/^\[\d{1,2}:\d{2}\]/.test(t) && t.length < 2000) cand.push(all[i]);
-    }
-    if (!cand.length) return null;
-    /* la fila más corta = la fila real; su padre = la ventana de mensajes */
-    cand.sort(function(a,b){ return a.textContent.length - b.textContent.length; });
-    return cand[0].parentElement;
-  }
-  function fit(box){
-    var header = document.querySelector('header');
-    var input  = document.querySelector('input[placeholder^="Escri"]');
-    var bar    = input ? input.closest('div') : null;
-    var top    = header ? header.getBoundingClientRect().bottom : 0;
-    var bottom = (bar ? bar.getBoundingClientRect().height : 64) + 20;
-    box.style.maxHeight = Math.max(240, window.innerHeight - top - bottom) + 'px';
-  }
-  function init(){
-    var box = findChatBox();
-    if (!box || box.classList.contains('qchat-scroll')) return;
-    box.classList.add('qchat-scroll');
-    fit(box);
-    box.scrollTop = box.scrollHeight;               /* arranca al final */
-    var pinned = true;                               /* sigue los mensajes nuevos */
-    box.addEventListener('scroll', function(){
-      pinned = (box.scrollHeight - box.scrollTop - box.clientHeight) < 60;
-    });
-    new MutationObserver(function(){
-      if (pinned) box.scrollTop = box.scrollHeight;
-    }).observe(box, { childList: true });
-    window.addEventListener('resize', function(){ fit(box); });
-    window.addEventListener('orientationchange', function(){ setTimeout(function(){ fit(box); }, 250); });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-  setTimeout(init, 1200);   /* por si el historial carga después */
-})();
-</script>
+
+
 </body>
 </html>
