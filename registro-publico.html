@@ -38,6 +38,13 @@ details.about summary{cursor:pointer;color:var(--gold);font-size:13px;font-weigh
 details.about p{margin:6px 0 0;white-space:pre-wrap;color:#d4d4d8;font-size:13px;line-height:1.6}
 .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
 .staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
+.staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
+.guest-banner{background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(212,175,55,.05));border:2px solid var(--gold);border-radius:14px;padding:20px;margin:0 0 16px;text-align:center}
+.guest-banner h3{margin:0 0 10px;color:var(--gold)}
+.guest-banner p{margin:0 0 14px;color:#d4d4d8;line-height:1.6}
+.guest-banner button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:14px}
+.guest-banner button:hover{background:#e5c148}
+.guest-lock{margin-top:auto;text-align:center;font-size:12px;color:#71717a}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="trono-de-oro.css"><script src="toasts.js" defer></script><script src="colab-switch.js" defer></script><script src="apps-menu.js" defer></script>
@@ -74,6 +81,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allProfiles = [], relBySub = {}, recordsBySub = {}, contactsByUser = {}, currentTab = 'all';
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
   let meId = null, meIsDomVerified = false, myRelPartners = {}, alfaBySub = {};
+    let isGuest = false;
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function ageFrom(dt){ const n=new Date(); let a=n.getFullYear()-dt.getFullYear(); const md=n.getMonth()-dt.getMonth(); if(md<0||(md===0&&n.getDate()<dt.getDate()))a--; return a; }
@@ -184,7 +192,8 @@ function physicalHTML(p){
 }
 
 async function init(){
-  const { data: { session } } = await db.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();  
+  isGuest = !session;
   if (session) {
     meId = session.user.id;
     const { data: mp } = await db.from('profiles').select('role, dom_verified').eq('id', meId).maybeSingle();
@@ -325,6 +334,7 @@ function extrasHTML(p){
 function contactsHTML(p){
   const list = contactsByUser[p.id] || [];
   let out = '';
+    if (isGuest) return '';
   if (p.show_social_public) {
     const socials = list.filter(function(c){ return c.contact_type === 'social'; });
     if (socials.length) {
@@ -412,8 +422,9 @@ function cardHTML(p, info){
       contactsHTML(p) +
       (p.show_about_public && p.bio_extended ? '<details class="about"><summary>Sobre mí</summary><p class="salon-about">' + esc(p.bio_extended) + '</p></details>' : '') +
       reqBtn +
-      '<div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=' + p.id + '">📸 Galería</a></div>' +
-    '</div>';
+      (isGuest
+        ? '<div class="guest-lock">🔒 Galería y enlaces: solo miembros inscritos</div>'
+        : '<div style="margin-top:auto;text-align:center;"><a class="navlink" style="margin:0;" href="mi-galeria.html?user=' + p.id + '">📸 Galería</a></div>') +    '</div>';
 }
 
 function render(){
@@ -429,6 +440,13 @@ function render(){
   });
 
   let html = '';
+    if (isGuest) {
+    html += `<div class="guest-banner">
+      <h3>👁 Estás contemplando el Salón como invitado</h3>
+      <p>Puedes ver a los miembros que decidieron mostrarse. Las redes, contactos y galerías de los miembros están reservados a la casa inscrita.</p>
+      <button onclick="window.location.href='index.html'">✨ Inscríbete para participar</button>
+    </div>`;
+  }
   const sections = [
     ['dom', '♛ Dominantes verificadas'],
     ['free', '⛓ Sumisos y sumisas sin Dueña'],
