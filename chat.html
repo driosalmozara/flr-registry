@@ -264,16 +264,14 @@ async function loadRoomBans() {
 function renderRoomsBar() {
   const bar = document.getElementById('rooms-bar');
   if (!bar) return;
-  if (isGuest) {
-    // Invitados: solo la sala general, sin botones de crear/solicitar
-    const general = rooms.find(r => r.id === GENERAL_ROOM_ID);
-    if (general) {
-      bar.innerHTML = `<button class="room-tab active">#${DEFAULT_ROOM_LABEL}</button>`;
-    } else {
-      bar.innerHTML = '<p class="small" style="margin:0;">Sala general no disponible.</p>';
-    }
-    return;
+if (isGuest) {
+  if (rooms.length) {
+    bar.innerHTML = `<button class="room-tab active">#${DEFAULT_ROOM_LABEL}</button>`;
+  } else {
+    bar.innerHTML = '<p class="small" style="margin:0;">Sala general no disponible.</p>';
   }
+  return;
+}
   const canCreate = isSuper || isMod;
   bar.innerHTML = rooms.map(r => `
     <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
