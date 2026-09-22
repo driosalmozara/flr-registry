@@ -65,6 +65,11 @@ button.p-act.ok{color:#4ade80 !important;opacity:.85}
 button.clip{background:transparent;color:var(--gold);border:1px solid var(--gold);padding:8px 11px}
 .hidden{display:none}
 #toggle-side{display:none}
+.guest-banner{background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(212,175,55,.05));border:2px solid var(--gold);border-radius:14px;padding:20px;margin:0 0 16px;text-align:center}
+.guest-banner h3{margin:0 0 10px;color:var(--gold)}
+.guest-banner p{margin:0 0 14px;color:#d4d4d8;line-height:1.6}
+.guest-banner button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:14px}
+.guest-banner button:hover{background:#e5c148}
 @media (max-width:760px){
   body{font-size:14px}
   header{padding:10px 14px}
@@ -127,9 +132,11 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const DEFAULT_ROOM_NAME = 'chat-general';
 const DEFAULT_ROOM_LABEL = 'Chat General';
+const GENERAL_ROOM_ID = '5f26e9f1-a20a-4344-afbf-97a10895fbb6';
 const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😭','😡','🤬','','👎','','💪','❤️','💛','💜','🖤','💋','👑','🍷','✨','🤍','⛓','🐕','🦮'];
 
 let me = null, myProfile = null;
+let isGuest = false;
 let isSuper = false, isMod = false, isChatMod = false;
 let people = [], presenceChannel = null, onlineIds = new Set();
 let selfNicks = [], assignedNicks = [];
@@ -163,8 +170,25 @@ function nameFor(id, fallback) {
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
-  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
-  me = session.user.id;
+  isGuest = !session;
+  me = session?.user?.id || null;
+
+  if (isGuest) {
+    // Invitados: cargar solo la sala general y sus mensajes
+    const { data: profs } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(300);
+    people = profs || [];
+    const { data: roomData } = await db.from('chat_rooms').select('*').eq('id', GENERAL_ROOM_ID);
+    rooms = roomData || [];
+    if (rooms.length) {
+      currentRoomId = rooms[0].id;
+    } else {
+      content.innerHTML = '<p class="small">La sala general no está disponible en este momento.</p>';
+      return;
+    }
+    await renderPage();
+    subscribeChat();
+    return;
+  }
 
   const { data: profile } = await db.from('profiles').select('id, role, display_name').eq('id', me).maybeSingle();
   myProfile = profile;
@@ -208,6 +232,15 @@ async function init() {
 }
 
 async function loadRooms(initial) {
+  if (isGuest) {
+    // Invitados: solo la sala general
+    const { data } = await db.from('chat_rooms').select('*').eq('id', GENERAL_ROOM_ID);
+    rooms = data || [];
+    if (rooms.length) currentRoomId = rooms[0].id;
+    renderRoomsBar();
+    if (!initial) await loadMessages();
+    return;
+  }
   const { data } = await db.from('chat_rooms').select('*').order('is_default', { ascending: false }).order('created_at');
   rooms = data || [];
   if (!rooms.length) return;
@@ -220,6 +253,7 @@ async function loadRooms(initial) {
 }
 
 async function loadRoomBans() {
+  if (isGuest) return;
   const { data } = await db.from('chat_room_bans').select('id, user_id, banned_by_role, banned_by').eq('room_id', currentRoomId);
   window._roomBans = data || [];
   const { data: rm } = await db.from('chat_room_mutes').select('user_id').eq('room_id', currentRoomId);
@@ -229,6 +263,16 @@ async function loadRoomBans() {
 function renderRoomsBar() {
   const bar = document.getElementById('rooms-bar');
   if (!bar) return;
+  if (isGuest) {
+    // Invitados: solo la sala general, sin botones de crear/solicitar
+    const general = rooms.find(r => r.id === GENERAL_ROOM_ID);
+    if (general) {
+      bar.innerHTML = `<button class="room-tab active">#${DEFAULT_ROOM_LABEL}</button>`;
+    } else {
+      bar.innerHTML = '<p class="small" style="margin:0;">Sala general no disponible.</p>';
+    }
+    return;
+  }
   const canCreate = isSuper || isMod;
   bar.innerHTML = rooms.map(r => `
     <button class="room-tab ${r.id === currentRoomId ? 'active' : ''}" onclick="switchRoom('${r.id}')">
@@ -242,6 +286,7 @@ function renderRoomsBar() {
 }
 
 async function switchRoom(id) {
+  if (isGuest) return;
   if (id === currentRoomId) return;
   currentRoomId = id;
   renderRoomsBar();
@@ -253,6 +298,7 @@ async function switchRoom(id) {
 }
 
 async function createRoom() {
+  if (isGuest) return;
   const name = prompt('Nombre de la sala (sin espacios, sin #):');
   if (!name) return;
   const clean = name.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 30);
@@ -269,6 +315,7 @@ async function createRoom() {
 }
 
 async function deleteRoom(id, name) {
+  if (isGuest) return;
   if (!confirm(`¿Eliminar la sala #${name} y todos sus mensajes?`)) return;
   const { error } = await db.from('chat_rooms').delete().eq('id', id);
   if (error) return alert(error.message);
@@ -276,6 +323,7 @@ async function deleteRoom(id, name) {
 }
 
 async function manageRoomMembers(roomId, roomName) {
+  if (isGuest) return;
   const { data: allUsers } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(500);
   const { data: members } = await db.from('chat_room_members').select('user_id').eq('room_id', roomId);
   const memberSet = new Set((members || []).map(m => m.user_id));
@@ -311,94 +359,107 @@ async function removeRoomMember(roomId, userId, roomName) {
 
 function subscribeChat() {
   if (chatChannel) { db.removeChannel(chatChannel); chatChannel = null; }
-  chatChannel = db.channel('flr-chat-' + currentRoomId)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + currentRoomId }, () => loadMessages())
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + currentRoomId }, () => loadMessages())
+  const targetRoom = isGuest ? GENERAL_ROOM_ID : currentRoomId;
+  if (!targetRoom) return;
+  chatChannel = db.channel('flr-chat-' + targetRoom)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + targetRoom }, () => loadMessages())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: 'room_id=eq.' + targetRoom }, () => loadMessages())
     .subscribe();
 }
 
 async function renderPage() {
   const content = document.getElementById('content');
-  const [p, sn, an] = await Promise.all([
-    db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
-    db.from('chat_self_nicknames').select('*'),
-    db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false })
-  ]);
-  people = (p.data || []).map(person => ({
-    ...person,
-    is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
-  }));
-  selfNicks = sn.data || [];
-  assignedNicks = an.data || [];
+  let html = '';
 
-  await loadRoomBans();
+  if (isGuest) {
+    html += `
+      <div class="guest-banner">
+        <h3>👁 Estás viendo el chat como invitado</h3>
+        <p>Lee la conversación de la sala general. Para escribir, usar emojis, GIFs, adjuntos o entrar a salas privadas, inscríbete en la casa.</p>
+        <button onclick="window.location.href='index.html'">✨ Inscríbete para participar</button>
+      </div>`;
+  } else {
+    const [p, sn, an] = await Promise.all([
+      db.from('profiles').select('id, display_name, role, chat_muted, is_muzzled:relationships!relationships_submissive_id_fkey(is_muzzled)').order('display_name').limit(300),
+      db.from('chat_self_nicknames').select('*'),
+      db.from('chat_assigned_nicknames').select('*').order('created_at', { ascending: false })
+    ]);
+    people = (p.data || []).map(person => ({
+      ...person,
+      is_muzzled: person.is_muzzled && person.is_muzzled[0] ? person.is_muzzled[0].is_muzzled : false
+    }));
+    selfNicks = sn.data || [];
+    assignedNicks = an.data || [];
 
-  const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
-  const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    await loadRoomBans();
 
-  let html = `
-    <div class="card">
-      <h3>Tu identidad en el chat</h3>
-      <p class="small">Apareces como: <b style="color:#d4af37">${esc(nameFor(me))}</b>
-      ${assignedNick ? '· (apodo asignado por tu Dominante o un Administrador)' : ''}</p>
-      <input id="self_nick" placeholder="Tu apodo propio" value="${esc(selfNick?.nickname || '')}" />
-      <button onclick="setSelfNick()">Guardar mi apodo</button>
-    </div>
-  `;
+    const { data: selfNick } = await db.from('chat_self_nicknames').select('*').eq('user_id', me).maybeSingle();
+    const { data: assignedNick } = await db.from('chat_assigned_nicknames').select('*').eq('target_user_id', me).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-  if (isSuper || myProfile.role === 'dominant') {
-    let targets = [];
-    if (isSuper) {
-      targets = people.filter(x => x.id !== me);
-    } else {
-      const { data: subs } = await db.from('relationships')
-        .select('profiles!relationships_submissive_id_fkey(id, display_name, role)')
-        .eq('dominant_id', me).eq('status', 'confirmed');
-      targets = (subs || []).map(s => s.profiles).filter(Boolean);
-    }
-    if (targets.length > 0) {
-      html += `
-        <div class="card">
-          <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
-          <div class="nick-row">
-            <div>
-              <label for="assign_target">Miembro</label>
-              <select id="assign_target">
-                <option value="">— Seleccionar —</option>
-                ${sortUsers(targets).map(t => `<option value="${t.id}">${t.role === 'dominant' ? '♛' : '⛓'} ${esc(t.display_name)}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label for="assign_nick">Nuevo apodo</label>
-              <input id="assign_nick" placeholder="Escribe el apodo" />
-            </div>
-            <div><button onclick="assignNickFromSelect()">Asignar</button></div>
-          </div>
-        </div>
-      `;
-    }
-  }
+    html += `
+      <div class="card">
+        <h3>Tu identidad en el chat</h3>
+        <p class="small">Apareces como: <b style="color:#d4af37">${esc(nameFor(me))}</b>
+        ${assignedNick ? '· (apodo asignado por tu Dominante o un Administrador)' : ''}</p>
+        <input id="self_nick" placeholder="Tu apodo propio" value="${esc(selfNick?.nickname || '')}" />
+        <button onclick="setSelfNick()">Guardar mi apodo</button>
+      </div>
+    `;
 
-  if (isSuper || isMod || isChatMod) {
-    const { data: pend } = await db.from('chat_media_pending').select('*').eq('status', 'pending').order('created_at', { ascending: true });
-    const list = pend || [];
-    if (list.length) {
-      html += `
-        <div class="card">
-          <h3>📎 Medios por aprobar (${list.length})</h3>
-          ${list.map(q => `
-            <div class="item" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              ${q.type === 'video'
-                ? `<video src="${esc(q.url)}" controls style="width:150px;border-radius:8px;"></video>`
-                : `<img src="${esc(q.url)}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;"/>`}
-              <div style="flex:1;min-width:150px;">
-                <b>${esc(nameFor(q.user_id))}</b>
-                <div class="small">${new Date(q.created_at).toLocaleString()} · ${q.type === 'video' ? 'Video' : 'Foto'}</div>
+    if (isSuper || myProfile.role === 'dominant') {
+      let targets = [];
+      if (isSuper) {
+        targets = people.filter(x => x.id !== me);
+      } else {
+        const { data: subs } = await db.from('relationships')
+          .select('profiles!relationships_submissive_id_fkey(id, display_name, role)')
+          .eq('dominant_id', me).eq('status', 'confirmed');
+        targets = (subs || []).map(s => s.profiles).filter(Boolean);
+      }
+      if (targets.length > 0) {
+        html += `
+          <div class="card">
+            <h3>${isSuper ? 'Apodos como Administrador' : 'Apodos para tus sumisos'}</h3>
+            <div class="nick-row">
+              <div>
+                <label for="assign_target">Miembro</label>
+                <select id="assign_target">
+                  <option value="">— Seleccionar —</option>
+                  ${sortUsers(targets).map(t => `<option value="${t.id}">${t.role === 'dominant' ? '♛' : '⛓'} ${esc(t.display_name)}</option>`).join('')}
+                </select>
               </div>
-              <button onclick="mediaDecide('${q.id}',true)">✓ Aprobar</button>
-              <button class="mini" onclick="mediaDecide('${q.id}',false)">✕ Rechazar</button>
-            </div>`).join('')}
-        </div>`;
+              <div>
+                <label for="assign_nick">Nuevo apodo</label>
+                <input id="assign_nick" placeholder="Escribe el apodo" />
+              </div>
+              <div><button onclick="assignNickFromSelect()">Asignar</button></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    if (isSuper || isMod || isChatMod) {
+      const { data: pend } = await db.from('chat_media_pending').select('*').eq('status', 'pending').order('created_at', { ascending: true });
+      const list = pend || [];
+      if (list.length) {
+        html += `
+          <div class="card">
+            <h3>📎 Medios por aprobar (${list.length})</h3>
+            ${list.map(q => `
+              <div class="item" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                ${q.type === 'video'
+                  ? `<video src="${esc(q.url)}" controls preload="none" style="width:150px;border-radius:8px;"></video>`
+                  : `<img src="${esc(q.url)}" loading="lazy" style="width:90px;height:90px;object-fit:cover;border-radius:8px;"/>`}
+                <div style="flex:1;min-width:150px;">
+                  <b>${esc(nameFor(q.user_id))}</b>
+                  <div class="small">${new Date(q.created_at).toLocaleString()} · ${q.type === 'video' ? 'Video' : 'Foto'}</div>
+                </div>
+                <button onclick="mediaDecide('${q.id}',true)">✓ Aprobar</button>
+                <button class="mini" onclick="mediaDecide('${q.id}',false)">✕ Rechazar</button>
+              </div>`).join('')}
+          </div>`;
+      }
     }
   }
 
@@ -433,6 +494,23 @@ function renderParticipants() {
   const title = document.getElementById('ptitle');
   if (!box) return;
   if (title) title.innerHTML = `Participantes (${people.length}) · <span style="color:#22c55e;">En línea (${onlineIds.size})</span>`;
+
+  if (isGuest) {
+    // Invitados: lista simple sin acciones
+    box.innerHTML = sortUsers(people).map(p => {
+      const n = nameFor(p.id);
+      const online = onlineIds.has(p.id);
+      return `
+        <div class="prow">
+          <span style="color:#d4d4d8">
+            ${online ? '<span class="dot"></span>' : ''}${p.role === 'dominant' ? '♛' : '⛓'} ${esc(n)}${staffIcons(p.id)}
+          </span>
+        </div>
+      `;
+    }).join('');
+    return;
+  }
+
   box.innerHTML = sortUsers(people).map(p => {
     const n = nameFor(p.id);
     const chatMuted = p.chat_muted || false;
@@ -463,6 +541,10 @@ function renderParticipants() {
 async function renderInputRow() {
   const row = document.getElementById('inputrow');
   if (!row) return;
+  if (isGuest) {
+    row.innerHTML = '<p class="small" style="color:#a1a1aa;text-align:center;padding:10px;">👁 Inscríbete en la casa para escribir en el chat.</p>';
+    return;
+  }
   if (currentRoomId) {
     const currentRoom = rooms.find(r => r.id === currentRoomId);
     if (currentRoom && currentRoom.is_private) {
@@ -503,6 +585,7 @@ async function renderInputRow() {
 }
 
 async function attachChat(input){
+  if (isGuest) return alert('Inscríbete para enviar adjuntos.');
   const file = input.files[0]; if (!file) return;
   const path = me + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
   const { error } = await db.storage.from('chat-media').upload(path, file);
@@ -515,6 +598,7 @@ async function attachChat(input){
 }
 
 async function mediaDecide(id, approve){
+  if (isGuest) return;
   const { error } = await db.rpc('chat_media_decide', { pending_id: id, approve });
   if (error) return alert(error.message);
   await renderPage();
@@ -523,8 +607,11 @@ async function mediaDecide(id, approve){
 async function loadMessages() {
   const box = document.getElementById('msgs');
   if (!box || !currentRoomId) return;
-  const myBan = (window._roomBans || []).find(b => b.user_id === me);
-  if (myBan) { box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`; return; }
+
+  if (!isGuest) {
+    const myBan = (window._roomBans || []).find(b => b.user_id === me);
+    if (myBan) { box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`; return; }
+  }
 
   const { data } = await db.from('chat_messages_public')
     .select('*')
@@ -535,8 +622,8 @@ async function loadMessages() {
 
   box.innerHTML = list.map(m => {
     const author = people.find(x => x.id === m.user_id);
-    const canDel = m.user_id === me || isSuper || isMod
-      || (isChatMod && author && author.role === 'submissive' && !ownedSet.has(m.user_id));
+    const canDel = !isGuest && (m.user_id === me || isSuper || isMod
+      || (isChatMod && author && author.role === 'submissive' && !ownedSet.has(m.user_id)));
     const t = new Date(m.created_at);
     const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
     let att = '';
@@ -544,12 +631,12 @@ async function loadMessages() {
     const gifMatch = bodyText.match(/https?:\/\/\S+?giphy\S*|https?:\/\/\S+?tenor\S*|https?:\/\/\S+\.gif(?:\?\S*)?/i);
     if (gifMatch) {
       bodyText = bodyText.replace(gifMatch[0], '').trim();
-      att += `<div><img src="${esc(gifMatch[0])}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
+      att += `<div><img src="${esc(gifMatch[0])}" loading="lazy" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
     }
     if (m.attachment_url) {
       att += m.attachment_type === 'video'
-        ? `<div><video src="${esc(m.attachment_url)}" controls style="max-width:260px;border-radius:8px;display:block;margin:4px 0;"></video></div>`
-        : `<div><img src="${esc(m.attachment_url)}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
+        ? `<div><video src="${esc(m.attachment_url)}" controls preload="none" playsinline style="max-width:260px;border-radius:8px;display:block;margin:4px 0;"></video></div>`
+        : `<div><img src="${esc(m.attachment_url)}" loading="lazy" style="max-width:200px;max-height:200px;border-radius:8px;display:block;margin:4px 0;cursor:pointer;" onclick="window.open(this.src)"/></div>`;
     }
     return `
       <div class="line">
@@ -575,12 +662,14 @@ function colorFor(name) {
 
 
 async function deleteMsg(id) {
+  if (isGuest) return;
   const { error } = await db.from('chat_messages').delete().eq('id', id);
   if (error) return alert(error.message);
   await loadMessages();
 }
 
 async function chatMuteToggle(id, shouldMute) {
+  if (isGuest) return;
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   if (shouldMute) {
     const { error } = await db.from('profiles').update({ chat_muted: true, chat_muted_by: me, chat_muted_by_role: myRole }).eq('id', id);
@@ -593,6 +682,7 @@ async function chatMuteToggle(id, shouldMute) {
 }
 
 function domMuteAsk(id, on) {
+  if (isGuest) return;
   openModal(`<h2 style="margin-top:0;">${on ? '🔇 Silenciar' : '🔊 Devolver la voz'} a ${esc(nameFor(id))}</h2>
     <p class="small">Elige el alcance de tu decisión:</p>
     <button onclick="domMuteDo('${id}', ${on}, 'room')">Solo en esta sala</button>
@@ -611,6 +701,7 @@ async function domMuteDo(id, on, scope) {
 }
 
 async function banFromRoom(userId, name) {
+  if (isGuest) return;
   if (!currentRoomId) return;
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   const reason = prompt(`Motivo del ban a ${name} en esta sala (opcional):`) || null;
@@ -620,6 +711,7 @@ async function banFromRoom(userId, name) {
 }
 
 async function liftRoomBan(banId, banRole) {
+  if (isGuest) return;
   const myRole = isSuper ? 'admin' : (isMod ? 'moderator' : 'chatmod');
   const { data } = await db.rpc('lift_room_ban', { ban_id: banId, lifter_role: myRole });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo readmitir.');
@@ -627,6 +719,7 @@ async function liftRoomBan(banId, banRole) {
 }
 
 async function setSelfNick() {
+  if (isGuest) return;
   const nickname = document.getElementById('self_nick').value.trim();
   if (nickname.length < 2) return alert('El apodo debe tener al menos 2 caracteres.');
   const { error } = await db.from('chat_self_nicknames').upsert({ user_id: me, nickname }, { onConflict: 'user_id' });
@@ -635,6 +728,7 @@ async function setSelfNick() {
 }
 
 async function assignNickFromSelect() {
+  if (isGuest) return;
   const targetId = document.getElementById('assign_target').value;
   const nickname = document.getElementById('assign_nick').value.trim();
   if (!targetId) return alert('Selecciona un miembro.');
@@ -646,6 +740,7 @@ async function assignNickFromSelect() {
 }
 
 function toggleEmoji(ev) {
+  if (isGuest) return;
   if (ev) ev.stopPropagation();
   const p = document.getElementById('emoji-panel');
   if (p) p.classList.toggle('open');
@@ -657,6 +752,7 @@ function closeEmojiOutside(ev) {
   if (!p.contains(ev.target) && ev.target !== b) p.classList.remove('open');
 }
 function insertEmoji(e) {
+  if (isGuest) return;
   const input = document.getElementById('msg');
   if (!input) return;
   const start = input.selectionStart ?? input.value.length;
@@ -686,6 +782,7 @@ function closeModal() {
 }
 
 async function openGifPicker() {
+  if (isGuest) return alert('Inscríbete para usar GIFs.');
   const query = prompt('Buscar GIF:');
   if (!query) return;
   openModal('<p class="small">Buscando...</p>');
@@ -714,6 +811,7 @@ async function openGifPicker() {
 }
 
 function pickGif(url) {
+  if (isGuest) return;
   const input = document.getElementById('msg') || document.getElementById('mbody');
   if (!input) return;
   input.value = (input.value + ' ' + url).trim();
@@ -725,6 +823,7 @@ function pickGif(url) {
 window.__pendingMentions = [];
 
 function toggleMentionPopup() {
+  if (isGuest) return;
   const pop = document.getElementById('mention-popup');
   if (!pop) return;
   if (pop.classList.contains('open')) { pop.classList.remove('open'); return; }
@@ -761,6 +860,7 @@ function renderMentionList(filter) {
 }
 
 function pickMention(userId, userName) {
+  if (isGuest) return;
   const input = document.getElementById('msg');
   if (!input) return;
   const val = input.value;
@@ -774,6 +874,7 @@ function pickMention(userId, userName) {
 }
 
 function handleMentionTyping() {
+  if (isGuest) return;
   const input = document.getElementById('msg');
   if (!input) return;
   const val = input.value;
@@ -806,6 +907,7 @@ function handleMsgKey(ev) {
 
 /* ============ SOLICITUD DE SALA ============ */
 function openRoomRequestModal() {
+  if (isGuest) return;
   const modal = document.createElement('div');
   modal.id = 'room-request-modal';
   modal.className = 'request-modal';
@@ -832,6 +934,7 @@ function openRoomRequestModal() {
 }
 
 async function submitRoomRequest() {
+  if (isGuest) return;
   const name = document.getElementById('new-room-name').value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 30);
   const desc = document.getElementById('new-room-desc').value.trim();
   const type = document.getElementById('new-room-type').value;
@@ -845,6 +948,7 @@ async function submitRoomRequest() {
 
 /* ============ MENSAJES CON MENCIONES ============ */
 async function sendMsg() {
+  if (isGuest) return alert('Inscríbete para escribir en el chat.');
   const input = document.getElementById('msg');
   const body = input.value.trim();
   if (!body || !currentRoomId) return;
@@ -875,7 +979,7 @@ function highlightMentions(text) {
   return text.replace(/@([^\s@]+)/g, (match, name) => {
     const found = people.find(p => nameFor(p.id).toLowerCase() === name.toLowerCase());
     if (!found) return esc(match);
-    const isMe = found.id === me;
+    const isMe = !isGuest && found.id === me;
     return `<span class="mention-highlight ${isMe ? 'me' : ''}">${esc(match)}</span>`;
   });
 }
