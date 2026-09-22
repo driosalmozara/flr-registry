@@ -626,6 +626,7 @@ if (isGuest) {
 
   box.innerHTML = list.map(m => {
     const author = people.find(x => x.id === m.user_id);
+    const dname = m.display_name || nameFor(m.user_id) || '?';
     const canDel = !isGuest && (m.user_id === me || isSuper || isMod
       || (isChatMod && author && author.role === 'submissive' && !ownedSet.has(m.user_id)));
     const t = new Date(m.created_at);
@@ -659,8 +660,9 @@ if (isGuest) {
 }
 
 function colorFor(name) {
+  const s = String(name || '?');
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
   return 'hsl(' + h + ',70%,65%)';
 }
 
