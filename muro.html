@@ -52,6 +52,12 @@ button.mini:hover{color:#dc2626 !important}
 .staff-ico{margin-left:5px;vertical-align:middle;font-size:13px}
 .staff-ico.mod{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:700;color:#d4af37;border:1px solid #d4af37;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1}
 
+.guest-banner{background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(212,175,55,.05));border:2px solid var(--gold);border-radius:14px;padding:20px;margin:0 0 20px;text-align:center}
+.guest-banner h3{margin:0 0 10px;color:var(--gold)}
+.guest-banner p{margin:0 0 14px;color:#d4d4d8;line-height:1.6}
+.guest-banner button{background:var(--gold);color:#000;font-weight:700;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:14px}
+.guest-banner button:hover{background:#e5c148}
+
 /* Encuestas */
 .poll-box{border:1px solid var(--gold);border-radius:12px;padding:14px;margin:10px 0;background:rgba(212,175,55,.05)}
 .poll-q{font-size:15px;font-weight:600;margin:0 0 12px;color:#fff}
@@ -128,9 +134,16 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const RMAP = [['like','👍'],['love','❤️'],['down','👎'],['angry','😡']];
 const EMOJIS = ['😀','😂','😍','😘','😎','🥰','','😢','😭','😡','🤬','👍','👎','🙏','','💪','','❤️','💛','💜','🖤','💋','','👑','','🍷','✨','🤍','⛓','🐕','🦮'];
 
-let me = null, isSuper = false, isMod = false, isChatMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
+let me = null, isGuest = false, isSuper = false, isMod = false, isChatMod = false, myBlock = null, myMuzzled = false, mySubIds = new Set(), pendingFile = null;
 let reactions = [];
 let adminIds = new Set(), modIds = new Set(), chatModIds = new Set();
+
+/* ====== DEBOUNCE DEL REALTIME (ahorro de egress) ====== */
+let muroTimer = null;
+function debounceRender() {
+  clearTimeout(muroTimer);
+  muroTimer = setTimeout(render, 2500);
+}
 
 function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -144,9 +157,9 @@ function staffIcons(userId){
 function hh(t){ const d = new Date(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ' · ' + d.toLocaleDateString(); }
 function mediaHTML(p){
   if (!p.media_url) return '';
-  if (p.media_type === 'image') return `<div class="media"><img src="${esc(p.media_url)}"/></div>`;
-  if (p.media_type === 'video') return `<div class="media"><video src="${esc(p.media_url)}" controls style="max-width:100%;border-radius:10px;margin:6px 0;"></video></div>`;
-  if (p.media_type === 'audio') return `<div class="media"><audio src="${esc(p.media_url)}" controls style="width:100%;margin:6px 0;"></audio></div>`;
+  if (p.media_type === 'image') return `<div class="media"><img src="${esc(p.media_url)}" loading="lazy" decoding="async"/></div>`;
+  if (p.media_type === 'video') return `<div class="media"><video src="${esc(p.media_url)}" controls preload="none" playsinline style="max-width:100%;border-radius:10px;margin:6px 0;"></video></div>`;
+  if (p.media_type === 'audio') return `<div class="media"><audio src="${esc(p.media_url)}" controls preload="none" style="width:100%;margin:6px 0;"></audio></div>`;
   return `<div class="media"><a href="${esc(p.media_url)}" target="_blank" style="color:var(--gold);">📄 Archivo adjunto</a></div>`;
 }
 
@@ -155,8 +168,14 @@ function rCounts(tid){
   reactions.filter(r => r.target_id === tid).forEach(r => { o[r.reaction] = (o[r.reaction]||0)+1; });
   return o;
 }
-function myReact(tid){ const r = reactions.find(x => x.target_id === tid && x.user_id === me); return r ? r.reaction : null; }
+function myReact(tid){ if (isGuest) return null; const r = reactions.find(x => x.target_id === tid && x.user_id === me); return r ? r.reaction : null; }
 function rbar(ttype, tid, small){
+  if (isGuest) {
+    const c = rCounts(tid);
+    return `<div class="rbar${small ? ' sm' : ''}" style="opacity:.6;">` + RMAP.map(x =>
+      `<span class="rbtn" style="cursor:default;">${x[1]}${c[x[0]] ? `<span>${c[x[0]]}</span>` : ''}</span>`
+    ).join('') + `</div>`;
+  }
   const c = rCounts(tid), mine = myReact(tid);
   return `<div class="rbar${small ? ' sm' : ''}">` + RMAP.map(x =>
     `<button class="rbtn ${mine === x[0] ? 'mine' : ''}" onclick="react('${ttype}','${tid}','${x[0]}')">${x[1]}${c[x[0]] ? `<span>${c[x[0]]}</span>` : ''}</button>`
@@ -164,6 +183,7 @@ function rbar(ttype, tid, small){
 }
 
 async function react(ttype, tid, r){
+  if (isGuest) return alert('Inscríbete en la casa para reaccionar.');
   const ex = myReact(tid);
   if (ex === r) await db.from('muro_reactions').delete().eq('target_type',ttype).eq('target_id',tid).eq('user_id',me);
   else await db.from('muro_reactions').upsert(
@@ -174,6 +194,7 @@ async function react(ttype, tid, r){
 }
 
 function openEmoji(btn, inputId){
+  if (isGuest) return alert('Inscríbete para usar emojis.');
   let pop = document.getElementById('emojipop');
   if (!pop) {
     pop = document.createElement('div'); pop.id = 'emojipop';
@@ -211,13 +232,14 @@ function addPollOption(value = '') {
 }
 
 async function createPoll() {
+  if (isGuest) return alert('Inscríbete para crear encuestas.');
   const question = document.getElementById('poll-question').value.trim();
   if (!question) return alert('Escribe la pregunta de la encuesta.');
   const opts = Array.from(document.querySelectorAll('.poll-opt')).map(i => i.value.trim()).filter(Boolean);
   if (opts.length < 2) return alert('Añade al menos 2 opciones.');
   if (opts.length > 10) return alert('Máximo 10 opciones.');
   const allowComments = document.getElementById('poll-allow-comments').checked;
-  const as = document.getElementById('was')?.value || 'user';
+  const as = document.getElementById('was2')?.value || 'user';
 
   const { data: relOwn } = await db.from('relationships')
     .select('id').eq('submissive_id', me).eq('status', 'confirmed').maybeSingle();
@@ -257,7 +279,7 @@ async function renderPoll(post, comments) {
     const votes = votesByOption[i] || 0;
     const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
     const isMine = myVote === i;
-    if (hasVoted || closed) {
+    if (hasVoted || closed || isGuest) {
       return `<div class="poll-bar">
         <div class="fill" style="width:${pct}%;"></div>
         <div class="txt">
@@ -279,19 +301,21 @@ async function renderPoll(post, comments) {
     <p class="poll-q">${esc(post.poll_question)}</p>
     ${optsHtml}
     <div class="poll-foot">
-      <span>${totalVotes} voto${totalVotes === 1 ? '' : 's'}${hasVoted ? ' · Tu voto: ♛' : ' · Aún no has votado'}</span>
+      <span>${totalVotes} voto${totalVotes === 1 ? '' : 's'}${hasVoted ? ' · Tu voto: ♛' : (isGuest ? ' · Inicia sesión para votar' : ' · Aún no has votado')}</span>
       ${!post.poll_allow_comments ? '<span>💬 Comentarios desactivados</span>' : ''}
     </div>
   </div>`;
 }
 
 async function votePoll(postId, optionIndex) {
+  if (isGuest) return alert('Inscríbete para votar en encuestas.');
   const { data } = await db.rpc('vote_poll', { p_post_id: postId, p_option_index: optionIndex });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo votar.');
   await render();
 }
 
 async function closePoll(postId) {
+  if (isGuest) return;
   if (!confirm('¿Cerrar esta encuesta? Nadie podrá votar más.')) return;
   const { error } = await db.from('muro_posts').update({ poll_closed_at: new Date().toISOString() }).eq('id', postId);
   if (error) return alert(error.message);
@@ -300,6 +324,7 @@ async function closePoll(postId) {
 }
 
 async function deletePoll(postId) {
+  if (isGuest) return;
   if (!confirm('¿Eliminar esta encuesta y todos sus votos?')) return;
   const { error } = await db.from('muro_posts').delete().eq('id', postId);
   if (error) return alert(error.message);
@@ -309,8 +334,16 @@ async function deletePoll(postId) {
 async function init() {
   const content = document.getElementById('content');
   const { data: { session } } = await db.auth.getSession();
-  if (!session) { content.innerHTML = '<h2>Inicia sesión primero</h2><a class="navlink" href="index.html">Ir al inicio</a>'; return; }
-  me = session.user.id;
+  isGuest = !session;
+  me = session?.user?.id || null;
+
+  if (isGuest) {
+    await render();
+    db.channel('muro-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'muro_posts' }, debounceRender)
+      .subscribe();
+    return;
+  }
 
   const [sf, mf, bl, mz, subs, cm, adm, mod] = await Promise.all([
     db.rpc('am_i_superadmin'), db.rpc('am_i_moderator'),
@@ -332,10 +365,10 @@ async function init() {
   await render();
 
   db.channel('muro-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_posts' }, () => render())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_comments' }, () => render())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_reactions' }, () => render())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, () => render())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_posts' }, debounceRender)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_comments' }, debounceRender)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'muro_reactions' }, debounceRender)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, debounceRender)
     .subscribe();
 }
 
@@ -343,91 +376,106 @@ async function render() {
   const content = document.getElementById('content');
   let html = '';
 
-  if (isSuper || isMod) {
-    const { data: blocks } = await db.from('muro_blocks').select('*, profiles!muro_blocks_user_id_fkey(display_name)').order('created_at', { ascending: false });
-    if (blocks && blocks.length) {
-      html += `<div class="card"><h3 style="margin-top:0;">🚫 Bloqueados para publicar</h3>`;
-      blocks.forEach(b => {
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);">
-          <span>⛓ ${esc(b.profiles?.display_name || '?')} <span class="small">· por ${esc(b.blocked_by_role)}</span></span>
-          <button class="ghost" onclick="unblock('${b.user_id}')">✓ Desbloquear</button>
-        </div>`;
-      });
-      html += `</div>`;
-    }
-  }
-
-  if (myMuzzled) {
-    html += `<div class="card"><p class="small" style="color:#dc2626;">🔇 Estás amordazado: no puedes enviar publicaciones ni encuestas mientras dure la mordaza.</p></div>`;
-  } else if (myBlock) {
-    html += `<div class="card"><p class="small" style="color:#dc2626;">🚫 El Staff te ha bloqueado temporalmente para publicar.${myBlock.reason ? ' Motivo: ' + esc(myBlock.reason) : ''}</p></div>`;
-  } else {
+  if (isGuest) {
     html += `
-      <div class="card">
-        <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
-        <textarea id="wbody" rows="3" placeholder="Comparte con la casa..."></textarea>
-        <div style="display:flex;gap:6px;margin:-4px 0 8px;">
-          <button class="emojibtn" onclick="openEmoji(this,'wbody')">😊</button>
-        </div>
-        <input type="file" id="wfile" style="display:none" onchange="pickFile(this)"/>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="ghost" onclick="document.getElementById('wfile').click()">📎 Adjuntar</button>
-          <span id="wfilechip" class="small"></span>
-          <label class="small" style="display:flex;gap:6px;align-items:center;margin-left:auto;">
-            <input type="checkbox" id="wallow" checked style="width:auto;margin:0;"/> Permitir comentarios
+      <div class="guest-banner">
+        <h3>👁 Estás viendo el muro como invitado</h3>
+        <p>Contempla las publicaciones aprobadas de la casa. Para escribir, reaccionar, comentar o participar en encuestas, inscríbete.</p>
+        <button onclick="window.location.href='index.html'">✨ Inscríbete para participar</button>
+      </div>`;
+  } else {
+    if (isSuper || isMod) {
+      const { data: blocks } = await db.from('muro_blocks').select('*, profiles!muro_blocks_user_id_fkey(display_name)').order('created_at', { ascending: false });
+      if (blocks && blocks.length) {
+        html += `<div class="card"><h3 style="margin-top:0;">🚫 Bloqueados para publicar</h3>`;
+        blocks.forEach(b => {
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);">
+            <span>⛓ ${esc(b.profiles?.display_name || '?')} <span class="small">· por ${esc(b.blocked_by_role)}</span></span>
+            <button class="ghost" onclick="unblock('${b.user_id}')">✓ Desbloquear</button>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+    }
+
+    if (myMuzzled) {
+      html += `<div class="card"><p class="small" style="color:#dc2626;">🔇 Estás amordazado: no puedes enviar publicaciones ni encuestas mientras dure la mordaza.</p></div>`;
+    } else if (myBlock) {
+      html += `<div class="card"><p class="small" style="color:#dc2626;">🚫 El Staff te ha bloqueado temporalmente para publicar.${myBlock.reason ? ' Motivo: ' + esc(myBlock.reason) : ''}</p></div>`;
+    } else {
+      html += `
+        <div class="card">
+          <h3 style="margin-top:0;">✍️ Publicar en el muro</h3>
+          <textarea id="wbody" rows="3" placeholder="Comparte con la casa..."></textarea>
+          <div style="display:flex;gap:6px;margin:-4px 0 8px;">
+            <button class="emojibtn" onclick="openEmoji(this,'wbody')">😊</button>
+          </div>
+          <input type="file" id="wfile" style="display:none" onchange="pickFile(this)"/>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="ghost" onclick="document.getElementById('wfile').click()">📎 Adjuntar</button>
+            <span id="wfilechip" class="small"></span>
+            <label class="small" style="display:flex;gap:6px;align-items:center;margin-left:auto;">
+              <input type="checkbox" id="wallow" checked style="width:auto;margin:0;"/> Permitir comentarios
+            </label>
+            ${(isSuper || isMod) ? `
+            <label class="small" style="display:flex;gap:6px;align-items:center;">
+              Identidad:
+              <select id="was" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
+                <option value="user">Mi nombre</option>
+                <option value="staff">🛡 Staff Queendomland</option>
+                ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
+              </select>
+            </label>` : ''}
+          </div>
+          <p style="margin:10px 0 0;"><button onclick="submitPost()">${(isSuper || isMod) ? 'Publicar ahora' : 'Enviar a aprobación'}</button></p>
+          <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
+        </div>`;
+
+      html += `
+        <div class="card" style="border-color:rgba(212,175,55,.3);">
+          <h3 style="margin-top:0;">📊 Crear encuesta</h3>
+          <label class="small">Pregunta</label>
+          <input id="poll-question" placeholder="Ej: ¿Qué dinámicas te gustan más?"/>
+          <label class="small" style="margin-top:8px;display:block;">Opciones (añade y quita)</label>
+          <div id="poll-options-list" class="poll-form-opts"></div>
+          <button type="button" class="ghost" onclick="addPollOption()" style="margin-top:4px;">+ Añadir opción</button>
+          <label class="small" style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+            <input type="checkbox" id="poll-allow-comments" style="width:auto;margin:0;" checked/>
+            Permitir comentarios en esta encuesta
           </label>
           ${(isSuper || isMod) ? `
-          <label class="small" style="display:flex;gap:6px;align-items:center;">
+          <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px;">
             Identidad:
-            <select id="was" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
+            <select id="was2" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
               <option value="user">Mi nombre</option>
               <option value="staff">🛡 Staff Queendomland</option>
               ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
             </select>
           </label>` : ''}
-        </div>
-        <p style="margin:10px 0 0;"><button onclick="submitPost()">${(isSuper || isMod) ? 'Publicar ahora' : 'Enviar a aprobación'}</button></p>
-        <p class="small" style="margin:6px 0 0;">${(isSuper || isMod) ? 'Como Staff, tu voz entra directa al muro.' : 'Toda publicación es revisada por el Staff; los sumisos con Dueña, además, por ella.'}</p>
-      </div>`;
+          <p style="margin:10px 0 0;"><button onclick="createPoll()">📊 Publicar encuesta</button></p>
+          <p class="small" style="margin:6px 0 0;">Las encuestas quedan sujetas a aprobación del Staff (y de tu Dueña, si la tienes).</p>
+        </div>`;
 
-    html += `
-      <div class="card" style="border-color:rgba(212,175,55,.3);">
-        <h3 style="margin-top:0;">📊 Crear encuesta</h3>
-        <label class="small">Pregunta</label>
-        <input id="poll-question" placeholder="Ej: ¿Qué dinámicas te gustan más?"/>
-        <label class="small" style="margin-top:8px;display:block;">Opciones (añade y quita)</label>
-        <div id="poll-options-list" class="poll-form-opts"></div>
-        <button type="button" class="ghost" onclick="addPollOption()" style="margin-top:4px;">+ Añadir opción</button>
-        <label class="small" style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-          <input type="checkbox" id="poll-allow-comments" style="width:auto;margin:0;" checked/>
-          Permitir comentarios en esta encuesta
-        </label>
-        ${(isSuper || isMod) ? `
-        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px;">
-          Identidad:
-          <select id="was2" style="width:auto;margin:0;background:#0b0b12;color:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;">
-            <option value="user">Mi nombre</option>
-            <option value="staff">🛡 Staff Queendomland</option>
-            ${isSuper ? '<option value="anon">👤 Sin nombre</option>' : ''}
-          </select>
-        </label>` : ''}
-        <p style="margin:10px 0 0;"><button onclick="createPoll()">📊 Publicar encuesta</button></p>
-        <p class="small" style="margin:6px 0 0;">Las encuestas quedan sujetas a aprobación del Staff (y de tu Dueña, si la tienes).</p>
-      </div>`;
-
-    setTimeout(() => {
-      if (document.getElementById('poll-options-list') && pollOptCount === 0) {
-        addPollOption(); addPollOption();
-      }
-    }, 50);
+      setTimeout(() => {
+        if (document.getElementById('poll-options-list') && pollOptCount === 0) {
+          addPollOption(); addPollOption();
+        }
+      }, 50);
+    }
   }
 
   const { data: posts } = await db.from('muro_posts')
     .select('*, author:profiles!muro_posts_author_id_fkey(id, display_name, role, avatar_url)')
     .order('created_at', { ascending: false }).limit(120);
-  const list = (posts || []).filter(p =>
-    p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.status === 'pending' && p.author?.role === 'submissive')
-  );
+
+  let list;
+  if (isGuest) {
+    list = (posts || []).filter(p => p.status === 'approved');
+  } else {
+    list = (posts || []).filter(p =>
+      p.status === 'approved' || p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.status === 'pending' && p.author?.role === 'submissive')
+    );
+  }
 
   list.sort((a, b) => {
     if (a.pinned_by && !b.pinned_by) return -1;
@@ -451,7 +499,7 @@ async function render() {
   }
 
   const ownedSubs = new Set();
-  if (isChatMod && !(isSuper || isMod)) {
+  if (!isGuest && isChatMod && !(isSuper || isMod)) {
     const pendingAuthorIds = list.filter(p => p.status === 'pending' && p.author?.role === 'submissive').map(p => p.author_id);
     if (pendingAuthorIds.length) {
       const { data: ownedRels } = await db.from('relationships')
@@ -462,30 +510,32 @@ async function render() {
     }
   }
 
-  const queue = list.filter(p =>
-    (p.status === 'pending' && (isSuper || isMod || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id)))) ||
-    (p.status === 'owner_pending' && mySubIds.has(p.author_id))
-  );
-  if (queue.length) {
-    html += `<div class="card"><h3 style="margin-top:0;">📥 Aprobaciones pendientes (${queue.length})</h3>`;
-    queue.forEach(p => {
-      const isPoll = p.post_type === 'poll';
-      html += `
-        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#0b0b12;">
-          <p class="small" style="margin:0 0 6px;">
-            <b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b>
-            ${isPoll ? ' <span class="badge poll">📊 encuesta</span>' : ''}
-            · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}
-          </p>
-          ${isPoll ? `<p style="margin:0 0 6px;"><b>📊 ${esc(p.poll_question || '')}</b><br><span class="small">${(p.poll_options || []).map(o => '· ' + esc(o)).join('<br>')}</span></p>` : `<p style="margin:0 0 6px;white-space:pre-wrap;">${esc(p.body || '')}</p>`}
-          ${mediaHTML(p)}
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
-            ${p.status === 'owner_pending' && mySubIds.has(p.author_id) ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
-          </div>
-        </div>`;
-    });
-    html += `</div>`;
+  if (!isGuest) {
+    const queue = list.filter(p =>
+      (p.status === 'pending' && (isSuper || isMod || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id)))) ||
+      (p.status === 'owner_pending' && mySubIds.has(p.author_id))
+    );
+    if (queue.length) {
+      html += `<div class="card"><h3 style="margin-top:0;">📥 Aprobaciones pendientes (${queue.length})</h3>`;
+      queue.forEach(p => {
+        const isPoll = p.post_type === 'poll';
+        html += `
+          <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#0b0b12;">
+            <p class="small" style="margin:0 0 6px;">
+              <b style="color:var(--gold);">${esc(p.author?.display_name || '?')}</b>
+              ${isPoll ? ' <span class="badge poll">📊 encuesta</span>' : ''}
+              · ${p.status === 'pending' ? '⏳ espera Staff' : '⏳ espera a su Dueña'}
+            </p>
+            ${isPoll ? `<p style="margin:0 0 6px;"><b>📊 ${esc(p.poll_question || '')}</b><br><span class="small">${(p.poll_options || []).map(o => '· ' + esc(o)).join('<br>')}</span></p>` : `<p style="margin:0 0 6px;white-space:pre-wrap;">${esc(p.body || '')}</p>`}
+            ${mediaHTML(p)}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending' ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
+              ${p.status === 'owner_pending' && mySubIds.has(p.author_id) ? `<button onclick="ownerApprove('${p.id}')">✅ Aprobar</button><button onclick="ownerReject('${p.id}')">❌ Rechazar</button>` : ''}
+            </div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
   }
 
   html += '<h3>🏛 Muro de la casa</h3>';
@@ -494,15 +544,17 @@ async function render() {
   for (const p of list) {
     const cmts = comments.filter(c => c.post_id === p.id);
     const isPoll = p.post_type === 'poll';
-    const canDelete = p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.author?.role === 'submissive');
-    const canStaffAct = ((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending';
-    const canOwnerAct = p.status === 'owner_pending' && mySubIds.has(p.author_id);
-    const canBlock = (isSuper) || ((isMod || isChatMod) && p.author?.role === 'submissive' && !mySubIds.has(p.author_id));
+    const canDelete = !isGuest && (p.author_id === me || isSuper || isMod || mySubIds.has(p.author_id) || (isChatMod && p.author?.role === 'submissive'));
+    const canStaffAct = !isGuest && (((isSuper || isMod) || (isChatMod && p.author?.role === 'submissive' && !ownedSubs.has(p.author_id))) && p.status === 'pending');
+    const canOwnerAct = !isGuest && (p.status === 'owner_pending' && mySubIds.has(p.author_id));
+    const canBlock = !isGuest && ((isSuper) || ((isMod || isChatMod) && p.author?.role === 'submissive' && !mySubIds.has(p.author_id)));
 
     let badge = '';
-    if (p.status === 'pending') badge = '<span class="badge wait">⏳ espera Staff</span>';
-    if (p.status === 'owner_pending') badge = '<span class="badge wait">⏳ espera a su Dueña</span>';
-    if (p.status === 'rejected') badge = '<span class="badge no">❌ rechazada</span>';
+    if (!isGuest) {
+      if (p.status === 'pending') badge = '<span class="badge wait">⏳ espera Staff</span>';
+      if (p.status === 'owner_pending') badge = '<span class="badge wait">⏳ espera a su Dueña</span>';
+      if (p.status === 'rejected') badge = '<span class="badge no">❌ rechazada</span>';
+    }
     if (isPoll) badge = '<span class="badge poll">📊 encuesta</span> ' + badge;
 
     const media = mediaHTML(p);
@@ -519,11 +571,12 @@ async function render() {
               ? '<div class="ava" style="display:flex;align-items:center;justify-content:center;color:#f59e0b;">🛡</div>'
               : `<img class="ava" src="${esc(p.author?.avatar_url || '')}" onerror="this.style.visibility='hidden'"/>`)}
           <div>
-            ${p.post_as === 'anon' ? '' : `<b style="color:${p.post_as === 'staff' ? '#f59e0b' : (p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${p.post_as === 'staff' ? '🛡 Staff Queendomland' : (p.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(p.author?.display_name || '?')}</b>${p.post_as === 'user' ? staffIcons(p.author_id) : ''}`}
+            ${p.post_as === 'anon' ? '' : `<b style="color:${p.post_as === 'staff' ? '#f59e0b' : (p.author?.role === 'dominant' ? 'var(--gold)' : '#8ab4f8')}">${p.post_as === 'staff' ? '🛡 Staff Queendomland' : (p.post_as === 'user' ? ((p.author?.role === 'dominant' ? '♛ ' : '⛓ ') + esc(p.author?.display_name || '?')) : esc(p.author?.display_name || '?'))}</b>${p.post_as === 'user' ? staffIcons(p.author_id) : ''}`}
             <div class="small">${hh(p.created_at)} ${badge}${p.pinned_by ? ' · 📌 fijada' : ''}</div>
           </div>
         </div>
         ${isPoll ? pollHTML : `<div class="post-body" style="white-space:pre-wrap;">${esc(p.body || '')}</div>${media}${rbar('post', p.id, false)}`}
+        ${!isGuest ? `
         <div class="acts">
           ${!isPoll ? `<button onclick="document.getElementById('ci_${p.id}')?.focus()">💬 ${cmtCount || ''} Comentarios</button>` : ''}
           ${canStaffAct ? `<button onclick="staffApprove('${p.id}')">✅ Aprobar</button><button onclick="staffReject('${p.id}')">❌ Rechazar</button>` : ''}
@@ -532,7 +585,7 @@ async function render() {
           ${canDelete ? `<button onclick="${isPoll ? `deletePoll('${p.id}')` : `delPost('${p.id}')`}">🗑 Eliminar</button>` : ''}
           ${canBlock ? `<button onclick="blockUser('${p.author_id}')">🚫 Bloquear</button>` : ''}
           ${(isSuper || isMod) ? (p.pinned_by ? `<button onclick="unpinPost('${p.id}')">📌 Desfijar</button>` : `<button onclick="pinPost('${p.id}')">📌 Fijar</button>`) : ''}
-        </div>
+        </div>` : ''}
         ${p.allow_comments && p.status === 'approved' ? `
         <div class="cmt">
           ${cmtCount > 0 ? `
@@ -544,11 +597,12 @@ async function render() {
               ${topLevelCmts.map(c => commentHTML(c, cmts)).join('')}
             </div>
           ` : ''}
+          ${!isGuest ? `
           <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
             <input id="ci_${p.id}" placeholder="Comentar..." style="margin:0;"/>
             <button class="emojibtn" onclick="openEmoji(this,'ci_${p.id}')">😊</button>
             <button onclick="addComment('${p.id}')">Enviar</button>
-          </div>
+          </div>` : '<p class="small" style="margin:8px 0 0;color:#a1a1aa;">👁 Inicia sesión para comentar.</p>'}
         </div>` : (p.status === 'approved' && !p.allow_comments ? '<p class="small" style="margin:8px 0 0;">💬 Comentarios desactivados por quien publicó.</p>' : '')}
       </div>`;
   }
@@ -561,7 +615,7 @@ async function render() {
 
 function commentHTML(c, all) {
   const replies = all.filter(x => x.parent_id === c.id);
-  const canDel = c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id);
+  const canDel = !isGuest && (c.author_id === me || isSuper || isMod || (isChatMod && c.author?.role === 'submissive') || mySubIds.has(c.author_id));
   const hasReplies = replies.length > 0;
   
   return `
@@ -578,6 +632,7 @@ function commentHTML(c, all) {
         </p>
       </div>
       ${rbar('comment', c.id, true)}
+      ${!isGuest ? `
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0;">
         <button class="linkbtn" onclick="toggleReply('${c.id}')">↩ Responder</button>
         ${hasReplies ? `<button class="collapse-btn" onclick="toggleReplies('${c.id}', this)">
@@ -590,7 +645,10 @@ function commentHTML(c, all) {
         <button class="emojibtn" onclick="openEmoji(this,'ri_${c.id}')">😊</button>
         <button onclick="addReply('${c.id}','${c.post_id}')">Enviar</button>
         <button class="linkbtn" onclick="toggleReply('${c.id}')">Cancelar</button>
-      </div>
+      </div>` : (hasReplies ? `<button class="collapse-btn" onclick="toggleReplies('${c.id}', this)" style="margin-top:6px;">
+        <span class="arrow">▼</span>
+        <span class="count">${replies.length} respuesta${replies.length === 1 ? '' : 's'}</span>
+      </button>` : '')}
       <div id="replies_${c.id}" class="reply-container">
         ${replies.map(r => `
           <div class="reply">
@@ -601,7 +659,7 @@ function commentHTML(c, all) {
               ${r.comment_as === 'user' ? staffIcons(r.author_id) : ''}
               <span class="reply-body" style="color:#d4d4d8;white-space:pre-wrap;">${esc(r.body)}</span>
               <span class="small" style="opacity:.7;">· ${hh(r.created_at)}</span>
-              ${(r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id)) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}
+              ${(!isGuest && (r.author_id === me || isSuper || isMod || (isChatMod && r.author?.role === 'submissive') || mySubIds.has(r.author_id))) ? `<button class="mini" onclick="delComment('${r.id}')">✕</button>` : ''}
             </p>
             ${rbar('comment', r.id, true)}
           </div>
@@ -611,6 +669,7 @@ function commentHTML(c, all) {
 }
 
 function toggleReply(id){
+  if (isGuest) return;
   const box = document.getElementById('rb_' + id);
   if (box) box.classList.toggle('hidden');
 }
@@ -639,12 +698,14 @@ function toggleAllComments(postId, btn) {
 }
 
 function pickFile(input){
+  if (isGuest) return;
   const f = input.files[0]; if (!f) return;
   pendingFile = f;
   document.getElementById('wfilechip').textContent = '📎 ' + f.name;
 }
 
 async function submitPost() {
+  if (isGuest) return alert('Inscríbete para publicar.');
   const body = document.getElementById('wbody').value.trim();
   const allow = document.getElementById('wallow').checked;
   const as = document.getElementById('was')?.value || 'user';
@@ -667,6 +728,7 @@ async function submitPost() {
 }
 
 async function addComment(postId) {
+  if (isGuest) return alert('Inscríbete para comentar.');
   const input = document.getElementById('ci_' + postId);
   const body = input.value.trim();
   if (!body) return;
@@ -676,6 +738,7 @@ async function addComment(postId) {
 }
 
 async function addReply(commentId, postId) {
+  if (isGuest) return alert('Inscríbete para responder.');
   const input = document.getElementById('ri_' + commentId);
   const body = input.value.trim();
   if (!body) return;
@@ -685,12 +748,14 @@ async function addReply(commentId, postId) {
 }
 
 async function delComment(id) {
+  if (isGuest) return;
   const { data } = await db.rpc('muro_delete_comment', { comment_id: id });
   if (!data || !data.ok) return alert(data?.error || 'No se pudo eliminar.');
   await render();
 }
 
 async function delPost(id) {
+  if (isGuest) return;
   let reason = null;
   if (isSuper || isMod) reason = prompt('Motivo opcional a enviar al autor (déjalo vacío para no avisar):');
   const { data } = await db.rpc('muro_delete_post', { post_id: id, reason });
@@ -699,6 +764,7 @@ async function delPost(id) {
 }
 
 async function staffApprove(id) {
+  if (isGuest) return;
   const p = (window.__posts || []).find(x => x.id === id);
   if (p && p.author?.role === 'submissive' && !isSuper) {
     const { data: rel } = await db.from('relationships').select('id').eq('submissive_id', p.author_id).eq('status', 'confirmed').maybeSingle();
@@ -724,19 +790,20 @@ async function staffApprove(id) {
   if (!data?.ok) alert(data?.error);
   await render();
 }
-async function staffReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_staff_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
-async function ownerApprove(id) { const { data } = await db.rpc('muro_owner_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
-async function ownerReject(id) { const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_owner_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
-async function pinPost(id) { const { data } = await db.rpc('muro_pin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
-async function unpinPost(id) { const { data } = await db.rpc('muro_unpin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function staffReject(id) { if (isGuest) return; const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_staff_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
+async function ownerApprove(id) { if (isGuest) return; const { data } = await db.rpc('muro_owner_approve', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function ownerReject(id) { if (isGuest) return; const r = prompt('Motivo del rechazo (opcional):'); const { data } = await db.rpc('muro_owner_reject', { post_id: id, reason: r }); if (!data?.ok) alert(data?.error); await render(); }
+async function pinPost(id) { if (isGuest) return; const { data } = await db.rpc('muro_pin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
+async function unpinPost(id) { if (isGuest) return; const { data } = await db.rpc('muro_unpin', { post_id: id }); if (!data?.ok) alert(data?.error); await render(); }
 
 async function blockUser(uid) {
+  if (isGuest) return;
   const r = prompt('Motivo del bloqueo (opcional):');
   const { data } = await db.rpc('muro_block', { target: uid, reason: r });
   if (!data?.ok) return alert(data?.error);
   await render();
 }
-async function unblock(uid) { const { data } = await db.rpc('muro_unblock', { target: uid }); if (!data?.ok) alert(data?.error); await render(); }
+async function unblock(uid) { if (isGuest) return; const { data } = await db.rpc('muro_unblock', { target: uid }); if (!data?.ok) alert(data?.error); await render(); }
 
 init();
 </script>
