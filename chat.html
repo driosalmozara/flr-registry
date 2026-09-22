@@ -177,7 +177,7 @@ async function init() {
     // Invitados: cargar solo la sala general y sus mensajes
     const { data: profs } = await db.from('profiles').select('id, display_name, role').order('display_name').limit(300);
     people = profs || [];
-    const { data: roomData } = await db.from('chat_rooms').select('*').eq('id', GENERAL_ROOM_ID);
+    const { data: roomData } = await db.rpc('public_guest_rooms');
     rooms = roomData || [];
     if (rooms.length) {
       currentRoomId = rooms[0].id;
@@ -187,6 +187,7 @@ async function init() {
     }
     await renderPage();
     subscribeChat();
+    setInterval(function(){ loadMessages(); }, 20000);
     return;
   }
 
@@ -613,11 +614,16 @@ async function loadMessages() {
     if (myBan) { box.innerHTML = `<p class="small" style="color:#dc2626;text-align:center;padding:40px;">🚫 No tienes acceso a esta sala.</p>`; return; }
   }
 
-  const { data } = await db.from('chat_messages_public')
-    .select('*')
-    .eq('room_id', currentRoomId)
-    .order('created_at', { ascending: false })
-    .limit(200);
+let data;
+if (isGuest) {
+  const r = await db.rpc('public_guest_messages', { p_room: currentRoomId });
+  data = r.data || [];
+} else {
+  const r = await db.from('chat_messages_public')
+    .select('*').eq('room_id', currentRoomId)
+    .order('created_at', { ascending: false }).limit(200);
+  data = r.data || [];
+}
   const list = (data || []).reverse();
 
   box.innerHTML = list.map(m => {
