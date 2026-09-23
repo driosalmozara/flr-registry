@@ -333,7 +333,7 @@ function getClient(){
   var f = document.createElement('div');
   f.id = 'q-credits';
   f.style.cssText = 'text-align:center;color:#8a8578;font-size:12px;padding:20px 12px 28px;letter-spacing:.08em;';
-  f.innerHTML = '♛ Créditos — plataforma dirigida a las <b style="color:#c9a24b;">Diosas Almozara</b> · Contenido simbólico y consensuado entre adultos.';
+  f.innerHTML = '🏛 Créditos — plataforma dirigida a la <b style="color:#c9a24b;">Superioridad Femenina</b> · Contenido simbólico y consensuado entre adultos.';
   document.body.appendChild(f);
 })();
 
