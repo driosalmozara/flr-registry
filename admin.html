@@ -55,6 +55,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_X4SJUT7cnbFuv7l_1Y3OjQ__poTLx0b';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let me = null;
+  let supers = new Set();
 let users = [], admins = [], mods = [], rels = [], records = [], cards = [];
 
 function esc(v){
@@ -107,7 +108,7 @@ async function render() {
 
   const [u, a, m, r, rec, c, mt] = await Promise.all([
     db.from('profiles').select('id, role, display_name, age, bio, created_at, avatar_url, approved').order('created_at', { ascending: false }),
-    db.from('app_admins').select('user_id'),
+    db.from('app_admins').select('user_id, is_super'),
     db.from('app_moderators').select('user_id'),
     db.from('relationships').select('id, status, dominant_id, submissive_id').order('requested_at', { ascending: false }),
     db.from('submissive_records').select('*'),
@@ -115,7 +116,8 @@ async function render() {
     db.from('app_settings').select('value').eq('key', 'maintenance').maybeSingle()  ]);
 
   users = u.data || [];
-  admins = (a.data || []).map(x => x.user_id);
+  admins = (a.data || []).map(x => x.user_id);   
+  supers = new Set((a.data || []).filter(x => x.is_super).map(x => x.user_id));
   mods = (m.data || []).map(x => x.user_id);
   rels = r.data || [];
   records = rec.data || [];
@@ -135,14 +137,60 @@ async function render() {
     </details>
   `;
 
-  // ===== ADMINISTRADORES =====
-  html += `<details><summary>👑 Administradores <span class="count">${admins.length}</span></summary><div class="body">`;
+  // ===== SÚPER ADMINISTRADORES (co-regencia, máx 2) =====
+  const meIsSuper = supers.has(me);
+  const superCount = supers.size;
+
+  html += `<details open><summary>👑 Súper Administradores <span class="count">${superCount}/2</span></summary><div class="body">`;
+  html += '<p class="small">Máximo dos súper administradores a la vez. Un súper puede nombrar o quitar al otro, pero no a sí mismo. Quien ostenta este rango puede nombrar y revocar a otros súper admins.</p>';
+
+  // Lista de súper admins actuales
+  users.filter(x => supers.has(x.id)).forEach(x => {
+    const isMe = x.id === me;
+    html += `<div class="item" style="border-color:var(--gold);"><div class="rowitem">`;
+    html += avatarHTML(x.avatar_url, '👑');
+    html += `<div style="flex:1;min-width:200px;"><b>👑 ${esc(x.display_name)}</b> <span class="small">— Súper administrador${isMe ? ' (tú)' : ''}</span></div>`;
+    if (!isMe && meIsSuper) {
+      html += `<button class="danger" onclick="revokeSuper('${x.id}')">Quitar rango</button>`;
+    }
+    html += `</div></div>`;
+  });
+
+  if (superCount === 0) {
+    html += '<p class="small" style="color:#f59e0b;">⚠ No hay súper administradores asignados. Tu cuenta actual debería serlo; si no, ejecuta el SQL de inicialización.</p>';
+  }
+
+  // Selector para nombrar nuevo súper (solo si hay hueco y soy súper)
+  if (meIsSuper && superCount < 2) {
+    const superCandidates = users.filter(x => admins.includes(x.id) && !supers.has(x.id));
+    if (superCandidates.length > 0) {
+      html += `
+        <label class="small" style="margin-top:12px;">Nombrar co-súper administrador</label>
+        <select id="newsuper">
+          ${sortUsers(superCandidates).map(x => `<option value="${x.id}">${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</option>`).join('')}
+        </select>
+        <button onclick="appointSuper()">👑 Nombrar co-súper</button>
+      `;
+    } else {
+      html += '<p class="small">No hay administradores normales disponibles para ascender a súper.</p>';
+    }
+  } else if (!meIsSuper) {
+    html += '<p class="small" style="color:#a1a1aa;">Solo los súper administradores pueden gestionar la co-regencia.</p>';
+  }
+
+  html += '</div></details>';
+
+  // ===== ADMINISTRADORES (normales) =====
+  html += `<details><summary>🛡 Administradores <span class="count">${admins.length}</span></summary><div class="body">`;
+  html += '<p class="small">Administradores con permisos completos salvo la gestión de súper admins.</p>';
 
   users.filter(x => admins.includes(x.id)).forEach(x => {
+    const isSuper = supers.has(x.id);
     html += `<div class="item"><div class="rowitem">`;
-    html += avatarHTML(x.avatar_url, '♛');
-    html += `<div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Administrador</span></div>`;
-    if (x.id !== me) html += `<button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
+    html += avatarHTML(x.avatar_url, x.role === 'dominant' ? '♛' : '⛓');
+    html += `<div style="flex:1;min-width:200px;"><b>${x.role === 'dominant' ? '♛' : '⛓'} ${esc(x.display_name)}</b> <span class="small">— Administrador${isSuper ? ' 👑' : ''}</span></div>`;
+    if (x.id !== me && !isSuper) html += `<button class="danger" onclick="removeAdmin('${x.id}')">Quitar privilegios</button>`;
+    if (x.id !== me && isSuper) html += `<span class="small" style="color:#a1a1aa;">Súper (gestión arriba)</span>`;
     html += `</div></div>`;
   });
 
@@ -397,6 +445,20 @@ function renderCardCard(){
   window.location.reload();
 }
 
+  async function appointSuper() {
+  const id = document.getElementById('newsuper').value;
+  if (!confirm('¿Nombrar a este administrador como co-súper administrador? Tendrá los mismos privilegios que tú, incluida la capacidad de quitarte el rango.')) return;
+  const { data } = await db.rpc('appoint_super_admin', { p_user_id: id });
+  alert(data?.message || data?.error || 'Error.');
+  window.location.reload();
+}
+
+async function revokeSuper(id) {
+  if (!confirm('¿Quitar el rango de súper administrador? Seguirá siendo administrador normal.')) return;
+  const { data } = await db.rpc('revoke_super_admin', { p_user_id: id });
+  alert(data?.message || data?.error || 'Error.');
+  window.location.reload();
+}
 async function makeAdmin() {
   const id = document.getElementById('newadmin').value;
   const { error } = await db.from('app_admins').insert({ user_id: id });
