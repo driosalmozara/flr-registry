@@ -455,7 +455,8 @@ function renderCardCard(){
 
 async function revokeSuper(id) {
   if (!confirm('¿Quitar el rango de súper administrador? Seguirá siendo administrador normal.')) return;
-  const { data } = await db.rpc('revoke_super_admin', { p_user_id: id });
+  const { data, error } = await db.rpc('revoke_super_admin', { p_user_id: id });
+  if (error) { alert('⚠ ' + error.message); return; }
   alert(data?.message || data?.error || 'Error.');
   window.location.reload();
 }
