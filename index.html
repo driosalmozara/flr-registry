@@ -2661,7 +2661,7 @@ window.accSaveEmail = async function(){
         const { data: { user: freshUser } } = await db.auth.getUser();
     card.innerHTML = `
       <h2>🔐 Mi cuenta</h2>
-            <label class="small
+      <label class="small">Correo electrónico</label>
       <input id="acc-email" value="${(freshUser?.email || '')}"/>
       <button onclick="accSaveEmail()">Guardar correo</button>
       <label class="small" style="display:block;margin-top:12px;">Nueva contraseña</label>
